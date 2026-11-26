@@ -23,6 +23,7 @@ W, H = 140, 48
 EDGES = [
     ("M20,214 H58", False, 34, 205, "middle", "start"),
     ("M200,214 H328", False, 265, 205, "middle", "checks_ok"),
+    ("M165,188 V120 H650 V188", False, 235, 112, "middle", "stop_ctrlc"),
     ("M370,190 V90", False, 362, 143, "end", "pause"),
     ("M430,88 V188", False, 438, 143, "start", "resume"),
     ("M470,214 H618", False, 545, 205, "middle", "stop_ctrlc"),

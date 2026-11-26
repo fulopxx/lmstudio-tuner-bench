@@ -10,12 +10,13 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 - **CLI-paritás:** a webes és bármely más grafikus felület nem tudhat többet a CLI-nél. Új funkció először a core-ban
   és a CLI-ben jelenik meg.
 - **Vékony felület:** mérés, állapotkezelés, értékelés és számítás (pl. Pareto-front, pontszám) a core-ban van.
-- **Kevés függőség:** a core csak a Python standard könyvtárát használja; külső csomag a felületekhez, az exporthoz és
-  a TypeScript harnesshez (hivatalos LM Studio SDK) kerülhet be.
+- **Kevés függőség:** a Python kód csak a standard könyvtárat használja. A modelleket egy TypeScript segédprogram tölti
+  be, ezért a sweephez Node.js és a hivatalos LM Studio SDK is kell. További külső csomag a felületekhez, az exporthoz
+  és a harnesshez kerülhet be.
 - **Biztonságos futás:** minden külső lépésnek időkorlátja van; a hibás lépést nem próbálja újra magától; foglalt GPU
   esetén szünet, időszakos újraellenőrzéssel; csak a futás által betöltött modell kerül eltávolításra; a LM Studio
   beállításfájljai nem módosulnak.
-- **Helyi:** a webes szerver csak `127.0.0.1`-en figyel.
+- **Helyi:** a (tervezett) webes szerver csak `127.0.0.1`-en figyel.
 - **Kétnyelvűség (tervezett):** az angol az elsődleges, a magyar teljes értékű második nyelv. A felületek szövegei
   nyelvi fájlokból jönnek (nincs beégetett szöveg), a nyelv váltható. A kód, a kommentek, az azonosítók és az
   adatformátumok mezőnevei angolok, és nem fordulnak.
@@ -25,25 +26,61 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | Fájl | Szerep |
 |---|---|
 | `bench.cmd` | Rövid parancs a sweep futtatóhoz |
-| `runner/sweep.py` | CLI, futtató, állapot- és vezérléskezelés, riport (egy fájlban) |
-| `runner/smoke.py` | Smoke teszt és közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) |
+| `runner/sweep.py` | CLI, futtató, állapot- és vezérléskezelés, táblázatos riport (egy fájlban) |
 | `runner/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
+| `runner/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
 | `harness/load-model.ts` | Egy modellt tölt be az SDK-val, majd kilép; a futtató hívja |
 | `harness/load-config.ts` | A sweep beállításainak leképezése az SDK load configra, az alkalmazott értékek ellenőrzésével |
-| `configs/*.json` | Mérési rácsok: modellista, alapértékek, konfigurációk |
+| `harness/load-config.test.ts` | A leképezés offline tesztje |
 | `harness/sdk-probe.ts` | A hivatalos SDK próbája: alkalmazott beállítások, VRAM és sebesség |
 | `harness/sdk-persist.ts` | Próba: a modell a betöltő process kilépése után is betöltve marad |
-| `tools/export_docs.py` | A `docs` Markdown fájljainak (angol és magyar) PDF-exportja |
+| `harness/package.json` | Node.js verziókövetelmény és a rögzített SDK verzió |
+| `configs/*.json` | Mérési rácsok (4.1) |
+| `tools/export_docs.py` | A dokumentumok (angol és magyar) PDF-exportja |
+| `tools/make_diagrams.py` | A `docs/img/` SVG ábráinak generátora |
 | `tests/` | Offline tesztek és egy GPU-t használó élő vezérlési teszt |
+
+### Processek
+
+```
+bench run / resume  (futtató process)
+  |-- lms.exe            modellista, runtime, betöltött modellek, szerver, unload
+  |-- node load-model.ts loadonként egy rövid életű process, LM Studio SDK
+  |-- HTTP szerver       generálás és mérés (REST, streamelve)
+  |-- nvidia-smi         VRAM, GPU-kihasználtság, driver
+bench status / pause / resume / stop  (külön processek, fájlokon át beszélnek a futtatóval)
+```
+
+### Egy job
+
+Egy job egy modell egy konfigurációval. A futtató a jobokat egymás után hajtja végre:
+
+1. **A gép ellenőrzése** (`checking GPU`): egy megszakadt futás után bent maradt `bench-sweep` modell eltávolítása; más
+   modell nem lehet betöltve; a szabad VRAM legalább `min_free_mib`; három minta medián GPU-kihasználtsága legfeljebb
+   `max_util`. Különben a futás szünetel.
+2. **Szerver:** ha nem fut, elindítja a LM Studio szervert, és kiolvassa a portját.
+3. **Load** (`loading model`) a segédprogrammal (4.4). A job hibás, ha más fájl töltődött be, vagy egy kért beállítás
+   nem jelenik meg az alkalmazott konfigurációban.
+4. A VRAM-növekedés rögzítése.
+5. **Bemelegítő generálás** (`warm-up generation`), az eredménye eldobva.
+6. **Mért generálások** (`measuring i/n`), `repeats` alkalommal: `prompt_lines` soros szintetikus prompt egyedi első
+   sorral (prompt cache ellen), temperature 0, seed 1, legfeljebb `gen_tokens` token, streamelve. Generálás közben VRAM
+   mintavétel. Az első token ideje adja a prompt-sebességet (`prompt_tokens / ttft_s`), a további tokenek a
+   decode-sebességet.
+7. A futás saját modelljének **eltávolítása**.
+8. Az eredménysor hozzáfűzése (az ismétlések mediánja) és a táblázatos riport újraírása.
+
+A hibás vagy időtúllépett lépés a jobot `fail` vagy `timeout` állapotba teszi, és a futás megy tovább; két egymást
+követő timeout megszakítja.
 
 ## 3. Cél felépítés (tervezett)
 
 ```
 bench/
-  core/   környezet, LM Studio kliens, config-tár, tervező, futtató, eredménytár, értékelés
+  core/   környezet, LM Studio kliens, tervező, futtató, eredménytár, értékelés
   cli/    parancsok; minden funkció itt elérhető
   api/    FastAPI, a core vékony burkolata
-harness/  TypeScript: agent tool loop, sandbox, toolok, trace log
+harness/  TypeScript: modellbetöltő, agent tool loop, sandbox, toolok, trace log
 web/      React + Vite + TypeScript, Mantine, ECharts
 ```
 
@@ -57,24 +94,80 @@ core  ->  FastAPI  ->  React
 core  ->  NiceGUI (alacsony prioritás)
 ```
 
-## 4. Fájlalapú interfészek (jelenlegi)
+## 4. Adatformátumok és interfészek (jelenlegi)
 
-A futtató és a vezérlő parancsok külön folyamatok, fájlokon át kommunikálnak.
+### 4.1 Rácsfájl (a futás bemenete)
+
+| Kulcs | Tartalom |
+|---|---|
+| `comment` | Szabad szöveg |
+| `models` | Modellkulcsok listája az `lms ls` szerint; a `--models` felülírja |
+| `defaults` | Minden jobra érvényes load beállítások (lenti tábla) |
+| `configs` | Konfigurációk listája: `id`, opcionális `only_params` (modellméretek, pl. `"12B"`, az `lms ls` által közölt mérettel összevetve), és bármely, az alapértéket felülíró beállítás |
+
+| Beállítás | Jelentés |
+|---|---|
+| `context_length` | Contexthossz tokenben |
+| `offload_ratio` | GPU-offload, 0 (csak CPU) és 1 (minden a GPU-n) között |
+| `flash_attention` | true / false |
+| `eval_batch_size`, `physical_batch_size` | Batch méretek |
+| `parallel` | Párhuzamos predikciók maximuma |
+| `offload_kv_cache_to_gpu` | true / false |
+| `unified_kv` | Unified KV cache, true / false |
+| `threads` | CPU-szálak |
+| `kv_quant` | `null` (f16) vagy `"q8_0"` a K és a V cache-re egyaránt |
+
+A jobok modellenként, a `configs` sorrendjében jönnek létre; a job azonosítója `<modell>|<config id>`, a számozás 1-től
+indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett rácsai; a `bench run` a
+`configs/quick.local.json` fájlt használja, ha létezik, különben a `configs/quick.json` fájlt.
+
+### 4.2 Fájlok a processek között
 
 | Fájl | Tartalom |
 |---|---|
-| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat`, `pid`, `pid_created` |
+| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created` |
 | `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
-| `state/latest.txt` | A legutóbbi futás azonosítója |
-| `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (runtime, driver, loader) |
-| `results/sweep_<run>.jsonl` | Soronként egy feladat eredménye; azonos `job_id` esetén az utolsó sor érvényes |
+| `state/latest.txt` | A legutóbbi futás azonosítója (az indulás ideje, `YYYYMMDD_HHMMSS`) |
+| `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
+| `results/sweep_<run>.jsonl` | Soronként egy job eredménye; azonos `job_id` esetén az utolsó sor érvényes |
 | `report/sweep_<run>.md` | Táblázatos riport |
+| `report/eval_<run>.md` | Kiértékelő riport (4.5) |
 
-Eredménysor mezői sikeres feladatnál: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`,
-`driver`, `loader`, `status`, `load_s`, `applied`, `loaded_path`, `vram_before_mib`, `vram_delta_mib`,
-`runs`, `ttft_s`, `decode_tok_s`, `prompt_tok_s`, `vram_peak_mib`, `near_vram_limit`, `job_s`, `finished`.
-Hibás sorban `error` szerepel, és a mérési mezők hiányozhatnak. A `status` értéke `ok`, `fail`, `timeout` vagy
-`invalidated`.
+Az `options` a futás parancssori beállításait tárolja: `repeats`, `gen_tokens`, `prompt_lines`, `load_timeout`,
+`gen_timeout`, `min_free_mib`, `max_util`, `busy_retry_s`, folytatás után pedig `allow_env_change`. A futás ezekkel az
+értékekkel folytatódik; ha az `env` eltér a gép mostani állapotától, `--allow-env-change` nélkül leáll.
+
+### 4.3 Eredménysorok
+
+Sikeres sor mezői: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`, `driver`, `loader`,
+`status`, `load_s`, `applied`, `loaded_path`, `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`, `decode_tok_s`,
+`prompt_tok_s`, `vram_peak_mib`, `near_vram_limit` (a csúcs 250 MiB-on belül a teljes mérethez), `job_s`, `finished`. A
+`runs` minden eleme: `ttft_s`, `decode_tok_s`, `prompt_tok_s`, `prompt_tokens` és `vram_peak_mib`.
+
+A `status` értéke `ok`, `fail`, `timeout` vagy `invalidated`. A hibás sorban `error` van, és a mérési mezők
+hiányozhatnak; ha a gép nem volt használható, csak `job_id`, `run`, `model`, `config`, `status` és `error` szerepel. A
+`resume --from` csak `job_id` és `invalidated` tartalmú sorokat fűz hozzá.
+
+### 4.4 Loader segédprogram
+
+A futtató minden jobhoz a `node load-model.ts` parancsot indítja a `harness/` mappában.
+
+- **Bemenet** (JSON a standard inputon): `model` (a fájl útvonala az `lms ls` szerint), `identifier`, `settings`,
+  `timeoutMs`.
+- **Siker:** az utolsó kimeneti sor `RESULT:`, utána JSON: `path`, `identifier`, `loadSeconds`, `applied` (a LM
+  Studióból visszaolvasott konfiguráció) és `mismatches`.
+- **Hiba:** nem nulla kilépési kód, az üzenet a standard erroron. Semmit nem próbál újra.
+- Az SDK API-portját egy belső LM Studio fájlból olvassa; az útvonalát az `LMS_API_FILE` környezeti változó felülírja. A
+  modell a segédprogram kilépése után is betöltve marad. Részletek: `docs/lmstudio_load_parameters.hu.md`.
+
+### 4.5 Kiértékelés
+
+A `bench evaluate` egy eredményfájlt olvas, offline. Rangsorolási metrika: egy kérés becsült ideje másodpercben,
+`in_tokens / prompt_tok_s + out_tokens / decode_tok_s` (alapból 2000 és 500). Modellenként és contexthosszanként a
+leggyorsabb konfigurációt ajánlja, és ha a győztesen jelző van, megnevezi a leggyorsabb jelző nélkülit is. A jelzők
+heurisztikák: `spill?` (a prompt-sebesség a modell legjobbjának fele alatt, vagy teljes offloadnál a decode a legjobb
+60%-a alatt) és `unstable` (az ismétlések decode-ban 10%-nál, prompt-sebességben 25%-nál jobban eltérnek). A riport
+figyelmeztet, ha a loadok előtti VRAM-foglalás 500 MiB-nál többet ingadozott.
 
 ## 5. Futási állapotok (jelenlegi)
 
@@ -82,19 +175,25 @@ Hibás sorban `error` szerepel, és a mérési mezők hiányozhatnak. A `status`
 
 | Állapot | Jelentés | Innen merre |
 |---|---|---|
-| `starting` | Előkészítés | `running`, `aborted` |
+| `starting` | Előkészítés | `running`, `stopped`, `aborted` |
 | `running` | Mérés folyik | `paused`, `stopped`, `done`, `aborted` |
-| `paused` | Modell eltávolítva | `running` (`resume` parancsra, vagy foglalt GPU után magától), `stopped` |
-| `stopped` | A felhasználó leállította | `resume` új folyamatot indít |
-| `done` | Minden feladat lefutott | `resume --from` / `--redo-failed` új folyamatot indít |
-| `aborted` | Hiba vagy két egymást követő timeout | `resume` új folyamatot indít |
+| `paused` | Modell eltávolítva, a futás által indított szerver leállítva | `running` (`resume` parancsra, vagy foglalt GPU után magától), `stopped` |
+| `stopped` | A felhasználó leállította (`stop` vagy Ctrl+C) | `resume` új processt indít |
+| `done` | Minden job lefutott | `resume --from` / `--redo-failed` új processt indít |
+| `aborted` | Hiba vagy két egymást követő timeout | `resume` új processt indít |
 
-A futtató akkor számít élőnek, ha a `heartbeat` 20 másodpercnél frissebb, vagy ha még létezik az a process, amelyik
-írta (azonos `pid` és `pid_created`, így egy újra kiosztott PID nem számít). Egy élő process késő heartbeatje csak
-figyelmeztetésként jelenik meg. Egyszerre egy futás lehet aktív. Ha a process végállapot nélkül hal meg (kill,
-újraindítás), ezt a `status` mutatja, és a `resume` új processt indít, amely először eltávolítja a megszakadt futás
-után bent maradt modellt. A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki. A gráfot a
-`tools/make_diagrams.py` generálja.
+- **Pause és stop** az aktuális job után hat; `--now` esetén a következő ellenőrzési ponton, és a félbehagyott job
+  újramérésre kerül. A folyamatban lévő modellbetöltést megvárja.
+- **Automatikus szünet** (a gép nem áll készen) `busy_retry_s` másodpercenként újraellenőriz, és magától folytatódik; a
+  `pause` parancs kikapcsolja az újraellenőrzést.
+- **Élő futtató:** akkor számít élőnek, ha a `heartbeat` 20 másodpercnél frissebb, vagy ha még létezik az a process,
+  amelyik írta (azonos `pid` és `pid_created`, így egy újra kiosztott PID nem számít). Egy élő process késő heartbeatje
+  csak figyelmeztetésként jelenik meg. Egyszerre egy futás lehet aktív.
+- **Meghalt process:** ha végállapot nélkül ér véget (kill, újraindítás), ezt a `status` mutatja, és a `resume` új
+  processt indít, amely először eltávolítja a megszakadt futás után bent maradt modellt.
+- A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki.
+
+A gráfot a `tools/make_diagrams.py` generálja.
 
 ## 6. Parancsok és tervezett API
 
@@ -103,33 +202,47 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | CLI (jelenlegi) | API (tervezett) |
 |---|---|
 | `bench run --dry-run` | `POST /plans` |
-| `bench run` | `POST /runs` |
-| `bench status`, `status --jobs` | `GET /runs/current`, `GET /runs/{id}/jobs` |
+| `bench run [--grid] [--models] [--repeats] [--gen-tokens] [--prompt-lines] [--load-timeout] [--gen-timeout] [--min-free-mib] [--max-util] [--busy-retry]` | `POST /runs` |
+| `bench status [--watch] [--jobs]` | `GET /runs/current`, `GET /runs/{id}/jobs` |
 | `bench pause [--now]` | `POST /runs/current/pause` |
-| `bench resume [--from N] [--redo-failed]` | `POST /runs/{id}/resume` |
+| `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
+
+A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
+használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.
+
+Egyéb belépési pontok: `python runner/smoke.py` (egy modell smoke tesztje: leltár, GPU-ellenőrzés, load a CLI-vel,
+generálás, tool-hívás próba; a `results/smoke_*.json` fájlt és egy modellistát ír az `inventory/` mappába),
+`python tools/export_docs.py`, `python tools/make_diagrams.py` és a `harness/` próbái.
 
 ## 7. Külső függések
 
 | Függés | Mire |
 |---|---|
-| `lms.exe` | modellista, runtime-lista, szerver indítása és leállítása, modell eltávolítása |
-| `@lmstudio/sdk` (Node) | load explicit paraméterekkel (`harness/load-model.ts`) |
+| Python (3.15.2-vel tesztelve) | futtató, kiértékelés, segédeszközök, tesztek |
+| Node.js 24 vagy újabb | loader segédprogram és a harness próbái |
+| `@lmstudio/sdk` | load explicit paraméterekkel (`harness/load-model.ts`) |
+| LM Studio alkalmazás | futnia kell |
+| `lms.exe` | modellista (`ls`), runtime-lista, betöltött modellek (`ps`), szerver indítása és leállítása, unload; load csak a smoke tesztben |
 | REST `POST /v1/chat/completions` | generálás és mérés |
 | `nvidia-smi` | VRAM, GPU-kihasználtság, driver |
 | A LM Studio `http-server.json` fájlja (belső) | API-port az SDK-hoz; részletek: `docs/lmstudio_load_parameters.hu.md` |
+| Microsoft Edge | csak a dokumentumok PDF-exportja |
+
+A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 
 ## 8. Tervezett formátumváltozások
 
 - `schema_version` minden tervben és eredménysorban.
-- Hardver-ujjlenyomat: GPU neve, VRAM, LM Studio verzió, runtime, driver.
+- Teljesebb hardver-ujjlenyomat: a rögzített runtime, driver és loader mellett GPU neve, teljes VRAM és LM Studio verzió.
 - Tesztcsomag-eredmények (minőség, tool-használat) a sebességmérés mellett.
 - Jelző, hogy mérés közben nyitva volt-e a dashboard.
 - Modellregiszter képességcímkékkel.
 
 ## 9. Nyitott kérdések
 
+- A Python core és a TypeScript harness közötti interfész (processhatár, trace-formátum).
 - Az SDK API-portjának megtalálása belső LM Studio fájl nélkül.
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).

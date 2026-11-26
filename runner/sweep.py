@@ -3,7 +3,7 @@
 
   bench run --grid configs/quick.json [--models a,b] [--dry-run]
   bench status [--watch] [--jobs]
-  bench pause [--now]      wait; GPU is freed (model unloaded, LM Studio files restored)
+  bench pause [--now]      wait; GPU is freed (model unloaded, a server started by the run stopped)
   bench resume             continue (same process if it is paused, otherwise restart from disk)
   bench resume --from 12   redo job 12 and everything after it
   bench resume --redo-failed
