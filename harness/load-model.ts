@@ -3,7 +3,8 @@
 //   echo '{"model": "<path>", "identifier": "<id>", "settings": {...}, "timeoutMs": 240000}' | node load-model.ts
 //
 // On success the last stdout line is "RESULT:" followed by JSON (loaded path, applied config, load
-// time, mismatches). Any failure exits non-zero with the message on stderr. Nothing is retried.
+// time, mismatches, application version). Any failure exits non-zero with the message on stderr.
+// Nothing is retried.
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -38,9 +39,11 @@ try {
   const applied: Record<string, unknown> = { ...(await model.getLoadConfig()) };
   delete applied.promptTemplate;
   const info = await model.getModelInfo();
+  // version of the application that served this load; recorded only, so a failure here is not an error
+  const app = await client.system.getLMStudioVersion().then((v) => `${v.version}+${v.build}`, () => null);
   await client[Symbol.asyncDispose]();
   process.stdout.write("\nRESULT:" + JSON.stringify({
-    path: info.path, identifier: info.identifier, loadSeconds, applied, mismatches: mismatches(config, applied),
+    path: info.path, identifier: info.identifier, loadSeconds, applied, mismatches: mismatches(config, applied), app,
   }) + "\n", () => process.exit(0));
 } catch (e) {
   fail(e);

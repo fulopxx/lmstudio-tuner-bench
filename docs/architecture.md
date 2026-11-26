@@ -53,6 +53,9 @@ bench status / pause / resume / stop  (separate processes, talk to the runner th
 
 ### One job
 
+At the start of a run or resume (and in a dry run) the runner warns if the selected GGUF runtime has no GPU support
+while jobs offload to the GPU.
+
 A job is one model with one configuration. The runner executes the jobs one after the other:
 
 1. **Check the machine** (`checking GPU`): remove a `bench-sweep` model left over from a killed run; no other model may
@@ -126,7 +129,7 @@ from 1. `configs/*.local.json` files are the user's own grids and are not tracke
 
 | File | Content |
 |---|---|
-| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (written every 2 s), `pid`, `pid_created` |
+| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (written every 2 s), `pid`, `pid_created`, `warning` |
 | `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
 | `state/latest.txt` | Id of the latest run (its start time, `YYYYMMDD_HHMMSS`) |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
@@ -141,7 +144,7 @@ these values; if `env` differs from the current machine it stops unless `--allow
 ### 4.3 Result rows
 
 Fields of a successful row: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`, `driver`,
-`loader`, `status`, `load_s`, `applied`, `loaded_path`, `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`,
+`loader`, `status`, `load_s`, `applied`, `loaded_path`, `app_version` (application that served the load), `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`,
 `decode_tok_s`, `prompt_tok_s`, `vram_peak_mib`, `near_vram_limit` (peak within 250 MiB of the total), `job_s`,
 `finished`. Each element of `runs` has `ttft_s`, `decode_tok_s`, `prompt_tok_s`, `prompt_tokens` and `vram_peak_mib`.
 
@@ -155,7 +158,7 @@ The runner starts `node load-model.ts` in `harness/` for each job.
 
 - **Input** (JSON on standard input): `model` (file path as reported by `lms ls`), `identifier`, `settings`, `timeoutMs`.
 - **Success:** the last output line is `RESULT:` followed by JSON with `path`, `identifier`, `loadSeconds`, `applied`
-  (the configuration read back from LM Studio) and `mismatches`.
+  (the configuration read back from LM Studio), `mismatches` and `app` (version of the serving application).
 - **Failure:** non-zero exit code with the message on standard error. Nothing is retried.
 - The SDK's API port is read from an internal LM Studio file; the `LMS_API_FILE` environment variable overrides its
   path. The model stays loaded after the helper exits. Details: `docs/lmstudio_load_parameters.md`.
@@ -235,8 +238,8 @@ The runner is Windows specific (`lms.exe` path, process check).
 ## 8. Planned format changes
 
 - `schema_version` in every plan and result row.
-- Fuller hardware fingerprint: GPU name, total VRAM and LM Studio version in addition to the recorded runtime, driver and
-  loader.
+- Fuller hardware fingerprint: GPU name, total VRAM and the runtime each model actually used, in addition to the
+  recorded runtime selection, driver, loader and application version.
 - Test suite results (quality, tool use) next to speed measurements.
 - Flag telling whether the dashboard was open during a measurement.
 - Speculative decoding (task 24): grid settings, draft statistics, workload profile and backend fields.

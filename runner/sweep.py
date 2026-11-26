@@ -195,6 +195,16 @@ def environment():
     return {"runtime": runtime, "driver": drv.strip(), "loader": loader}
 
 
+def runtime_warning(runtime, jobs):
+    """Text if the selected llama.cpp runtime has no GPU backend although jobs offload to the GPU, else None."""
+    if re.search(r"(?i)cuda|vulkan|rocm|metal", runtime):
+        return None
+    if not any(j["settings"].get("offload_ratio", 0) > 0 for j in jobs):
+        return None
+    return (f"the selected GGUF runtime '{runtime}' has no GPU support, but the grid offloads to the GPU; "
+            "check `lms runtime ls`")
+
+
 def sdk_load(model_path, settings, timeout):
     """Load through the Node helper (harness/load-model.ts). The model stays loaded after it exits."""
     request = {"model": model_path, "identifier": IDENTIFIER, "settings": settings, "timeoutMs": timeout * 1000}
@@ -367,6 +377,7 @@ class Runner:
             loaded = sdk_load(info["path"], s, self.o["load_timeout"])
             row["load_s"] = round(loaded["loadSeconds"], 2)
             row["applied"], row["loaded_path"] = loaded["applied"], loaded["path"]
+            row["app_version"] = loaded.get("app")
             if loaded["path"] != info["path"]:
                 raise StepError("fail", f"wrong file loaded? got {loaded['path']}, expected {info['path']}")
             if loaded["mismatches"]:
@@ -465,7 +476,10 @@ def execute(run_id, redo_failed=False):
         meta = model_catalog()
         todo = todo_jobs(jobs, latest_results(results_path), redo_failed)
         log(f"run {run_id}: {len(todo)} of {len(jobs)} jobs to do")
-        status.update(state="running")
+        warning = runtime_warning(env["runtime"], todo)
+        if warning:
+            log(f"WARNING: {warning}")
+        status.update(state="running", warning=warning)
         for job in todo:
             while True:
                 try:
@@ -545,6 +559,8 @@ def status_text(show_jobs=False):
                    f"({fmt_dur(time.time() - st.get('job_started', time.time()))})")
     if st and st.get("reason"):
         out.append(f"reason: {st['reason']}")
+    if st and st.get("warning"):
+        out.append(f"warning: {st['warning']}")
     late = time.time() - st.get("heartbeat", 0) if alive else 0
     if late >= HEARTBEAT_LATE_S:
         out.append(f"warning: no heartbeat for {fmt_dur(late)}, but the runner process (PID {st.get('pid')}) "
@@ -590,6 +606,9 @@ def cmd_run(a):
         for j in jobs:
             print(f"{j['n']:3d} {j['model']} / {j['config']}")
         print(f"{len(jobs)} jobs (dry run, nothing started)")
+        warning = runtime_warning(environment()["runtime"], jobs)
+        if warning:
+            log(f"WARNING: {warning}")
         return 0
     if runner_alive(read_json(STATUS)):
         log("another run is active; use `bench status`, or `bench stop` first")

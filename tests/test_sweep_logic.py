@@ -42,6 +42,15 @@ class SweepLogicTest(unittest.TestCase):
             self.assertEqual(ids(), [3, 4])
 
 
+class RuntimeWarningTest(unittest.TestCase):
+    def test_warns_only_for_gpu_jobs_on_a_cpu_runtime(self):
+        gpu, cpu = [{"settings": {"offload_ratio": 0.5}}], [{"settings": {"offload_ratio": 0}}]
+        self.assertIn("no GPU support", sweep.runtime_warning("llama.cpp-win-x86_64-avx2@2.83.0", gpu))
+        self.assertIsNone(sweep.runtime_warning("llama.cpp-win-x86_64-avx2@2.83.0", cpu))
+        for name in ("llama.cpp-win-x86_64-nvidia-cuda13-avx2@2.83.0", "llama.cpp-win-x86_64-vulkan-avx2@2.83.0"):
+            self.assertIsNone(sweep.runtime_warning(name, gpu))
+
+
 class RunnerAliveTest(unittest.TestCase):
     def status(self, age, **kw):
         return dict({"state": "running", "heartbeat": time.time() - age}, **kw)

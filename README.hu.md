@@ -60,6 +60,7 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
   `bench pause` paranccsal kért szünet magától sosem ér véget.
 - Hibás lépést nem próbál újra magától. Két egymást követő timeout után a futás megszakad.
 - Ha a runtime vagy a driver verziója megváltozik, nem folytatja (`--allow-env-change` kell).
+- Figyelmeztetést ír ki, ha a kiválasztott GGUF runtime-nak nincs GPU-támogatása, pedig a rács a GPU-ra offloadol.
 - A LM Studio per-modell beállításfájljai nem módosulnak. A futtató a saját modelljét `bench-sweep` néven tölti be; ha
   egy megszakadt futás után bent maradt, a következő indítás eltávolítja.
 

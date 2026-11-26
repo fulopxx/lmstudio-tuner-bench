@@ -58,6 +58,7 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
   never ends by itself.
 - Failed steps are never retried automatically. Two consecutive timeouts abort the run.
 - If the runtime or driver version changes, the run does not continue without `--allow-env-change`.
+- A warning is shown if the selected GGUF runtime has no GPU support although the grid offloads to the GPU.
 - LM Studio's per-model settings files are not modified. The runner loads its model as `bench-sweep`; if a killed run
   left it loaded, the next start unloads it.
 

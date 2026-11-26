@@ -53,6 +53,9 @@ bench status / pause / resume / stop  (külön processek, fájlokon át beszéln
 
 ### Egy job
 
+Futás indításakor és folytatásakor (és dry runnál) a futtató figyelmeztet, ha a kiválasztott GGUF runtime-nak nincs
+GPU-támogatása, miközben a jobok a GPU-ra offloadolnak.
+
 Egy job egy modell egy konfigurációval. A futtató a jobokat egymás után hajtja végre:
 
 1. **A gép ellenőrzése** (`checking GPU`): egy megszakadt futás után bent maradt `bench-sweep` modell eltávolítása; más
@@ -127,7 +130,7 @@ indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett r�
 
 | Fájl | Tartalom |
 |---|---|
-| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created` |
+| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created`, `warning` |
 | `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
 | `state/latest.txt` | A legutóbbi futás azonosítója (az indulás ideje, `YYYYMMDD_HHMMSS`) |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
@@ -142,7 +145,7 @@ Az `options` a futás parancssori beállításait tárolja: `repeats`, `gen_toke
 ### 4.3 Eredménysorok
 
 Sikeres sor mezői: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`, `driver`, `loader`,
-`status`, `load_s`, `applied`, `loaded_path`, `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`, `decode_tok_s`,
+`status`, `load_s`, `applied`, `loaded_path`, `app_version` (a loadot kiszolgáló alkalmazás), `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`, `decode_tok_s`,
 `prompt_tok_s`, `vram_peak_mib`, `near_vram_limit` (a csúcs 250 MiB-on belül a teljes mérethez), `job_s`, `finished`. A
 `runs` minden eleme: `ttft_s`, `decode_tok_s`, `prompt_tok_s`, `prompt_tokens` és `vram_peak_mib`.
 
@@ -157,7 +160,7 @@ A futtató minden jobhoz a `node load-model.ts` parancsot indítja a `harness/` 
 - **Bemenet** (JSON a standard inputon): `model` (a fájl útvonala az `lms ls` szerint), `identifier`, `settings`,
   `timeoutMs`.
 - **Siker:** az utolsó kimeneti sor `RESULT:`, utána JSON: `path`, `identifier`, `loadSeconds`, `applied` (a LM
-  Studióból visszaolvasott konfiguráció) és `mismatches`.
+  Studióból visszaolvasott konfiguráció), `mismatches` és `app` (a kiszolgáló alkalmazás verziója).
 - **Hiba:** nem nulla kilépési kód, az üzenet a standard erroron. Semmit nem próbál újra.
 - Az SDK API-portját egy belső LM Studio fájlból olvassa; az útvonalát az `LMS_API_FILE` környezeti változó felülírja. A
   modell a segédprogram kilépése után is betöltve marad. Részletek: `docs/lmstudio_load_parameters.hu.md`.
@@ -237,7 +240,8 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 ## 8. Tervezett formátumváltozások
 
 - `schema_version` minden tervben és eredménysorban.
-- Teljesebb hardver-ujjlenyomat: a rögzített runtime, driver és loader mellett GPU neve, teljes VRAM és LM Studio verzió.
+- Teljesebb hardver-ujjlenyomat: a rögzített runtime-választás, driver, loader és alkalmazásverzió mellett a GPU neve,
+  a teljes VRAM és a modellenként ténylegesen használt runtime.
 - Tesztcsomag-eredmények (minőség, tool-használat) a sebességmérés mellett.
 - Jelző, hogy mérés közben nyitva volt-e a dashboard.
 - Speculative decoding (24. feladat): rácsbeállítások, draft statisztikák, terhelésprofil és backend mező.
