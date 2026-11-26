@@ -72,8 +72,23 @@ timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`).
 
 ## Mappák
 
-`configs\` rácsok · `runner\` scriptek · `results\` nyers eredmények · `report\` táblázatok · `state\` futásállapot ·
-`harness\` SDK loader és próbák · `docs\` dokumentáció · `tools\` segédeszközök · `tests\` tesztek
+| Mappa | Tartalom |
+|---|---|
+| `configs\` | Mérési rácsok: modellista, alapértelmezett load beállítások és az összehasonlítandó konfigurációk |
+| `runner\` | Python kód: sweep futtató és CLI, kiértékelés, közös segédfüggvények és a smoke teszt |
+| `harness\` | TypeScript kód: modellbetöltés a LM Studio SDK-val, annak tesztje és az SDK-próbák |
+| `tests\` | Offline Python tesztek és egy GPU-t használó live vezérlési teszt |
+| `tools\` | A dokumentumok PDF-exportja és az ábragenerátor |
+| `docs\` | Roadmap, architektúra és a load paraméterekről szerzett ismeretek, angolul és magyarul |
+
+Futás közben keletkeznek, a git nem követi őket:
+
+| Mappa | Tartalom |
+|---|---|
+| `results\` | Nyers mérési eredmények; sweepnél jobonként egy JSON sor |
+| `report\` | Sweep táblázatok és kiértékelő riportok Markdownban |
+| `state\` | Futási tervek, élő státusz és a pause, resume, stop mögötti vezérlőfájl |
+| `inventory\` | A smoke teszt által mentett modellista-pillanatképek |
 
 ## Tesztek
 

@@ -70,8 +70,23 @@ of the grid (`.\bench run --help`).
 
 ## Folders
 
-`configs\` grids · `runner\` scripts · `results\` raw results · `report\` tables · `state\` run state ·
-`harness\` SDK loader and probes · `docs\` documentation · `tools\` utilities · `tests\` tests
+| Folder | Contents |
+|---|---|
+| `configs\` | Measurement grids: model list, default load settings and the configurations to compare |
+| `runner\` | Python code: sweep runner and CLI, evaluation, shared helpers and the smoke test |
+| `harness\` | TypeScript code: model loading through the LM Studio SDK, its test and the SDK probes |
+| `tests\` | Offline Python tests and one live control test that uses the GPU |
+| `tools\` | PDF export of the documents and diagram generator |
+| `docs\` | Roadmap, architecture and findings on load parameters, in English and Hungarian |
+
+Created while running, not tracked by git:
+
+| Folder | Contents |
+|---|---|
+| `results\` | Raw measurement results; for a sweep one JSON line per job |
+| `report\` | Sweep tables and evaluation reports in Markdown |
+| `state\` | Run plans, live status and the control file behind pause, resume and stop |
+| `inventory\` | Model list snapshots written by the smoke test |
 
 ## Tests
 
