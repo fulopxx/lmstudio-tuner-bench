@@ -33,6 +33,7 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 | 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | open |
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | open |
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | open |
+| 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see section 8) | open (not examined yet) |
 | K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | open (not examined yet) |
 
 ### Planned improvements
@@ -176,3 +177,62 @@ Draft, to be detailed before step G.
 - Interface between the Python core and the TypeScript harness (process boundary, trace format).
 - How the sandbox restricts model-generated shell commands. This must be decided before any such command is executed.
 - Finding LM Studio's API port for the SDK without an internal file.
+
+## 8. Investigation: is a model biased?
+
+Task 23. Status: not examined; nothing below has been reproduced in this project.
+
+**Question.** Does a model behave differently when only a detail that should not matter changes? Which factors trigger
+this, and how does it differ between models, model families and original and modified ("uncensored") variants?
+
+**Stages**
+
+1. Research: on which factors models can be biased (for example requester, purpose, nationality, political topic), in
+   which outputs it shows (refusal, content and tone, quality, security of generated code), and which measurement
+   methods are published.
+2. Test prompts for each factor: sets that differ only in that factor, with neutral controls and a metric per output
+   type; reviewed before the first run.
+3. Measurement per model.
+4. Report per model.
+
+**General requirements**
+
+- Factors, prompts and metrics fixed before the first run; at least two neutral wordings to estimate the noise of the
+  wording itself.
+- Objective metrics where possible. Where outputs are graded, a written rubric and a check of the grader's own bias (a
+  grading model can be biased too).
+- Statistics with confidence intervals and correction for multiple comparisons.
+
+Text-only tests depend on the fixed task set (task 20); tests that run generated code also need the harness and failure
+analysis (tasks 16 and 17). Scheduled after M1.
+
+### First known case: requester-dependent code security
+
+With the same coding task, does the share of exploitable code change when only the stated requester or purpose differs?
+It fits the cybersecurity quality suite (task 6).
+
+**Published claims**
+
+- [Hirundo, 2026-10-21](https://www.hirundo.io/blog/qwen3-coder-vulnerabilities), Qwen3-Coder-30B-A3B-Instruct, one
+  phrase changed in the system prompt, one task (BaxBench SecretStorage), temperature 0.6, mostly 190 generated apps per
+  persona, detection by running exploits. Apps for a US defense contractor were exploitable in 70% of cases, for a
+  Chinese one in 59% (p = 0.03). With a Hong Kong democracy group, apps leaking other users' secrets were 28% more
+  frequent (relative) than with neutral prompts (p = 0.024).
+- [CrowdStrike, 2025-11-20](https://www.crowdstrike.com/en-us/blog/crowdstrike-researchers-identify-hidden-vulnerabilities-ai-coded-software/),
+  DeepSeek-R1: more severe vulnerabilities with politically sensitive terms in the prompt (known here only from a
+  search summary).
+
+**Limits of the Hirundo study.** Vendor study (the company sells the remedy), not peer reviewed. The task shown stood
+out among eleven screened ones. With about ten comparisons, p values near 0.03 would not survive a correction for
+multiple testing. The blog post links no study prompts, code or raw data. The authors do not claim to know whether the
+effect is intentional.
+
+**Additional requirements for an own measurement**
+
+- Several coding tasks, chosen before the first run.
+- Detection by running exploit tests; static analysis alone is not enough (the study reports 2 apps flagged by static
+  analysis against 1144 broken by attacks, out of 1840).
+- Sample size: detecting a 59% / 70% difference with 80% power needs about 300 samples per condition (own estimate,
+  one comparison, 5% significance).
+- Generated code runs only in an isolated sandbox; this depends on the sandbox decision of section 7.
+- The Hirundo results concern a 30B model; they say nothing about the smaller models that fit the 8 GB development GPU.

@@ -33,6 +33,7 @@ a saját felhasználási esetekre, LM Studióval.
 | 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | nyitott |
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | nyitott |
 | 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | nyitott |
+| 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd 8. pont) | nyitott (még nem vizsgált) |
 | K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések
@@ -182,3 +183,65 @@ Vázlat, a G lépés előtt részletezendő.
 - Hogyan korlátozza a sandbox a modell által generált shell-parancsokat. Ezt az első ilyen parancs futtatása előtt el
   kell dönteni.
 - A LM Studio API-portjának megtalálása az SDK-hoz belső fájl nélkül.
+
+## 8. Vizsgálat: biased-e egy modell?
+
+23. feladat. Állapot: nem vizsgált; az alábbiakból ebben a projektben semmit nem reprodukáltunk.
+
+**Kérdés.** Másként viselkedik-e egy modell, ha csak egy olyan részlet változik, amelynek nem kellene számítania?
+Milyen tényezők váltják ezt ki, és hogyan tér el modellek, modellcsaládok, illetve eredeti és módosított
+("uncensored") változatok között?
+
+**Szakaszok**
+
+1. Kutatás: milyen tényezők mentén lehetnek bias-esek a modellek (például megrendelő, cél, nemzetiség, politikai téma),
+   milyen kimenetben jelenik meg (elutasítás, tartalom és hangnem, minőség, a generált kód biztonsága), és milyen
+   mérési módszerek publikáltak.
+2. Tesztpromptok tényezőnként: csak az adott tényezőben eltérő készletek, semleges kontrollokkal és kimenettípusonként
+   metrikával; az első futás előtt átnézve.
+3. Mérés modellenként.
+4. Riport modellenként.
+
+**Általános követelmények**
+
+- A tényezők, promptok és metrikák az első futás előtt rögzítve; legalább két semleges megfogalmazás, hogy a
+  megfogalmazás saját zaja becsülhető legyen.
+- Lehetőleg objektív metrikák. Ahol a kimenetet pontozni kell, írott pontozási szempontrendszer és a pontozó saját
+  bias-ának ellenőrzése (a pontozó modell is lehet bias-es).
+- Statisztika bizalmi intervallummal és többszörös összehasonlítás korrekciójával.
+
+A csak szöveges tesztek a rögzített feladatkészlettől (20. feladat) függnek; a generált kódot futtató tesztekhez a
+harness és a hibaelemzés (16. és 17. feladat) is kell. Ütemezés: M1 után.
+
+### Első ismert eset: a megrendelőtől függő kódbiztonság
+
+Azonos kódolási feladatnál változik-e a támadható kód aránya, ha csak a megadott megrendelő vagy cél tér el? A
+kiberbiztonsági minőségcsomaghoz (6. feladat) illeszkedik.
+
+**Publikált állítások**
+
+- [Hirundo, 2026-10-21](https://www.hirundo.io/blog/qwen3-coder-vulnerabilities), Qwen3-Coder-30B-A3B-Instruct, a
+  system promptban egyetlen kifejezés változik, egy feladat (BaxBench SecretStorage), temperature 0,6, jellemzően
+  190 generált alkalmazás personánként, detektálás exploitok futtatásával. Az amerikai védelmi beszállítónak írt
+  alkalmazások 70%-a volt támadható, a kínainak írtak 59%-a (p = 0,03). Hongkongi demokráciapárti szervezet esetén
+  28%-kal (relatív) gyakoribb volt a más felhasználók titkait kiszivárogtató alkalmazás, mint semleges promptnál
+  (p = 0,024).
+- [CrowdStrike, 2025-11-20](https://www.crowdstrike.com/en-us/blog/crowdstrike-researchers-identify-hidden-vulnerabilities-ai-coded-software/),
+  DeepSeek-R1: politikailag érzékeny kifejezést tartalmazó promptnál több súlyos sérülékenység (itt csak keresési
+  összefoglalóból ismert).
+
+**A Hirundo-tanulmány korlátai.** Gyártói tanulmány (a cég árulja az ellenszert), nem lektorált. A bemutatott feladat
+tizenegy átnézett közül emelkedett ki. Kb. tíz összehasonlításnál a 0,03 körüli p értékek nem élnék túl a többszörös
+tesztelés korrekcióját. A blogbejegyzés nem linkeli a vizsgálat promptjait, kódját és nyers adatait. A szerzők nem
+állítják, hogy tudnák, szándékos-e a hatás.
+
+**Egy saját mérés további követelményei**
+
+- Több kódolási feladat, az első futás előtt kiválasztva.
+- Detektálás exploit tesztek futtatásával; a statikus elemzés egyedül nem elég (a tanulmány szerint 1840
+  alkalmazásból a statikus elemzés 2-t jelzett, a támadások 1144-et törtek fel).
+- Mintaszám: egy 59% / 70% különbség 80%-os erővel való kimutatásához feltételenként kb. 300 minta kell (saját
+  becslés, egy összehasonlítás, 5% szignifikancia).
+- A generált kód csak elszigetelt sandboxban futhat; ez a 7. pont sandbox-döntésétől függ.
+- A Hirundo-eredmények egy 30B modellre vonatkoznak; a fejlesztői gép 8 GB-os GPU-jára férő kisebb modellekről nem
+  mondanak semmit.
