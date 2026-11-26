@@ -2,8 +2,13 @@
 
 [English](README.md)
 
-Helyi LLM modellek sebesség- és memóriamérése, valamint load paramétereinek hangolása LM Studióval, a saját
-hardvereden. Minőségi tesztcsomagok és webes dashboard tervben vannak ([roadmap](docs/roadmap.hu.md)).
+Helyi LLM modellek mérése és összehasonlítása LM Studióval, a saját hardvereden, kétféleképpen:
+
+- **Load-paraméter sweep:** mely load beállításokkal (context, GPU-offload, KV cache, batch, szálak) fut egy modell a
+  leggyorsabban a GPU-don úgy, hogy a memória is elég.
+- **Agent harness:** mennyire megbízhatóan használ toolokat egy modell rögzített feladatokon. A harness az a program a
+  modell körül, amely ágenssé teszi: toolokat ad neki, futtatja a ciklust (a modell toolt kér, a harness lefuttatja és
+  visszaadja az eredményt), korlátokat tart, és minden lépést naplóz, hogy a hibák utólag elemezhetők legyenek.
 
 > Nem hivatalos eszköz, nem áll kapcsolatban az LM Studio fejlesztőivel.
 > Korai állapot: egyetlen gépen próbáltuk.
@@ -14,6 +19,25 @@ Rengeteg modellt letöltöttem, aztán a saját gépemen szerettem volna tudni, 
 és hogyan futtathatom optimalizálva. Ezt kézzel kideríteni egy halom fejfájáshoz vezetett. A LM Studio tud
 automatikusan load beállítást választani, de nem találtam benne beépített lehetőséget arra, hogy sok modellt és
 beállítást a saját feladataimon, módszeresen mérjek és hasonlítsak össze, ezért kezdtem el megépíteni.
+
+## Mire használható
+
+Már elérhető:
+
+- **Sebesség- és memóriasweep.** Minden modellt lefuttat egy load-konfigurációs rácson, méri a prompt- és
+  decode-sebességet és a VRAM-ot, és bírja a megszakításokat: szünet, leállítás, folytatás (gépújraindítás után is),
+  automatikus várakozás, amíg a GPU foglalt.
+- **Kiértékelés.** A lefutott sweep konfigurációit becsült válaszidő szerint rangsorolja, modellenként és
+  contexthosszanként beállítást ajánl, és figyelmeztet az instabil vagy memóriahiányos eredményekre.
+- **Agent-feladatok futtatása.** Egy feladatkészletet futtat egy modellen a harnessen át: toolok eldobható sandboxban,
+  kör- és időkorlátok, minden lépésről trace. Minden próbálkozást a feladat pass/fail szabályai szerint ellenőriz,
+  például hogy a megfelelő toolt hívta-e, és hogy a válasz tartalmazza-e a várt adatokat.
+- **Próbák (haladó).** Kis scriptek, amelyek kiderítik, mit tud valójában a telepített LM Studio, például a
+  speculative decodingot (draft modellek, MTP) vagy a tool-hívásokat az SDK-n át.
+
+Tervben ([roadmap](docs/roadmap.hu.md)): rögzített feladatkészlet modellenkénti hibakategória-riporttal, minőségi
+tesztcsomagok (kódolás, magyar nyelv, képfelismerés, tool-használat), speculative decoding mint sweep-dimenzió és
+webes dashboard.
 
 ## Követelmények
 
@@ -29,13 +53,24 @@ fájlból olvassuk (`~\.lmstudio\apps\bionic\.internal\http-server.json`), ami m
 `LMS_API_FILE` környezeti változóval felülírható). Az alkalmazásnak futnia kell. Részletek:
 [load paraméterek](docs/lmstudio_load_parameters.hu.md).
 
-## Futtatás
+## Használat
 
-PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő napló), a másikban a vezérlés.
+PowerShellben, a projekt mappájából.
+
+### Gyors kezdés
 
 | Parancs | Mit csinál |
 |---|---|
-| `.\bench run --dry-run` | Listázza a jobokat, nem indít semmit |
+| `cd harness; npm.cmd install --ignore-scripts; cd ..` | Telepíti a LM Studio SDK-t és a TypeScript eszközöket (egyszer kell) |
+| `.\bench agent run --scripted tests\agent_scripted.json` | A példa agent-feladatokat scriptelt modellválaszokkal futtatja: nem kell hozzá GPU és LM Studio, a teljes utat megmutatja (az egyik scriptelt válasz szándékosan elbukik) |
+| `.\bench run --dry-run` | Listázza a gyors sweep jobjait, nem indít semmit |
+
+### Sebesség- és memóriasweep
+
+Egyik terminálban a futtatás (élő napló), a másikban a vezérlés.
+
+| Parancs | Mit csinál |
+|---|---|
 | `.\bench run` | Elindítja a gyors sweepet (lásd [A modellek kiválasztása](#a-modellek-kiválasztása)) |
 | `.\bench run --models qwen3-8b,qwen2.5-coder-7b-instruct` | Csak a megadott modellek |
 | `.\bench run --grid configs\quick.json` | Megadott rácsfájl (modellek és konfigurációk), itt a minta |
@@ -49,10 +84,8 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 | `.\bench stop` / `.\bench stop --now` | Kilépés, később folytatható |
 | `.\bench evaluate` | A lefutott sweepet becsült válaszidő szerint rangsorolja és riportot ír (offline) |
 | `.\bench evaluate --in-tokens 8000 --out-tokens 300` | Ugyanez más input / output arányra |
-| `.\bench agent run --model qwen3-8b` | A példa agent-feladatokat (`tasks\examples.json`) futtatja egy modellen a harnessen át, és ellenőrzi a válaszokat; Ctrl+C leállítja |
-| `.\bench agent run --model qwen3-8b --repeats 3 --only file-marker` | Kiválasztott feladatok, mindegyik többször |
 
-## Viselkedés
+Viselkedés:
 
 - Szünetben és leállításkor a modell kikerül a GPU-ról, a saját indítású szerver leáll.
 - A `--now` a következő ellenőrzési ponton hat. A folyamatban lévő modellbetöltést nem szakítja meg, megvárja
@@ -66,22 +99,62 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 - A LM Studio per-modell beállításfájljai nem módosulnak. A futtató a saját modelljét `bench-sweep` néven tölti be; ha
   egy megszakadt futás után bent maradt, a következő indítás eltávolítja.
 
+### Agent-feladatok
+
+| Parancs | Mit csinál |
+|---|---|
+| `.\bench agent run --model qwen3-8b` | A példafeladatokat (`tasks\examples.json`) futtatja egy modellen, és ellenőrzi a válaszokat |
+| `.\bench agent run --model qwen3-8b --repeats 3 --only file-marker` | Kiválasztott feladatok, mindegyik többször |
+| `.\bench agent run --model qwen3-8b --tasks <fájl> --context 16384` | Másik feladatfájl, másik contexthossz |
+
+A feladatfájl feladatonként megadja a promptot, a modell által használható toolokat (`read_file`, `mock_lookup`), egy
+opcionális mappát, amelynek fájljai a feladat sandboxába másolódnak, a mock tool válaszait (azonosítónként eredmény,
+hiba vagy késleltetés) és az ellenőrzéseket, például:
+
+```json
+{ "id": "file-marker", "prompt": "What is the marker written in the file notes.txt?", "fixtures": "notes",
+  "tools": ["read_file", "mock_lookup"], "checks": { "tool_called": "read_file", "answer_contains": ["BLUE-HERON-17"] } }
+```
+
+Viselkedés:
+
+- A modell `bench-agent` néven, jól mért beállításokkal (teljes offload, f16 KV cache) töltődik be, és a végén
+  eltávolításra kerül. A futás nem indul el, ha más modell van betöltve, vagy a GPU foglalt.
+- Korlátok próbálkozásonként (a feladatfájlban állíthatók): 6 tool-kör, tool-hívásonként 10 s, összesen 180 s. A
+  körkorlát elérésekor a modell még egy kört kap toolok nélkül, hogy válaszolhasson a felhasználónak.
+- Az ismeretlen tool vagy az érvénytelen argumentum hibaként megy vissza a modellnek. A modell által sima szövegként
+  kiírt tool-hívás nem fut le; a trace-ben megmarad.
+- A Ctrl+C megszakítja a futó predikciót vagy tool-hívást, a próbálkozást megszakítottként rögzíti, a hátralévőket
+  kihagyja; a második Ctrl+C leállítja a harnesst. A modell mindkét esetben eltávolításra kerül.
+- Eredmények: próbálkozásonként egy JSON sor a `results\agent_<run>.jsonl` fájlban; minden próbálkozás trace-e (minden
+  predikció, tool-hívás és eredmény) és sandboxa a `results\agent\<run>\` mappában.
+
+### Próbák (haladó)
+
+A `harness\` mappából futnak. Modelleket töltenek be a GPU-ra, és JSON eredményt írnak a `results\` mappába.
+
+| Parancs | Mit ellenőriz |
+|---|---|
+| `node spec-probe.ts --plan ..\configs\spec-probe.local.json --steps P1,P2` | Speculative decoding: load draft modellel és MTP-vel, draft statisztikák, sebesség a kikapcsolt spekulációhoz képest. Előbb másold le a `configs\spec-probe.example.json` fájlt; a `--dry-run` GPU nélkül ellenőrzi a tervet |
+| `node tools-probe.ts --models qwen3-8b` | Tool-hívások az SDK-n át: mit küld a modell, a tool eredményének visszaküldése, megszakítás |
+
 ## A modellek kiválasztása
 
 A `configs\quick.json` minta modellistát tartalmaz. A saját listádhoz másold `configs\quick.local.json` néven, és ott
 szerkeszd a `models` listát; ezt a fájlt a program automatikusan használja, és a git nem követi. A modellkulcsokat az
 `lms ls` mutatja. Bármely más rácsfájl a `--grid <fájl>` kapcsolóval futtatható. Az ismétlésszám, a prompthossz és a
-timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`).
+timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`). Az agent-futás közvetlenül a modellkulcsot
+kapja (`--model`).
 
 ## Mappák
 
 | Mappa | Tartalom |
 |---|---|
-| `configs\` | Mérési rácsok: modellista, alapértelmezett load beállítások és az összehasonlítandó konfigurációk |
-| `runner\` | Python kód: sweep futtató és CLI, kiértékelés, közös segédfüggvények és a smoke teszt |
-| `harness\` | TypeScript kód: modellbetöltés a LM Studio SDK-val, az agent harness (`run-tasks.ts`, `agent\`), tesztek és az SDK-próbák |
+| `configs\` | Sweep rácsok (modellista, alapértelmezett load beállítások, az összehasonlítandó konfigurációk) és a speculative decoding próba mintaterve |
+| `runner\` | Python kód: a `bench` CLI, a sweep futtató az állapot- és vezérlőfájljaival, a kiértékelés, az agent-futás (betöltés, a harness indítása, a válaszok ellenőrzése) és a közös segédfüggvények |
+| `harness\` | TypeScript kód a LM Studio SDK-ra építve: a két futás közös modellbetöltője, az agent harness (`run-tasks.ts` és `agent\`: tool loop, toolok, sandbox, trace) és a próbák. Ide kerülnek majd a keresés, git és shell toolok, sandbox-korlátozással |
 | `tasks\` | Agent-feladatok az ellenőrzéseikkel, és a feladatonkénti sandboxba másolt fixture-fájlok |
-| `tests\` | Offline Python tesztek és egy GPU-t használó live vezérlési teszt |
+| `tests\` | Offline tesztek (GPU nélkül) és egy GPU-t használó live vezérlési teszt |
 | `tools\` | A dokumentumok PDF-exportja és az ábragenerátor |
 | `docs\` | [Roadmap](docs/roadmap.hu.md), [követelmények](docs/requirements.hu.md), [architektúra](docs/architecture.hu.md), [megállapítások](docs/findings.hu.md) és [load paraméterek](docs/lmstudio_load_parameters.hu.md), angolul és magyarul |
 
@@ -89,9 +162,9 @@ Futás közben keletkeznek, a git nem követi őket:
 
 | Mappa | Tartalom |
 |---|---|
-| `results\` | Nyers mérési eredmények; sweepnél jobonként egy JSON sor |
+| `results\` | Nyers eredmények: sweep jobonként vagy agent-próbálkozásonként egy JSON sor, agent trace-ek és sandboxok, próbaeredmények |
 | `report\` | Sweep táblázatok és kiértékelő riportok Markdownban |
-| `state\` | Futási tervek, élő státusz és a pause, resume, stop mögötti vezérlőfájl |
+| `state\` | Sweep tervek, élő státusz és a pause, resume, stop mögötti vezérlőfájl |
 | `inventory\` | A smoke teszt által mentett modellista-pillanatképek |
 
 ## Tesztek

@@ -142,7 +142,8 @@ with step C.
 
 | Item | Current knowledge | Status |
 |---|---|---|
-| Not tried live | `stop --now`; automatic pause on a busy GPU and the automatic resume after it (offline tests only); a connection breaking during generation (offline tests only); Ctrl+C; load timeout; `--redo-failed`. Resume after a reboot was used once on 2026-11-26 | ⚪ open |
+| Not tried live (sweep) | `stop --now`; automatic pause on a busy GPU and the automatic resume after it (offline tests only); a connection breaking during generation (offline tests only); Ctrl+C; load timeout; `--redo-failed`; the warning for a runtime without GPU support. Resume after a reboot was used once on 2026-11-26 | ⚪ open |
+| Not tried live (agent harness) | Stop of a real run: Ctrl+C or the stop command, the second Ctrl+C that kills the harness and the trace it leaves; `--run-timeout`; round limit and attempt time limit with a real model; a tool call the SDK reports as unparsable (`onToolCallRequestFailure`, never seen); removal of a `bench-agent` instance left over from a killed run; `--repeats` above 1, a temperature above 0, a context other than 8192; a real model trying to read outside the sandbox. All but the last three are covered by offline tests | ⚪ open |
 | Late heartbeat | During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced) | 🟡 partial |
 | Display freeze | Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display driver reset or hardware error was logged; the cause is unknown | ⚪ open |
 
