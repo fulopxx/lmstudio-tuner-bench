@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runner"))
 import sweep  # noqa: E402
@@ -36,6 +37,48 @@ class SweepLogicTest(unittest.TestCase):
             self.assertEqual(ids(redo_failed=True), [2, 4])
             sweep.append_row(p, {"job_id": "m|3", "status": "invalidated"})  # resume --from 3
             self.assertEqual(ids(), [3, 4])
+
+
+class PausedWaitTest(unittest.TestCase):
+    """wait_paused with a faked GPU check, environment and clock sleep."""
+
+    def wait(self, auto, ready, on_sleep=lambda n: None, retry=0.001):
+        sleeps = []
+
+        def sleep(_):
+            sleeps.append(1)
+            on_sleep(len(sleeps))
+            self.assertLess(len(sleeps), 50, "wait_paused did not return")
+            real_sleep(0.01)
+
+        real_sleep = sweep.time.sleep
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(sweep, "CONTROL", Path(d) / "control.json"), \
+                mock.patch.object(sweep, "environment", return_value={}), \
+                mock.patch.object(sweep, "log"), \
+                mock.patch.object(sweep.time, "sleep", sleep):
+            sweep.write_json(sweep.CONTROL, {"cmd": "pause", "now": False, "ts": 1})
+            runner = sweep.Runner("r", {"options": {"busy_retry_s": retry}, "env": {}}, mock.Mock())
+            runner.ensure_ready = mock.Mock(side_effect=ready)
+            result = runner.wait_paused("GPU busy", auto=auto)
+            return result, sweep.control()["cmd"], runner.ensure_ready.call_count
+
+    def test_busy_gpu_resumes_by_itself(self):
+        ready = [sweep.Blocked("busy"), sweep.StepError("timeout", "lms ps"), None]
+        self.assertEqual(self.wait(True, ready), ("run", "run", 3))
+
+    def test_user_pause_turns_automatic_checks_off(self):
+        def on_sleep(n):
+            if n == 1:
+                sweep.send("pause")
+            if n == 5:
+                sweep.send("stop")
+
+        self.assertEqual(self.wait(True, [], on_sleep, retry=0.03), ("stop", "stop", 0))
+
+    def test_manual_pause_never_resumes_by_itself(self):
+        on_sleep = lambda n: n == 5 and sweep.send("stop")
+        self.assertEqual(self.wait(False, [], on_sleep), ("stop", "stop", 0))
 
 
 if __name__ == "__main__":

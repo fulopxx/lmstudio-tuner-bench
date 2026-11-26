@@ -12,8 +12,9 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 - **Vékony felület:** mérés, állapotkezelés, értékelés és számítás (pl. Pareto-front, pontszám) a core-ban van.
 - **Kevés függőség:** a core csak a Python standard könyvtárát használja; külső csomag a felületekhez, az exporthoz és
   a TypeScript harnesshez (hivatalos LM Studio SDK) kerülhet be.
-- **Biztonságos futás:** minden külső lépésnek időkorlátja van; nincs automatikus újrapróbálás; foglalt GPU esetén
-  szünet; csak a futás által betöltött modell kerül eltávolításra; a LM Studio beállításfájljai nem módosulnak.
+- **Biztonságos futás:** minden külső lépésnek időkorlátja van; a hibás lépést nem próbálja újra magától; foglalt GPU
+  esetén szünet, időszakos újraellenőrzéssel; csak a futás által betöltött modell kerül eltávolításra; a LM Studio
+  beállításfájljai nem módosulnak.
 - **Helyi:** a webes szerver csak `127.0.0.1`-en figyel.
 - **Kétnyelvűség (tervezett):** az angol az elsődleges, a magyar teljes értékű második nyelv. A felületek szövegei
   nyelvi fájlokból jönnek (nincs beégetett szöveg), a nyelv váltható. A kód, a kommentek, az azonosítók és az
@@ -85,7 +86,7 @@ Hibás sorban `error` szerepel, és a mérési mezők hiányozhatnak. A `status`
 |---|---|---|
 | `starting` | Előkészítés | `running`, `aborted` |
 | `running` | Mérés folyik | `paused`, `stopped`, `done`, `aborted` |
-| `paused` | Modell eltávolítva | `running`, `stopped` |
+| `paused` | Modell eltávolítva | `running` (`resume` parancsra, vagy foglalt GPU után magától), `stopped` |
 | `stopped` | A felhasználó leállította | `resume` új folyamatot indít |
 | `done` | Minden feladat lefutott | `resume --from` / `--redo-failed` új folyamatot indít |
 | `aborted` | Hiba vagy két egymást követő timeout | `resume` új folyamatot indít |

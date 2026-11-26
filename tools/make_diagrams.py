@@ -36,13 +36,13 @@ EDGES = [
 ]
 
 TEXT = {
-    "en": {"start": "run", "checks_ok": "checks ok", "pause": "pause / GPU busy", "resume": "resume",
+    "en": {"start": "run", "checks_ok": "checks ok", "pause": "pause / GPU busy", "resume": "resume / GPU free",
            "stop_ctrlc": "stop / Ctrl+C", "stop": "stop", "all_done": "all jobs finished",
            "error_timeouts": "error / 2 timeouts", "error": "error", "resume_new": "resume (new process)",
            "resume_done": "resume --from / --redo-failed", "resume_aborted": "resume",
            "legend_solid": "same process", "legend_dashed": "resume starts a new process",
            "title": "Run states"},
-    "hu": {"start": "run", "checks_ok": "ellenőrzés ok", "pause": "pause / foglalt GPU", "resume": "resume",
+    "hu": {"start": "run", "checks_ok": "ellenőrzés ok", "pause": "pause / foglalt GPU", "resume": "resume / szabad GPU",
            "stop_ctrlc": "stop / Ctrl+C", "stop": "stop", "all_done": "minden job kész",
            "error_timeouts": "hiba / 2 timeout", "error": "hiba", "resume_new": "resume (új process)",
            "resume_done": "resume --from / --redo-failed", "resume_aborted": "resume",

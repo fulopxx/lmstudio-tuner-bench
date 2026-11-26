@@ -13,8 +13,9 @@ Without --now, pause/stop take effect after the current job. With --now the curr
 (it will be measured again) at the next checkpoint; a running model load is first allowed to return.
 
 Rules: failed steps are never retried automatically; two consecutive timeouts abort the run; a busy
-GPU or a model loaded by someone else pauses the run; only the runner's own model instance is
-unloaded. Models are loaded through the LM Studio SDK (harness/load-model.ts), so LM Studio's
+GPU or a model loaded by someone else pauses the run, which checks again every 90 s and continues by
+itself once the machine is free (--busy-retry; a manual pause stays); only the runner's own model
+instance is unloaded. Models are loaded through the LM Studio SDK (harness/load-model.ts), so LM Studio's
 per-model config files are not touched; generation and measurement use the HTTP server.
 """
 import argparse
@@ -43,6 +44,7 @@ CONTROL = STATE / "control.json"
 STATUS = STATE / "status.json"
 LATEST = STATE / "latest.txt"
 ACTIVE = ("starting", "running", "paused")
+BUSY_RETRY_S = 90  # re-check interval while paused because the machine was not ready
 
 
 def log(m):
@@ -358,26 +360,45 @@ class Runner:
         row["finished"] = datetime.now().isoformat(timespec="seconds")
         return row
 
-    def wait_paused(self, reason):
+    def wait_paused(self, reason, auto=False):
+        """Wait for `resume` or `stop`. With auto=True (the machine was not ready) the checks are also
+        repeated every busy_retry_s seconds, until the user sends `pause` to keep the run paused."""
         self.release()
-        self.status.update(state="paused", phase="paused", reason=reason)
-        log(f"PAUSED: {reason}\n         `bench resume` to continue, `bench stop` to exit.")
+        retry = self.o.get("busy_retry_s", BUSY_RETRY_S) if auto else 0
+        seen = control().get("ts")
+        next_check = time.time() + retry
+
+        def note(text):
+            return f"{text} (checking again every {retry} s)" if retry else text
+
+        self.status.update(state="paused", phase="paused", reason=note(reason))
+        log(f"PAUSED: {note(reason)}\n         `bench resume` to continue, `bench stop` to exit.")
         while True:
             c = control()
             if c["cmd"] == "stop":
                 return "stop"
-            if c["cmd"] == "run":
+            if c["cmd"] == "pause" and c.get("ts") != seen:  # explicit `bench pause`: stay paused
+                retry, seen = 0, c.get("ts")
+                self.status.update(reason="paused by user")
+                log("automatic checks off; waiting for `bench resume`")
+            if c["cmd"] == "run" or (retry and time.time() >= next_check):
                 try:
                     if environment() != self.plan["env"] and not self.o.get("allow_env_change"):
                         raise Blocked("runtime or driver changed during the pause; `bench stop`, "
                                       "then `bench resume --allow-env-change`")
                     self.ensure_ready()
+                    if control().get("ts") != c.get("ts"):
+                        continue  # a new command arrived during the checks
+                    send("run")
                     self.status.update(state="running", reason="")
-                    log("RESUMED")
+                    log("RESUMED" if c["cmd"] == "run" else "RESUMED automatically")
                     return "run"
                 except (Blocked, StepError) as e:
-                    send("pause")
-                    self.status.update(reason=str(e))
+                    if c["cmd"] == "run" and control().get("ts") == c.get("ts"):
+                        send("pause")
+                        seen = control().get("ts")
+                    next_check = time.time() + retry
+                    self.status.update(reason=note(str(e)))
                     log(f"cannot resume yet: {e}")
             time.sleep(1)
 
@@ -430,7 +451,7 @@ def execute(run_id, redo_failed=False):
                         runner.unload_ours()
                         break
                     send("pause")
-                    if runner.wait_paused(str(e)) == "stop":
+                    if runner.wait_paused(str(e), auto=True) == "stop":
                         raise Interrupted("stop")
             append_row(results_path, row)
             write_report(jobs, latest_results(results_path), report_path, run_id)
@@ -536,7 +557,7 @@ def cmd_run(a):
         return 2
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     options = {k: getattr(a, k) for k in ("repeats", "gen_tokens", "prompt_lines", "load_timeout",
-                                          "gen_timeout", "min_free_mib", "max_util")}
+                                          "gen_timeout", "min_free_mib", "max_util", "busy_retry_s")}
     write_json(STATE / "runs" / run_id / "plan.json",
                {"grid": a.grid, "jobs": jobs, "options": options, "env": environment()})
     LATEST.write_text(run_id)
@@ -601,6 +622,8 @@ def main(argv=None):
     r.add_argument("--gen-timeout", type=int, default=180)
     r.add_argument("--min-free-mib", type=int, default=3500)
     r.add_argument("--max-util", type=int, default=30)
+    r.add_argument("--busy-retry", dest="busy_retry_s", type=int, default=BUSY_RETRY_S,
+                   help="seconds between automatic re-checks while paused for a busy GPU (0: wait for resume)")
     s = sub.add_parser("status")
     s.add_argument("--watch", action="store_true")
     s.add_argument("--jobs", action="store_true")

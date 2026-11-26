@@ -83,7 +83,7 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 | Topic | Decision |
 |---|---|
 | Per-model LM Studio config files | Not edited; the runner loads through the SDK |
-| Error handling | No automatic retries; abort after two consecutive timeouts; pause when the GPU is busy |
+| Error handling | Failed steps are not retried automatically; abort after two consecutive timeouts; pause when the GPU is busy, re-check every 90 s and continue by itself (a manual pause stays) |
 | Frontend | React + Vite + TypeScript, Mantine, Apache ECharts |
 | Backend | FastAPI, `127.0.0.1` only |
 | Statistics | Median and spread, Pareto front, adjustable weighted score, bootstrap confidence intervals; Elo / Bradley–Terry for pairwise grading. No ML/DL needed |
@@ -123,8 +123,9 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 
 - The 56-job run of 2026-11-26 is a trial run: other programs may have been using the CPU, its numbers are not final. A
   clean full sweep follows later on an idle machine.
-- Not tried live: `stop --now`, automatic pause on a busy GPU, Ctrl+C, resume after a reboot, load timeout,
-  `--redo-failed`.
+- Not tried live: `stop --now`, automatic pause on a busy GPU and the automatic resume after it (covered by offline
+  tests only), a connection breaking during generation (offline tests only), Ctrl+C, resume after a reboot, load
+  timeout, `--redo-failed`.
 - Detecting spill into shared GPU memory: the current `near_vram_limit` flag is probably not enough (partial results of
   the trial sweep show a slowdown it did not flag; the cause is not verified yet).
 - The relation between CLI `lms load` and the per-model default config values has not been measured.

@@ -52,7 +52,9 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
 
 - On pause and stop the model is unloaded, and a server started by the tool is stopped.
 - `--now` takes effect at the next checkpoint. A model load in progress is not interrupted but awaited (240 s at most).
-- If the GPU is busy or someone else loaded a model, the run pauses by itself and continues only on `resume`.
+- If the GPU is busy or someone else loaded a model, the run pauses by itself, checks again every 90 s and continues
+  once the machine is free (`--busy-retry <seconds>`, `0` waits for `resume`). A pause requested with `bench pause`
+  never ends by itself.
 - Failed steps are never retried automatically. Two consecutive timeouts abort the run.
 - If the runtime or driver version changes, the run does not continue without `--allow-env-change`.
 - LM Studio's per-model settings files are not modified. The runner loads its model as `bench-sweep`; if a killed run

@@ -84,7 +84,7 @@ elkezdhető.
 | Téma | Döntés |
 |---|---|
 | Per-modell LM Studio config-fájlok | Nem módosulnak; a futtató az SDK-val tölt be |
-| Hibakezelés | Nincs automatikus újrapróbálás; két egymást követő timeout után megszakítás; foglalt GPU esetén szünet |
+| Hibakezelés | Hibás lépést nem próbál újra magától; két egymást követő timeout után megszakítás; foglalt GPU esetén szünet, 90 s-onként újraellenőrzés és automatikus folytatás (a kézi szünet megmarad) |
 | Frontend | React + Vite + TypeScript, Mantine, Apache ECharts |
 | Backend | FastAPI, csak `127.0.0.1` |
 | Statisztika | Medián és szórás, Pareto-front, állítható súlyozott pontszám, bootstrap bizalmi intervallum; páros bírálatnál Elo / Bradley–Terry. ML/DL nem szükséges |
@@ -125,8 +125,9 @@ elkezdhető.
 - A 2026-11-26-i 56 feladatos futás próbafutás: közben más programok is futhattak és CPU-t terheltek, a számai nem
   véglegesek. Tiszta, teljes sweep később, üres gép mellett.
 
-- Élőben nem próbált: `stop --now`, automatikus szünet foglalt GPU-nál, Ctrl+C, folytatás gépújraindítás után,
-  betöltési timeout, `--redo-failed`.
+- Élőben nem próbált: `stop --now`, automatikus szünet foglalt GPU-nál és az utána következő automatikus folytatás
+  (csak offline tesztek fedik le), generálás közben megszakadt kapcsolat (csak offline tesztek), Ctrl+C, folytatás
+  gépújraindítás után, betöltési timeout, `--redo-failed`.
 - A megosztott GPU-memóriába csordulás felismerése: a mostani `near_vram_limit` jelző valószínűleg nem elég (a futó
   sweep részeredményeiben van olyan sebességesés, amelyet nem jelzett; ok még nem igazolt).
 - A CLI `lms load` út és a default-config értékek viszonya nem mért.

@@ -54,7 +54,9 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 - Szünetben és leállításkor a modell kikerül a GPU-ról, a saját indítású szerver leáll.
 - A `--now` a következő ellenőrzési ponton hat. A folyamatban lévő modellbetöltést nem szakítja meg, megvárja
   (legfeljebb 240 s).
-- Foglalt GPU vagy más által betöltött modell esetén a futás magától szünetel, és csak `resume` parancsra folytatódik.
+- Foglalt GPU vagy más által betöltött modell esetén a futás magától szünetel, 90 s-onként újra ellenőriz, és
+  folytatódik, amint a gép felszabadult (`--busy-retry <másodperc>`, `0` esetén `resume` parancsra vár). A
+  `bench pause` paranccsal kért szünet magától sosem ér véget.
 - Hibás lépést nem próbál újra magától. Két egymást követő timeout után a futás megszakad.
 - Ha a runtime vagy a driver verziója megváltozik, nem folytatja (`--allow-env-change` kell).
 - A LM Studio per-modell beállításfájljai nem módosulnak. A futtató a saját modelljét `bench-sweep` néven tölti be; ha

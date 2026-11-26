@@ -12,8 +12,9 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 - **Thin interfaces:** measurement, state handling, evaluation and computation (e.g. Pareto front, scores) live in the core.
 - **Few dependencies:** the core uses only the Python standard library; external packages are allowed for interfaces,
   exports and the TypeScript harness (official LM Studio SDK).
-- **Safe runs:** every external step has a timeout; no automatic retries; pause when the GPU is busy; only the model
-  loaded by the run is unloaded; LM Studio's settings files are not modified.
+- **Safe runs:** every external step has a timeout; failed steps are not retried automatically; pause when the GPU is
+  busy, with periodic re-checks; only the model loaded by the run is unloaded; LM Studio's settings files are not
+  modified.
 - **Local:** the web server listens on `127.0.0.1` only.
 - **Bilingual (planned):** English is primary, Hungarian is a full second language. UI texts come from language files
   (no hard-coded strings) and the language is switchable. Code, comments, identifiers and data field names are English
@@ -84,7 +85,7 @@ measurement fields may be missing. `status` is `ok`, `fail`, `timeout` or `inval
 |---|---|---|
 | `starting` | Preparation | `running`, `aborted` |
 | `running` | Measuring | `paused`, `stopped`, `done`, `aborted` |
-| `paused` | Model unloaded | `running`, `stopped` |
+| `paused` | Model unloaded | `running` (on `resume`, or by itself after a busy GPU), `stopped` |
 | `stopped` | Stopped by the user | `resume` starts a new process |
 | `done` | All jobs finished | `resume --from` / `--redo-failed` starts a new process |
 | `aborted` | Error or two consecutive timeouts | `resume` starts a new process |
