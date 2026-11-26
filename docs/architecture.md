@@ -28,10 +28,8 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `runner/sweep.py` | CLI, runner, status and control handling, report (single file) |
 | `runner/smoke.py` | Smoke test and shared helpers (commands, HTTP, streamed measurement, VRAM sampling) |
 | `runner/evaluate.py` | Evaluation of sweep results: estimated response time, warnings, recommendations |
-| `runner/config_store.py` | Earlier loading method (temporary config file edits); no longer used by the runner |
 | `harness/load-model.ts` | Loads one model through the SDK and exits; called by the runner |
 | `harness/load-config.ts` | Mapping of sweep settings to the SDK load config, with a check of the applied values |
-| `runner/probe_*.py` | One-off discovery scripts (REST keys, KV quantization) |
 | `configs/*.json` | Measurement grids: model list, defaults, configurations |
 | `harness/sdk-probe.ts` | Probe of the official SDK: applied settings, VRAM and speed |
 | `harness/sdk-persist.ts` | Probe: a model stays loaded after the loading process exits |

@@ -28,10 +28,8 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `runner/sweep.py` | CLI, futtató, állapot- és vezérléskezelés, riport (egy fájlban) |
 | `runner/smoke.py` | Smoke teszt és közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) |
 | `runner/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
-| `runner/config_store.py` | Korábbi load módszer (ideiglenes config-módosítás); a futtató már nem használja |
 | `harness/load-model.ts` | Egy modellt tölt be az SDK-val, majd kilép; a futtató hívja |
 | `harness/load-config.ts` | A sweep beállításainak leképezése az SDK load configra, az alkalmazott értékek ellenőrzésével |
-| `runner/probe_*.py` | Egyszeri felderítő scriptek (REST-kulcsok, KV-kvantálás) |
 | `configs/*.json` | Mérési rácsok: modellista, alapértékek, konfigurációk |
 | `harness/sdk-probe.ts` | A hivatalos SDK próbája: alkalmazott beállítások, VRAM és sebesség |
 | `harness/sdk-persist.ts` | Próba: a modell a betöltő process kilépése után is betöltve marad |

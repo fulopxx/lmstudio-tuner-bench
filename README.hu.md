@@ -78,7 +78,6 @@ timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`).
 ## Tesztek
 
 ```
-python tests\test_config_store.py     # offline
 node --test harness\load-config.test.ts   # offline
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline

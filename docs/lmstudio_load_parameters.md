@@ -3,8 +3,9 @@
 [Magyar](lmstudio_load_parameters.hu.md)
 
 Observed on 2026-11-25/26 with LM Studio 1.2.0 (build 2), runtime CUDA 13 llama.cpp 2.83.0, RTX 2070 (8 GB). Sources:
-`lms load --help`, REST probes (`runner/probe_*.py`) and per-model default config files saved by the LM Studio UI.
-Verified by running unless stated otherwise. Other versions may behave differently.
+`lms load --help`, REST probes (the one-off `runner/probe_*.py` scripts, since removed and available in the git
+history) and per-model default config files saved by the LM Studio UI. Verified by running unless stated otherwise.
+Other versions may behave differently.
 
 ## Three control paths
 
@@ -12,7 +13,7 @@ Verified by running unless stated otherwise. Other versions may behave different
 |---|---|---|
 | `lms load` (CLI) | `--gpu` (off / max / 0..1), `-c` context, `--parallel`, speculative decoding (`--speculative-draft-*`), `--estimate-only`, `--identifier` | No switch for flash attention, batch sizes, threads or KV quantization (from the help text) |
 | REST `POST /api/v1/models/load` | `context_length`, `eval_batch_size`, `physical_batch_size`, `parallel`, `flash_attention`, `offload_kv_cache_to_gpu`, `num_experts`, `context_checkpoints`, `lazy_mode`, speculative fields, `echo_load_config` | Strict schema: unknown keys are rejected with HTTP 400. No key found for GPU offload ratio, KV quantization, CPU threads, mmap or keep-in-memory (about 50 name variants tried) |
-| Per-model default config file: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<model>.gguf.json` | GPU offload ratio, KV quantization, threads and the other keys listed below | Internal, undocumented format. The sweep runner no longer edits it (it loads through the SDK); `runner/config_store.py` implements the earlier method |
+| Per-model default config file: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<model>.gguf.json` | GPU offload ratio, KV quantization, threads and the other keys listed below | Internal, undocumented format. The sweep runner no longer edits it (it loads through the SDK); the script implementing the earlier method (`runner/config_store.py`) has been removed and is available in the git history |
 
 ## Fourth path: the official TypeScript SDK (verified)
 

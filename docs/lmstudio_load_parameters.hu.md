@@ -3,8 +3,9 @@
 [English](lmstudio_load_parameters.md)
 
 Megfigyelve 2026-11-25/26-án, LM Studio 1.2.0 (build 2), CUDA 13 llama.cpp 2.83.0 runtime, RTX 2070 (8 GB). Forrás:
-`lms load --help`, REST-próbák (`runner/probe_*.py`) és a LM Studio UI által mentett per-modell default config fájlok.
-Futtatással igazolt, kivéve ahol jelölve van. Más verziók eltérően viselkedhetnek.
+`lms load --help`, REST-próbák (az egyszeri `runner/probe_*.py` scriptek, azóta törölve, a git-előzményben elérhetők)
+és a LM Studio UI által mentett per-modell default config fájlok. Futtatással igazolt, kivéve ahol jelölve van. Más
+verziók eltérően viselkedhetnek.
 
 ## Három vezérlési út
 
@@ -12,7 +13,7 @@ Futtatással igazolt, kivéve ahol jelölve van. Más verziók eltérően viselk
 |---|---|---|
 | `lms load` (CLI) | `--gpu` (off / max / 0..1), `-c` kontextus, `--parallel`, speculative decoding (`--speculative-draft-*`), `--estimate-only`, `--identifier` | Nincs flash attention, batch, szál vagy KV-kvantálás kapcsoló (a help szövege alapján) |
 | REST `POST /api/v1/models/load` | `context_length`, `eval_batch_size`, `physical_batch_size`, `parallel`, `flash_attention`, `offload_kv_cache_to_gpu`, `num_experts`, `context_checkpoints`, `lazy_mode`, speculative mezők, `echo_load_config` | Szigorú séma: ismeretlen kulcsot HTTP 400-zal elutasít. GPU-offload arányra, KV-kvantálásra, CPU-szálakra, mmap-re és keep-in-memory-ra nem találtunk kulcsot (kb. 50 névvariáns) |
-| Per-modell default config fájl: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<modell>.gguf.json` | GPU-offload arány, KV-kvantálás, szálak és a lent felsorolt többi kulcs | Belső, nem dokumentált formátum. A sweep futtató már nem módosítja (SDK-val tölt be); a korábbi módszert a `runner/config_store.py` valósítja meg |
+| Per-modell default config fájl: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<modell>.gguf.json` | GPU-offload arány, KV-kvantálás, szálak és a lent felsorolt többi kulcs | Belső, nem dokumentált formátum. A sweep futtató már nem módosítja (SDK-val tölt be); a korábbi módszert megvalósító script (`runner/config_store.py`) törölve, a git-előzményben elérhető |
 
 ## Negyedik út: a hivatalos TypeScript SDK (igazolt)
 

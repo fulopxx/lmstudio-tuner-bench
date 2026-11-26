@@ -4,6 +4,7 @@ Drives `runner/sweep.py` exactly as a user would and checks after every transiti
 is clean: no model loaded, LM Studio config folder byte-identical to the state before the test.
 """
 import hashlib
+import os
 import subprocess
 import sys
 import time
@@ -11,18 +12,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "runner"))
-import config_store  # noqa: E402
 import sweep  # noqa: E402
 from smoke import LMS, sh  # noqa: E402
 
 SWEEP = str(ROOT / "runner" / "sweep.py")
+# LM Studio's per-model default-config files (internal location); the test checks that a run leaves them alone
+CFG_ROOT = (Path(os.environ.get("USERPROFILE", "")) / ".lmstudio" / "apps" / "bionic" / ".internal"
+            / "user-concrete-model-default-config")
 MODEL = "llama-3.2-1b-instruct"
 failures = []
 
 
 def snapshot():
     return {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in config_store.CFG_ROOT.rglob("*") if p.is_file()}
+            for p in CFG_ROOT.rglob("*") if p.is_file()}
 
 
 def check(name, cond):
