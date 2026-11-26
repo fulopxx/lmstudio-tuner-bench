@@ -38,6 +38,8 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | ⚪ open |
 | 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see [requirements](requirements.md), section 4) | ⚪ open (not examined yet) |
 | 24 | Speculative decoding as an optimization dimension: draft model and MTP compared with speculation off, per task type (see [requirements](requirements.md), section 5) | 🔵 in progress (phase 0 done; phase 1 open) |
+| 25 | Requirement traceability: tests name the requirement IDs they cover; a script builds the matrix (requirement → tests → offline, live, not covered) and fails on unknown IDs or on IDs that differ between the languages | ⚪ open |
+| 26 | Requirement quality: review the existing requirements against the writing rules of the [requirements](requirements.md) and add the verification column | ⚪ open |
 | K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | ⚪ open (not examined yet) |
 
 ### Planned improvements

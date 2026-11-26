@@ -5,6 +5,32 @@
 Mit kell tudniuk a tervezett részeknek. A feladatszámok a [roadmapre](roadmap.hu.md) vonatkoznak, az állapotok is ott
 vannak.
 
+## Hogyan írjuk a követelményeket
+
+2026-11-27-től érvényes az új követelményekre; a meglévőket a 26. feladat nézi át ezek szerint. Az IREB CPRE
+Foundation Level, az ISO/IEC/IEEE 29148 és az ISO 26262-8 6. pontjának minőségi szempontjai alapján.
+
+**Minden követelmény**
+
+| Szempont | Jelentés | Ellenőrzés |
+|---|---|---|
+| Szükséges | Nélküle egy igény vagy egy ismert hiba fedetlen maradna | Az indok oszlop megnevezi az igényt, a döntést vagy a megfigyelést |
+| Egyértelmű | Csak egyféleképpen olvasható; nincs benne „gyors”, „robusztus”, „felhasználóbarát”, „stb.”, „lehetőség szerint” | Számok mértékegységgel, megnevezett mezők, felsorolások |
+| Egyszeres (atomi) | Egy állítás; nincs két kötelezettséget összekötő „és” | Két azonosítóra bontjuk, ha két teszt kellene hozzá |
+| Ellenőrizhető | Teszt, átnézési lépés vagy mérés megmutatja, hogy teljesül | Az ellenőrzés oszlop ki van töltve (lásd lent) |
+| Megvalósítható | Az ismert környezettel és függőségekkel elérhető | Az ismeretlenek nyitott pontként szerepelnek, nem követelményként |
+| Ellentmondásmentes | Nem mond ellent más követelménynek vagy döntésnek | Ütközésnél előbb döntünk, csak utána marad meg mindkettő |
+| Teljes | Megadja a feltételt, a szereplőt vagy komponenst és az elvárt eredményt | Forma: „Ha <feltétel>, a <komponens> <tesz> <eredmény>”, ahol van feltétel |
+| Megoldásrészletektől mentes | Mit és miért; a hogyant csak ott, ahol maga a hogyan a döntés | A megvalósítási részletek az architektúra-dokumentumba kerülnek |
+
+**A követelmények összessége** komponensenként rendezett, ismétlés nélküli, stabil azonosítójú (egy azonosítót soha
+nem használunk újra; az elvetett követelmény „visszavonva” megjegyzéssel megtartja az azonosítóját), kétnyelvű, mindkét
+nyelven azonos azonosítókkal, és tesztekre visszakövethető (25. feladat).
+
+**Forma.** Területenként egy táblázat az azonosító, követelmény, indok, és a 26. feladattól kezdve az ellenőrzés
+(`teszt`, `élő`, `átnézés` vagy `mérés`) oszloppal. A kötelezettséget a „kell” / „must” jelöli; a „should” nem
+használatos. Az állapotok a roadmapben maradnak.
+
 ## 1. Felület
 
 - Indítás, szünet, folytatás, leállítás; élő státusz.

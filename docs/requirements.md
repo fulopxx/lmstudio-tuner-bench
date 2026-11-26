@@ -4,6 +4,31 @@
 
 What the planned parts have to do. Task numbers refer to the [roadmap](roadmap.md), which also holds the statuses.
 
+## How requirements are written
+
+Adopted on 2026-11-27 for new requirements; the existing ones are reviewed against it in task 26. Based on the quality
+criteria of the IREB CPRE Foundation Level, ISO/IEC/IEEE 29148 and ISO 26262-8, clause 6.
+
+**Each requirement is**
+
+| Criterion | Meaning | Check |
+|---|---|---|
+| Necessary | Removing it would leave a need or a known failure uncovered | The reason column names the need, decision or observation |
+| Unambiguous | One reading only; no "fast", "robust", "user-friendly", "etc.", "if possible" | Numbers with units, named fields, enumerations |
+| Singular (atomic) | One statement; no "and" joining two obligations | Split into two IDs if two tests would be needed |
+| Verifiable | A test, a review step or a measurement can show it is met | The verification column is filled (see below) |
+| Feasible | Achievable with the known environment and dependencies | Unknowns are listed as open items, not as requirements |
+| Consistent | Contradicts no other requirement or decision | A conflict is resolved before both are kept |
+| Complete | States the condition, the actor or component and the expected result | Form: "When <condition>, <component> <does> <result>" where a condition applies |
+| Free of solution detail | States what and why; how only where the "how" is the decision itself | Implementation notes go to the architecture document |
+
+**The set of requirements is** organized by component, without duplicates, with stable IDs (an ID is never reused;
+a dropped requirement keeps its ID with the note "withdrawn"), bilingual with the same IDs in both languages, and
+traceable to tests (task 25).
+
+**Form.** A table per area with the columns ID, requirement, reason and, from task 26 on, verification (`test`,
+`live`, `review` or `measurement`). "Must" marks an obligation; "should" is not used. Statuses stay in the roadmap.
+
 ## 1. Interface
 
 - Start, pause, resume, stop; live status.

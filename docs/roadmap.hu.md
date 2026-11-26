@@ -38,6 +38,8 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | ⚪ nyitott |
 | 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd [követelmények](requirements.hu.md), 4. pont) | ⚪ nyitott (még nem vizsgált) |
 | 24 | Speculative decoding mint optimalizálási dimenzió: draft modell és MTP a kikapcsolt spekulációval összevetve, feladattípusonként (lásd [követelmények](requirements.hu.md), 5. pont) | 🔵 folyamatban (a 0. fázis kész; az 1. fázis nyitott) |
+| 25 | Követelmény-traceability: a tesztek megnevezik az általuk lefedett követelmény-azonosítókat; egy script elkészíti a mátrixot (követelmény → tesztek → offline, élő, nem lefedett), és hibát jelez ismeretlen vagy a két nyelvben eltérő azonosítónál | ⚪ nyitott |
+| 26 | Követelményminőség: a meglévő követelmények átnézése a [követelmények](requirements.hu.md) írási szabályai szerint, az ellenőrzés oszlop felvétele | ⚪ nyitott |
 | K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | ⚪ nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések
