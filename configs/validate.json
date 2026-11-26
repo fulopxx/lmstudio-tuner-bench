@@ -1,5 +1,5 @@
 {
-  "comment": "Checks that values written into the per-model config file really take effect (KV quant, GPU offload, threads).",
+  "comment": "Small grid for a tiny model: KV quantization, GPU offload and CPU threads. Used by tests/live_control_test.py; no model list, so pass --models (e.g. llama-3.2-1b-instruct).",
   "defaults": {
     "context_length": 32768,
     "offload_ratio": 1,
