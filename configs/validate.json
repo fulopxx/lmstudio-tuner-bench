@@ -1,0 +1,21 @@
+{
+  "comment": "Checks that values written into the per-model config file really take effect (KV quant, GPU offload, threads).",
+  "defaults": {
+    "context_length": 32768,
+    "offload_ratio": 1,
+    "flash_attention": true,
+    "eval_batch_size": 2048,
+    "physical_batch_size": 512,
+    "parallel": 1,
+    "offload_kv_cache_to_gpu": true,
+    "threads": 8,
+    "kv_quant": null,
+    "unified_kv": true
+  },
+  "configs": [
+    { "id": "gpu-fp16-kv" },
+    { "id": "gpu-q8-kv", "kv_quant": "q8_0" },
+    { "id": "cpu-t2", "context_length": 4096, "offload_ratio": 0, "threads": 2 },
+    { "id": "cpu-t8", "context_length": 4096, "offload_ratio": 0, "threads": 8 }
+  ]
+}

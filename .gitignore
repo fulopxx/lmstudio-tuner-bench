@@ -1,0 +1,18 @@
+# Local run data (may contain machine-specific paths, copies of your LM Studio settings and model outputs)
+/backups/
+/inventory/
+/report/
+/results/
+/state/
+
+# Your own model list and local overrides
+*.local.json
+
+# Generated PDFs: rebuild with `python tools/export_docs.py`
+/docs/*.pdf
+
+# Tool and editor files
+__pycache__/
+*.pyc
+*.tmp
+*.bench-tmp

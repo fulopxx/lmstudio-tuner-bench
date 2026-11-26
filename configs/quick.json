@@ -1,0 +1,32 @@
+{
+  "comment": "Quick speed/memory sweep, sample model list. For your own list copy this file to quick.local.json (used automatically, not tracked by git). 'only_params' limits a config to model sizes.",
+  "models": [
+    "qwen2.5-coder-7b-instruct",
+    "qwen3-8b",
+    "qwen3-vl-8b-instruct",
+    "qwen2.5-coder-14b-instruct"
+  ],
+  "defaults": {
+    "context_length": 4096,
+    "offload_ratio": 1,
+    "flash_attention": true,
+    "eval_batch_size": 2048,
+    "physical_batch_size": 512,
+    "parallel": 1,
+    "offload_kv_cache_to_gpu": true,
+    "threads": 8,
+    "kv_quant": null,
+    "unified_kv": true
+  },
+  "configs": [
+    { "id": "base" },
+    { "id": "ctx8k-q8", "context_length": 8192, "kv_quant": "q8_0" },
+    { "id": "ctx16k-q8", "context_length": 16384, "kv_quant": "q8_0" },
+    { "id": "flash-off", "flash_attention": false },
+    { "id": "batch512", "eval_batch_size": 512, "physical_batch_size": 256 },
+    { "id": "off90", "offload_ratio": 0.9, "only_params": ["12B", "14B"] },
+    { "id": "off75", "offload_ratio": 0.75, "only_params": ["12B", "14B"] },
+    { "id": "off60", "offload_ratio": 0.6, "only_params": ["12B", "14B"] },
+    { "id": "off75-t6", "offload_ratio": 0.75, "threads": 6, "only_params": ["12B", "14B"] }
+  ]
+}

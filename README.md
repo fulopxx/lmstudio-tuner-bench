@@ -1,0 +1,85 @@
+# lmstudio-tuner-bench
+
+[Magyar](README.hu.md)
+
+Benchmark local LLMs and tune their load parameters in LM Studio on your own hardware. Quality test suites and a web
+dashboard are planned ([roadmap](docs/roadmap.md)).
+
+> Unofficial tool, not affiliated with the makers of LM Studio.
+> Early stage: tried on a single machine only.
+
+## Motivation
+
+I downloaded a lot of models and then wanted to know, on my own machine, what each of them can do, what I can use it
+for well, and how to run it in an optimized way. Finding that out by hand caused plenty of headaches. LM Studio can
+choose load settings automatically, but I found no built-in way to measure and compare many models and settings
+systematically on my own tasks, so I started building it.
+
+## Requirements
+
+- Windows, NVIDIA GPU (`nvidia-smi`)
+- LM Studio with the `lms` CLI (tested with 1.2.0)
+- Python (tested with 3.15.2), no external packages
+- Microsoft Edge, only for the PDF export of the documents
+
+**Known limitation:** KV quantization, CPU threads and GPU offload are set through LM Studio's undocumented per-model
+config files. The folder path is fixed in `runner\config_store.py` and may differ on other installations. Details:
+[load parameters](docs/lmstudio_load_parameters.md). The official SDK appears to expose most of these settings; it has
+not been tried yet.
+
+## Usage
+
+In PowerShell, from the project folder. Run the sweep in one terminal (live log) and control it from another.
+
+| Command | What it does |
+|---|---|
+| `.\bench run --dry-run` | Lists the jobs without starting anything |
+| `.\bench run` | Starts the quick sweep (see [Choosing models](#choosing-models)) |
+| `.\bench run --models qwen3-8b,qwen2.5-coder-7b-instruct` | Only the given models |
+| `.\bench status --watch` | Live status (refreshes every 3 s, Ctrl+C leaves the view only) |
+| `.\bench status --jobs` | Every job with number and state |
+| `.\bench pause` | Pause after the current job |
+| `.\bench pause --now` | Pause immediately; the interrupted job will be measured again |
+| `.\bench resume` | Continue (from pause, or after a stop or reboot) |
+| `.\bench resume --from 12` | Measure everything again from job 12 |
+| `.\bench resume --redo-failed` | Also measure failed and timed-out jobs again |
+| `.\bench stop` / `.\bench stop --now` | Exit; can be resumed later |
+| `.\bench evaluate` | Ranks the finished sweep by estimated response time and writes a report (offline) |
+| `.\bench evaluate --in-tokens 8000 --out-tokens 300` | The same for a different input / output ratio |
+
+## Behaviour
+
+- On pause and stop the model is unloaded, a server started by the tool is stopped and config files are restored.
+- `--now` takes effect at the next checkpoint. A model load in progress is not interrupted but awaited (240 s at most).
+- If the GPU is busy or someone else loaded a model, the run pauses by itself and continues only on `resume`.
+- Failed steps are never retried automatically. Two consecutive timeouts abort the run.
+- If the runtime or driver version changes, the run does not continue without `--allow-env-change`.
+- Per-model config files are modified only while a model is loading. After a killed run the next start restores them
+  first. Do not change model settings in the LM Studio UI during a measurement.
+
+## Choosing models
+
+`configs\quick.json` contains a sample model list. To use your own, copy it to `configs\quick.local.json` and edit the
+`models` list; that file is picked up automatically and is not tracked by git. `lms ls` shows the model keys.
+
+## Folders
+
+`configs\` grids · `runner\` scripts · `results\` raw results · `report\` tables · `state\` run state ·
+`backups\` config backups · `docs\` documentation · `tools\` utilities · `tests\` tests
+
+## Tests
+
+```
+python tests\test_config_store.py     # offline
+python tests\test_sweep_logic.py      # offline
+python tests\test_evaluate.py         # offline
+python tests\live_control_test.py     # uses the GPU (small model, a few minutes): pause / stop / resume
+```
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+*Built with AI assistance.*
