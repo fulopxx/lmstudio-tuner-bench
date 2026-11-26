@@ -38,6 +38,7 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 | `.\bench run --dry-run` | Listázza a jobokat, nem indít semmit |
 | `.\bench run` | Elindítja a gyors sweepet (lásd [A modellek kiválasztása](#a-modellek-kiválasztása)) |
 | `.\bench run --models qwen3-8b,qwen2.5-coder-7b-instruct` | Csak a megadott modellek |
+| `.\bench run --grid configs\quick.json` | Megadott rácsfájl (modellek és konfigurációk), itt a minta |
 | `.\bench status --watch` | Élő státusz (3 s-onként frissül, a Ctrl+C csak a nézetből lép ki) |
 | `.\bench status --jobs` | Minden job sorszámmal és állapottal |
 | `.\bench pause` | Szünet az aktuális job után |
@@ -66,7 +67,8 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 
 A `configs\quick.json` minta modellistát tartalmaz. A saját listádhoz másold `configs\quick.local.json` néven, és ott
 szerkeszd a `models` listát; ezt a fájlt a program automatikusan használja, és a git nem követi. A modellkulcsokat az
-`lms ls` mutatja.
+`lms ls` mutatja. Bármely más rácsfájl a `--grid <fájl>` kapcsolóval futtatható. Az ismétlésszám, a prompthossz és a
+timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`).
 
 ## Mappák
 
@@ -80,6 +82,7 @@ python tests\test_config_store.py     # offline
 node --test harness\load-config.test.ts   # offline
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline
+python tests\test_stream_errors.py    # offline
 python tests\live_control_test.py     # GPU-t használ (kis modell, pár perc): pause / stop / resume
 ```
 

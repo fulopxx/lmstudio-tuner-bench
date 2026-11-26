@@ -37,6 +37,7 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
 | `.\bench run --dry-run` | Lists the jobs without starting anything |
 | `.\bench run` | Starts the quick sweep (see [Choosing models](#choosing-models)) |
 | `.\bench run --models qwen3-8b,qwen2.5-coder-7b-instruct` | Only the given models |
+| `.\bench run --grid configs\quick.json` | A given grid file (models and configurations), here the sample one |
 | `.\bench status --watch` | Live status (refreshes every 3 s, Ctrl+C leaves the view only) |
 | `.\bench status --jobs` | Every job with number and state |
 | `.\bench pause` | Pause after the current job |
@@ -63,7 +64,9 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
 ## Choosing models
 
 `configs\quick.json` contains a sample model list. To use your own, copy it to `configs\quick.local.json` and edit the
-`models` list; that file is picked up automatically and is not tracked by git. `lms ls` shows the model keys.
+`models` list; that file is picked up automatically and is not tracked by git. `lms ls` shows the model keys. Any
+other grid file can be run with `--grid <file>`. Repeats, prompt length and timeouts are command line options, not part
+of the grid (`.\bench run --help`).
 
 ## Folders
 
@@ -77,6 +80,7 @@ python tests\test_config_store.py     # offline
 node --test harness\load-config.test.ts   # offline
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline
+python tests\test_stream_errors.py    # offline
 python tests\live_control_test.py     # uses the GPU (small model, a few minutes): pause / stop / resume
 ```
 
