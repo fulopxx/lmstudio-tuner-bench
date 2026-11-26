@@ -11,7 +11,7 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 
 | # | Task | Status |
 |---|---|---|
-| 1 | Speed and memory tuning (context, GPU offload, flash attention, batch, KV quantization, threads) | partial (trial sweep 56/56 finished and evaluated with `bench evaluate`; clean sweep pending, numbers not final) |
+| 1 | Speed and memory tuning (context, GPU offload, flash attention, batch, KV quantization, threads) | partial (clean sweeps of 2026-11-26 evaluated and recommended settings recorded; open: cases near the VRAM limit, filled context, quality effect of KV quantization, presets; see section 9) |
 | 2 | Smoke test | done |
 | 3 | Live status, pause, stop, resume from a given step | partial (see section 6) |
 | 4 | Selectable models, handling of new downloads (model registry, auto discovery) | partial (manual list in the grid file) |
@@ -39,7 +39,6 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 ### Planned improvements
 
 - Result format: schema version and hardware fingerprint (GPU, driver, LM Studio and runtime version).
-- Final round: more repetitions; separate the effect of context length from KV quantization.
 - Recommended preset per model, compared with the current LM Studio settings. Applied only after confirmation.
 - Later: tuning of speculative decoding and sampling parameters.
 
@@ -52,7 +51,7 @@ M1 comes first: one thin slice that works end to end. The A–L table below appl
 | M1 step | Content | Status |
 |---|---|---|
 | 1 | SDK trial on the installed LM Studio (task 18) | done |
-| 2 | Clean sweep, evaluation, recommended settings per model | in progress |
+| 2 | Clean sweep, evaluation, recommended settings per model | done |
 | 3 | Repository preparation, license, public release | in progress |
 | 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | open |
 | 5 | 10–20 fixed tasks, repeated runs, failure category report | open |
@@ -64,7 +63,7 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 
 | Step | Content | Status |
 |---|---|---|
-| A | Evaluate the trial sweep, final round | partial (trial sweep evaluated; final round pending) |
+| A | Evaluate the trial sweep, final round | done (trial and clean sweeps evaluated) |
 | B | Repository preparation, English and Hungarian documents | partial (bilingual documents done; public release pending) |
 | C | Split core and CLI, versioned result format, model registry | open |
 | D | Finalize `docs/architecture.md`: data formats, control interface | partial (draft exists) |
@@ -122,13 +121,13 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 
 ## 6. Open technical items
 
-- The 56-job run of 2026-11-26 is a trial run: other programs may have been using the CPU, its numbers are not final. A
-  clean full sweep follows later on an idle machine.
+- The 56-job run of 2026-11-26 was a trial run on a busy machine; the sweeps of section 9 supersede it.
 - Not tried live: `stop --now`, automatic pause on a busy GPU and the automatic resume after it (covered by offline
   tests only), a connection breaking during generation (offline tests only), Ctrl+C, load timeout, `--redo-failed`.
   Resume after a reboot was used once on 2026-11-26.
-- Detecting spill into shared GPU memory: the current `near_vram_limit` flag is probably not enough (partial results of
-  the trial sweep show a slowdown it did not flag; the cause is not verified yet).
+- Detecting spill into shared GPU memory: the `near_vram_limit` flag is not enough (in the clean sweep a slow
+  configuration stayed below its threshold). The `spill?` flag of the evaluation infers it from speed; shared GPU memory
+  is not measured.
 - The relation between CLI `lms load` and the per-model default config values has not been measured.
 - Speed measurements are only valid on an idle GPU.
 - During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The
@@ -136,9 +135,8 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 - Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while
   the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display
   driver reset or hardware error was logged; the cause is unknown.
-- For the clean sweep: finer offload steps and batch size combined with longer context for 12–14B models; separate
-  context length from KV quantization; prompts that actually fill the context; at least 3 repeats; measure shared GPU
-  memory instead of guessing spill from speed.
+- Still missing in the sweeps: prompts that actually fill the context; a way to hold or record the background VRAM use
+  when comparing configurations near the VRAM limit.
 
 - Dependency advisory in `harness/`: `npm audit` reports
   [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) (memory exhaustion in `zod` below 4.6.6),
@@ -241,3 +239,18 @@ effect is intentional.
   one comparison, 5% significance).
 - Generated code runs only in an isolated sandbox; this depends on the sandbox decision of section 7.
 - The Hirundo results concern a 30B model; they say nothing about the smaller models that fit the 8 GB development GPU.
+
+## 9. Measurement findings (clean sweeps, 2026-11-26)
+
+One machine (RTX 2070, 8 GB), 132 jobs on 7B to 14B models, all successful, 3 repeats each, prompts of about 1800 and
+6000 tokens. Neither prompt filled a 16k context, and output quality was not measured.
+
+- Where full GPU offload fitted without spilling into shared memory, every partial offload was slower (tested on 12–14B
+  models only). Where VRAM overflowed, a partial offload was often faster.
+- Where the model fits, `f16` KV decoded as fast as `q8_0` or up to about 9 % faster.
+- Eval batch 512 against 2048 made little difference when the model fits; near the VRAM limit it sometimes doubled the
+  decode speed.
+- Near the VRAM limit, speed depends on the VRAM used by other programs: one configuration decoded at 34 t/s in one run
+  and at 6 t/s in another (the prompt length differed too).
+- With the longer prompt, decode was 4 to 22 % slower for models that fit; the cause (probably prompt length) is not
+  verified.

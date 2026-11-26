@@ -11,7 +11,7 @@ a saját felhasználási esetekre, LM Studióval.
 
 | # | Feladat | Állapot |
 |---|---|---|
-| 1 | Sebesség- és memóriaoptimalizálás (kontextus, GPU-offload, flash attention, batch, KV-kvantálás, szálak) | részben (a próbasweep 56/56 lefutott és a `bench evaluate` kiértékelte; a tiszta sweep hátravan, a számok nem véglegesek) |
+| 1 | Sebesség- és memóriaoptimalizálás (kontextus, GPU-offload, flash attention, batch, KV-kvantálás, szálak) | részben (a 2026-11-26-i tiszta sweepek kiértékelve, az ajánlott beállítások rögzítve; nyitott: a VRAM határán lévő esetek, kitöltött context, a KV-kvantálás minőségi hatása, presetek; lásd 9. pont) |
 | 2 | Smoke teszt | kész |
 | 3 | Élő státusz, szünet, leállítás, folytatás megadott lépéstől | részben (lásd 6. pont) |
 | 4 | Kijelölhető modellek, új letöltések kezelése (modellregiszter, automatikus felvétel) | részben (kézi lista a rácsfájlban) |
@@ -39,7 +39,6 @@ a saját felhasználási esetekre, LM Studióval.
 ### Tervezett fejlesztések
 
 - Eredményformátum: sémaverzió és hardver-ujjlenyomat (GPU, driver, LM Studio és runtime verzió).
-- Döntő kör: több ismétlés; a kontextus és a KV-kvantálás hatásának szétválasztása.
 - Modellenként ajánlott preset, összevetve a jelenlegi LM Studio-beállításokkal. Alkalmazás csak megerősítés után.
 - Később: speculative decoding és mintavételi paraméterek hangolása.
 
@@ -52,7 +51,7 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 | M1 lépés | Tartalom | Állapot |
 |---|---|---|
 | 1 | SDK-próba a telepített LM Studión (18. feladat) | kész |
-| 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | folyamatban |
+| 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | kész |
 | 3 | Repó előkészítése, licenc, publikus kiadás | folyamatban |
 | 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | nyitott |
 | 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | nyitott |
@@ -64,7 +63,7 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 
 | Lépés | Tartalom | Állapot |
 |---|---|---|
-| A | Próbasweep kiértékelése, döntő kör | részben (a próbasweep kiértékelve; a döntő kör hátravan) |
+| A | Próbasweep kiértékelése, döntő kör | kész (a próbasweep és a tiszta sweepek kiértékelve) |
 | B | Repó előkészítése, dokumentumok angol és magyar változata | részben (kétnyelvű dokumentumok készek; a publikus kiadás hátravan) |
 | C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | nyitott |
 | D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | részben (vázlat kész) |
@@ -123,14 +122,13 @@ elkezdhető.
 
 ## 6. Nyitott műszaki pontok
 
-- A 2026-11-26-i 56 feladatos futás próbafutás: közben más programok is futhattak és CPU-t terheltek, a számai nem
-  véglegesek. Tiszta, teljes sweep később, üres gép mellett.
-
+- A 2026-11-26-i 56 feladatos futás próbafutás volt terhelt gépen; a 9. pont sweepjei felülírják.
 - Élőben nem próbált: `stop --now`, automatikus szünet foglalt GPU-nál és az utána következő automatikus folytatás
   (csak offline tesztek fedik le), generálás közben megszakadt kapcsolat (csak offline tesztek), Ctrl+C, betöltési
   timeout, `--redo-failed`. A gépújraindítás utáni folytatást 2026-11-26-án egyszer használtuk.
-- A megosztott GPU-memóriába csordulás felismerése: a mostani `near_vram_limit` jelző valószínűleg nem elég (a futó
-  sweep részeredményeiben van olyan sebességesés, amelyet nem jelzett; ok még nem igazolt).
+- A megosztott GPU-memóriába csordulás felismerése: a `near_vram_limit` jelző nem elég (a tiszta sweepben egy lassú
+  konfiguráció a küszöbe alatt maradt). A kiértékelés `spill?` jelzője a sebességből következtet; a megosztott
+  GPU-memóriát nem mérjük.
 - A CLI `lms load` út és a default-config értékek viszonya nem mért.
 - A sebességmérés csak szabad GPU-n érvényes.
 - A 2026-11-26-i sweepek közben a `status --watch` többször „process gone” üzenetet adott, pedig a futás ment tovább. A
@@ -139,9 +137,8 @@ elkezdhető.
 - Ugyanezen sweepek alatt egyszer a kijelző nem reagált tovább (a Windows szerint az `explorer.exe` a `dwm.exe`-re
   várt), miközben a futtató még írta a heartbeatjét; a gépet újra kellett indítani, és a `resume` folytatta a futást.
   Videódriver-reset vagy hardverhiba nem került a naplóba; az ok ismeretlen.
-- A tiszta sweephez: finomabb offload-lépések, valamint batch méret hosszabb context mellett a 12–14B modelleknél;
-  a contexthossz és a KV-kvantálás szétválasztása; a contextet ténylegesen kitöltő promptok; legalább 3 ismétlés; a
-  megosztott GPU-memória mérése a sebességből történő következtetés helyett.
+- A sweepekből még hiányzik: a contextet ténylegesen kitöltő promptok; mód arra, hogy a VRAM határán lévő
+  konfigurációk összehasonlításakor a háttér VRAM-foglalása rögzített vagy kontrollált legyen.
 
 - Függőségi figyelmeztetés a `harness/` mappában: az `npm audit` a
   [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) jelzést adja (memóriakimerítés a 4.6.6 alatti
@@ -251,3 +248,18 @@ tesztelés korrekcióját. A blogbejegyzés nem linkeli a vizsgálat promptjait,
 - A generált kód csak elszigetelt sandboxban futhat; ez a 7. pont sandbox-döntésétől függ.
 - A Hirundo-eredmények egy 30B modellre vonatkoznak; a fejlesztői gép 8 GB-os GPU-jára férő kisebb modellekről nem
   mondanak semmit.
+
+## 9. Mérési megállapítások (tiszta sweepek, 2026-11-26)
+
+Egy gép (RTX 2070, 8 GB), 132 job 7B–14B modelleken, mind sikeres, jobonként 3 ismétlés, kb. 1800 és 6000 tokenes
+promptok. Egyik prompt sem töltötte ki a 16k contextet, és a kimenet minőségét nem mértük.
+
+- Ahol a teljes GPU-offload a megosztott memóriába csordulás nélkül befért, minden részleges offload lassabb volt (csak
+  12–14B modelleken mértük). Ahol a VRAM túlcsordult, a részleges offload gyakran gyorsabb volt.
+- Ahol a modell befér, az `f16` KV decode-ban ugyanolyan gyors vagy legfeljebb kb. 9%-kal gyorsabb volt, mint a `q8_0`.
+- Az 512-es és a 2048-as eval batch befér modellnél alig különbözött; a VRAM határán néha megduplázta a
+  decode-sebességet.
+- A VRAM határán a sebesség a más programok VRAM-foglalásától függ: ugyanaz a konfiguráció az egyik futásban 34, a
+  másikban 6 t/s decode-ot adott (a prompt hossza is eltért).
+- A hosszabb prompttal a decode a befér modelleknél is 4–22%-kal lassabb volt; az ok (valószínűleg a prompt hossza) nem
+  igazolt.
