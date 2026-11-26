@@ -49,7 +49,7 @@ web/      React + Vite + TypeScript, Mantine, ECharts
 
 Az agent harness feladatokat futtat egy betöltött modellen és trace-t ír; a core-ban lévő hibaelemzés a trace-ekből
 kategóriákat és riportot készít. A core-hoz kapcsolódó interfészét (processhatár és trace-formátum) a roadmap G lépése
-előtt kell meghatározni. Követelmények: a roadmap 7. pontja.
+előtt kell meghatározni. Követelmények: `docs/requirements.hu.md`, 3. pont.
 
 ```
 core  ->  CLI

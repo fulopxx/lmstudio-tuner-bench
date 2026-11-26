@@ -77,7 +77,7 @@ of the grid (`.\bench run --help`).
 | `harness\` | TypeScript code: model loading through the LM Studio SDK, its test and the SDK probes |
 | `tests\` | Offline Python tests and one live control test that uses the GPU |
 | `tools\` | PDF export of the documents and diagram generator |
-| `docs\` | Roadmap, architecture and findings on load parameters, in English and Hungarian |
+| `docs\` | [Roadmap](docs/roadmap.md), [requirements](docs/requirements.md), [architecture](docs/architecture.md), [findings](docs/findings.md) and [load parameters](docs/lmstudio_load_parameters.md), in English and Hungarian |
 
 Created while running, not tracked by git:
 

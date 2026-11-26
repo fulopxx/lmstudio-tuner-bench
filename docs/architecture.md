@@ -49,7 +49,7 @@ web/      React + Vite + TypeScript, Mantine, ECharts
 
 The agent harness runs tasks against a loaded model and writes a trace; failure analysis in the core turns traces into
 categories and reports. Its interface to the core (process boundary and trace format) is to be defined before roadmap
-step G. Requirements: roadmap section 7.
+step G. Requirements: `docs/requirements.md`, section 3.
 
 ```
 core  ->  CLI

@@ -5,15 +5,18 @@
 Last updated: 2026-11-26. Goal: tune and compare downloaded local models on your own hardware, for your own use cases,
 using LM Studio.
 
+Related documents: [requirements](requirements.md) (interface, testing, agent harness, bias investigation) and
+[measurement findings](findings.md).
+
 ## 1. Tasks
 
 Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress**, ⚪ **open**.
 
 | # | Task | Status |
 |---|---|---|
-| 1 | Speed and memory tuning (context, GPU offload, flash attention, batch, KV quantization, threads) | 🟡 partial (clean sweeps of 2026-11-26 evaluated and recommended settings recorded; open: cases near the VRAM limit, filled context, quality effect of KV quantization, presets; see section 9) |
+| 1 | Speed and memory tuning (context, GPU offload, flash attention, batch, KV quantization, threads) | 🟡 partial (clean sweeps of 2026-11-26 evaluated and recommended settings recorded; open: cases near the VRAM limit, filled context, quality effect of KV quantization, presets; see [findings](findings.md)) |
 | 2 | Smoke test | ✅ done |
-| 3 | Live status, pause, stop, resume from a given step | 🟡 partial (see section 6) |
+| 3 | Live status, pause, stop, resume from a given step | 🟡 partial (see section 4) |
 | 4 | Selectable models, handling of new downloads (model registry, auto discovery) | 🟡 partial (manual list in the grid file) |
 | 5 | Test suite filtering by model capability (e.g. image captioning only on vision models) | ⚪ open |
 | 6 | Quality suites: coding; git handling; Hungarian language; image recognition and captioning; decisions and explanations based on application screenshots; game and 3D design (Unreal, Blender); cybersecurity | ⚪ open |
@@ -26,14 +29,14 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 13 | Project shareable on git | 🟡 partial (not released yet) |
 | 14 | Secondary NiceGUI control panel | ⚪ open, low priority |
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | 🟡 partial (documents done, no UI yet) |
-| 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see section 7) | ⚪ open |
-| 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see section 7) | ⚪ open |
+| 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see [requirements](requirements.md), section 3) | ⚪ open |
+| 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see [requirements](requirements.md), section 3) | ⚪ open |
 | 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | ✅ done |
 | 19 | Model-specific tool-call differences and repair methods (retry, schema constraint, grammar) | ⚪ open |
 | 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | ⚪ open |
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | ⚪ open |
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | ⚪ open |
-| 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see section 8) | ⚪ open (not examined yet) |
+| 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see [requirements](requirements.md), section 4) | ⚪ open (not examined yet) |
 | K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | ⚪ open (not examined yet) |
 
 ### Planned improvements
@@ -80,177 +83,67 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 
 ## 3. Decisions
 
+### Measurement and runner
+
 | Topic | Decision |
 |---|---|
 | Per-model LM Studio config files | Not edited; the runner loads through the SDK |
+| LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; used by the sweep runner |
 | Error handling | Failed steps are not retried automatically; abort after two consecutive timeouts; pause when the GPU is busy, re-check every 90 s and continue by itself (a manual pause stays) |
+| Statistics | Median and spread, Pareto front, adjustable weighted score, bootstrap confidence intervals; Elo / Bradley–Terry for pairwise grading. No ML/DL needed |
+
+### Architecture and interfaces
+
+| Topic | Decision |
+|---|---|
+| CLI parity | The terminal version comes first: it must be able to do everything, graphical interfaces cannot do more. New features appear in the core and CLI first |
+| GUI layer | A thin layer over the core, without its own measurement or evaluation logic; the data behind charts is also available from the CLI. A test checks that every API operation has a CLI counterpart |
 | Frontend | React + Vite + TypeScript, Mantine, Apache ECharts |
 | Backend | FastAPI, `127.0.0.1` only |
-| Statistics | Median and spread, Pareto front, adjustable weighted score, bootstrap confidence intervals; Elo / Bradley–Terry for pairwise grading. No ML/DL needed |
+| Web development | Starts after step D and lives in the `web/` folder; the core interface is agreed first |
+| Agent harness | Own module with failure analysis, written in TypeScript from the start. The first version has no shell tool |
+
+### Language and documentation
+
+| Topic | Decision |
+|---|---|
 | Language | English is primary; everything also gets a Hungarian version (documents, README, UI). The English README links to the Hungarian one |
 | File naming | `name.md` is English, `name.hu.md` is Hungarian; PDFs follow the same pattern |
 | Hungarian wording | Technical terms that are commonly used in English, or lack a good Hungarian equivalent, stay in English, especially in the UI |
 | Code | Code and comments in English |
-| Agent harness | Own module with failure analysis, written in TypeScript from the start. The first version has no shell tool |
-| LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; used by the sweep runner |
+
+### Project
+
+| Topic | Decision |
+|---|---|
 | Focus | Failure taxonomy and trace-based diagnostics are what sets the project apart; speed benchmarking is the base |
 | License | MIT |
-| CLI parity | The terminal version comes first: it must be able to do everything, graphical interfaces cannot do more. New features appear in the core and CLI first |
-| GUI layer | A thin layer over the core, without its own measurement or evaluation logic; the data behind charts is also available from the CLI. A test checks that every API operation has a CLI counterpart |
-| Web development | Starts after step D and lives in the `web/` folder; the core interface is agreed first |
 
-## 4. UI requirements
+## 4. Open technical items
 
-- Start, pause, resume, stop; live status.
-- Views: Pareto scatter plot (VRAM vs speed, point size = context length), model × test suite heatmap, radar chart for
-  2–4 models, filterable table with Excel export.
-- Warning at measurement time: the browser uses VRAM and GPU.
-- Measure the browser overhead on a fixed configuration: dashboard closed / open with hardware acceleration / open
-  without it. Include an offloaded configuration (without acceleration the CPU load rises). How to read per-process VRAM
-  still has to be checked (`nvidia-smi` returns `N/A` on the development machine).
-- Each result row records whether the dashboard was open during the measurement.
-- The built frontend can be shipped, so that using it does not require Node.js.
-- Switching between English and Hungarian; texts in language files, English is the default.
+### Measurement
 
-## 5. Testing (planned)
+| Item | Current knowledge | Status |
+|---|---|---|
+| Spill into shared GPU memory | The `near_vram_limit` flag is not enough (in the clean sweep a slow configuration stayed below its threshold). The `spill?` flag of the evaluation infers it from speed; shared GPU memory is not measured | ⚪ open |
+| Filled context | The sweeps have no prompts that actually fill the context | ⚪ open |
+| Background VRAM use | Speed measurements are only valid on an idle GPU. A way to hold or record the background use when comparing configurations near the VRAM limit is missing | ⚪ open |
+| CLI `lms load` | Its relation to the per-model default config values has not been measured | ⚪ open |
 
-- Python logic and FastAPI: `pytest` (it can run the existing `unittest` tests).
-- React components: Vitest + React Testing Library.
-- End to end: Playwright, with a fake runner and recorded sample results, without a GPU. Not run during measurements.
-- Live GPU tests are separate and started manually (`tests\live_control_test.py`).
+### Stability and testing
 
-## 6. Open technical items
+| Item | Current knowledge | Status |
+|---|---|---|
+| Not tried live | `stop --now`; automatic pause on a busy GPU and the automatic resume after it (offline tests only); a connection breaking during generation (offline tests only); Ctrl+C; load timeout; `--redo-failed`. Resume after a reboot was used once on 2026-11-26 | ⚪ open |
+| Late heartbeat | During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced) | 🟡 partial |
+| Display freeze | Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display driver reset or hardware error was logged; the cause is unknown | ⚪ open |
 
-- The 56-job run of 2026-11-26 was a trial run on a busy machine; the sweeps of section 9 supersede it.
-- Not tried live: `stop --now`, automatic pause on a busy GPU and the automatic resume after it (covered by offline
-  tests only), a connection breaking during generation (offline tests only), Ctrl+C, load timeout, `--redo-failed`.
-  Resume after a reboot was used once on 2026-11-26.
-- Detecting spill into shared GPU memory: the `near_vram_limit` flag is not enough (in the clean sweep a slow
-  configuration stayed below its threshold). The `spill?` flag of the evaluation infers it from speed; shared GPU memory
-  is not measured.
-- The relation between CLI `lms load` and the per-model default config values has not been measured.
-- Speed measurements are only valid on an idle GPU.
-- During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The
-  view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced).
-- Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while
-  the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display
-  driver reset or hardware error was logged; the cause is unknown.
-- Still missing in the sweeps: prompts that actually fill the context; a way to hold or record the background VRAM use
-  when comparing configurations near the VRAM limit.
+### Dependencies
 
-- Dependency advisory in `harness/`: `npm audit` reports
-  [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) (memory exhaustion in `zod` below 4.6.6),
-  pulled in by `@lmstudio/sdk` 2.1.0, which requires `zod ^3.22.4`. Assessed as low risk for local use (availability
-  only; input comes from the local server and from model output, so limit tool argument sizes). Do not run
-  `npm audit fix --force` (it downgrades the SDK) and do not force zod 4 (reported to break the SDK). Already raised
-  upstream in [lmstudio-js issue 362](https://github.com/lmstudio-ai/lmstudio-js/issues/362); check again on every SDK
-  update.
-
-## 7. Agent harness and failure analysis: initial requirements
-
-Draft, to be detailed before step G.
-
-**Harness**
-
-- Written in TypeScript, talking to LM Studio through the official SDK if the trial (task 18) succeeds.
-- Runs a model in a tool loop. The first version has file reading and mock tools only (mock tools give deterministic
-  tests); search, git and shell follow after the sandbox decision.
-- Everything runs in a throwaway sandbox folder; no network by default.
-- Limits: timeout per tool call, maximum number of steps per task, no endless retries; the user is told when a limit is hit.
-- Interruption and resume; clean recovery from tool errors and invalid model output.
-- Context handling: conversation history, tool results, what happens when the context fills up.
-- Usable from the CLI first, like every other feature.
-
-**Failure analysis**
-
-- Every step is logged: prompt, model output, tool call, tool result, timing, tokens.
-- Failure categories (first set): invalid tool-call format, wrong tool, wrong arguments, ignored tool error, endless
-  retrying or looping, limit hit without telling the user, context overflow, task result wrong despite correct steps.
-- Each category is described FMEA-style: failure mode, effect, how it is detected, mitigation. The report suggests
-  mitigations, it does not only count.
-- Report per model and per task: success rate, categories, longest reliable chain length.
-- Tasks are fixed and reproducible, with pass/fail checks; each runs several times to show the spread.
-- Compare model-specific tool-call formats, where the JSON breaks, and which repair helps (retry, schema constraint,
-  grammar).
-- Interrupt and recovery cases: stop during a tool call, truncated output, resume.
-- Second round (after M1): context truncation and summarization, tool result size limits, behaviour as context grows.
-
-**Open**
-
-- Interface between the Python core and the TypeScript harness (process boundary, trace format).
-- How the sandbox restricts model-generated shell commands. This must be decided before any such command is executed.
-- Finding LM Studio's API port for the SDK without an internal file.
-
-## 8. Investigation: is a model biased?
-
-Task 23. Status: not examined; nothing below has been reproduced in this project.
-
-**Question.** Does a model behave differently when only a detail that should not matter changes? Which factors trigger
-this, and how does it differ between models, model families and original and modified ("uncensored") variants?
-
-**Stages**
-
-1. Research: on which factors models can be biased (for example requester, purpose, nationality, political topic), in
-   which outputs it shows (refusal, content and tone, quality, security of generated code), and which measurement
-   methods are published.
-2. Test prompts for each factor: sets that differ only in that factor, with neutral controls and a metric per output
-   type; reviewed before the first run.
-3. Measurement per model.
-4. Report per model.
-
-**General requirements**
-
-- Factors, prompts and metrics fixed before the first run; at least two neutral wordings to estimate the noise of the
-  wording itself.
-- Objective metrics where possible. Where outputs are graded, a written rubric and a check of the grader's own bias (a
-  grading model can be biased too).
-- Statistics with confidence intervals and correction for multiple comparisons.
-
-Text-only tests depend on the fixed task set (task 20); tests that run generated code also need the harness and failure
-analysis (tasks 16 and 17). Scheduled after M1.
-
-### First known case: requester-dependent code security
-
-With the same coding task, does the share of exploitable code change when only the stated requester or purpose differs?
-It fits the cybersecurity quality suite (task 6).
-
-**Published claims**
-
-- [Hirundo, 2026-10-21](https://www.hirundo.io/blog/qwen3-coder-vulnerabilities), Qwen3-Coder-30B-A3B-Instruct, one
-  phrase changed in the system prompt, one task (BaxBench SecretStorage), temperature 0.6, mostly 190 generated apps per
-  persona, detection by running exploits. Apps for a US defense contractor were exploitable in 70% of cases, for a
-  Chinese one in 59% (p = 0.03). With a Hong Kong democracy group, apps leaking other users' secrets were 28% more
-  frequent (relative) than with neutral prompts (p = 0.024).
-- [CrowdStrike, 2025-11-20](https://www.crowdstrike.com/en-us/blog/crowdstrike-researchers-identify-hidden-vulnerabilities-ai-coded-software/),
-  DeepSeek-R1: more severe vulnerabilities with politically sensitive terms in the prompt (known here only from a
-  search summary).
-
-**Limits of the Hirundo study.** Vendor study (the company sells the remedy), not peer reviewed. The task shown stood
-out among eleven screened ones. With about ten comparisons, p values near 0.03 would not survive a correction for
-multiple testing. The blog post links no study prompts, code or raw data. The authors do not claim to know whether the
-effect is intentional.
-
-**Additional requirements for an own measurement**
-
-- Several coding tasks, chosen before the first run.
-- Detection by running exploit tests; static analysis alone is not enough (the study reports 2 apps flagged by static
-  analysis against 1144 broken by attacks, out of 1840).
-- Sample size: detecting a 59% / 70% difference with 80% power needs about 300 samples per condition (own estimate,
-  one comparison, 5% significance).
-- Generated code runs only in an isolated sandbox; this depends on the sandbox decision of section 7.
-- The Hirundo results concern a 30B model; they say nothing about the smaller models that fit the 8 GB development GPU.
-
-## 9. Measurement findings (clean sweeps, 2026-11-26)
-
-One machine (RTX 2070, 8 GB), 132 jobs on 7B to 14B models, all successful, 3 repeats each, prompts of about 1800 and
-6000 tokens. Neither prompt filled a 16k context, and output quality was not measured.
-
-- Where full GPU offload fitted without spilling into shared memory, every partial offload was slower (tested on 12–14B
-  models only). Where VRAM overflowed, a partial offload was often faster.
-- Where the model fits, `f16` KV decoded as fast as `q8_0` or up to about 9 % faster.
-- Eval batch 512 against 2048 made little difference when the model fits; near the VRAM limit it sometimes doubled the
-  decode speed.
-- Near the VRAM limit, speed depends on the VRAM used by other programs: one configuration decoded at 34 t/s in one run
-  and at 6 t/s in another (the prompt length differed too).
-- With the longer prompt, decode was 4 to 22 % slower for models that fit; the cause (probably prompt length) is not
-  verified.
+Dependency advisory in `harness/`: `npm audit` reports
+[GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) (memory exhaustion in `zod` below 4.6.6),
+pulled in by `@lmstudio/sdk` 2.1.0, which requires `zod ^3.22.4`. Assessed as low risk for local use (availability
+only; input comes from the local server and from model output, so limit tool argument sizes). Do not run
+`npm audit fix --force` (it downgrades the SDK) and do not force zod 4 (reported to break the SDK). Already raised
+upstream in [lmstudio-js issue 362](https://github.com/lmstudio-ai/lmstudio-js/issues/362); check again on every SDK
+update.

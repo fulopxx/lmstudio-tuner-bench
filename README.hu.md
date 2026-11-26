@@ -79,7 +79,7 @@ timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`).
 | `harness\` | TypeScript kód: modellbetöltés a LM Studio SDK-val, annak tesztje és az SDK-próbák |
 | `tests\` | Offline Python tesztek és egy GPU-t használó live vezérlési teszt |
 | `tools\` | A dokumentumok PDF-exportja és az ábragenerátor |
-| `docs\` | Roadmap, architektúra és a load paraméterekről szerzett ismeretek, angolul és magyarul |
+| `docs\` | [Roadmap](docs/roadmap.hu.md), [követelmények](docs/requirements.hu.md), [architektúra](docs/architecture.hu.md), [megállapítások](docs/findings.hu.md) és [load paraméterek](docs/lmstudio_load_parameters.hu.md), angolul és magyarul |
 
 Futás közben keletkeznek, a git nem követi őket:
 

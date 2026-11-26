@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Export the project documents (docs/roadmap.md, docs/architecture.md) to formatted PDFs next to them.
+"""Export the project documents (roadmap, requirements, findings, architecture in docs/) to formatted PDFs
+next to them. Documents with three or more sections get a table of contents.
 
 More folders can be added in the optional, untracked file tools/export_docs.local.json; every Markdown
 document in them is exported too:  {"extra_folders": ["my-notes"]}
@@ -24,7 +25,7 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PUBLIC_DOCS = ("roadmap", "architecture")
+PUBLIC_DOCS = ("roadmap", "requirements", "findings", "architecture")
 LOCAL_SETTINGS = ROOT / "tools" / "export_docs.local.json"
 LANGS = {"": "en", ".hu": "hu"}  # file suffix -> language; English is primary
 STATES = {"done": "done", "partial": "partial", "in progress": "running", "open": "open",
@@ -32,6 +33,7 @@ STATES = {"done": "done", "partial": "partial", "in progress": "running", "open"
 STATUS_HEADERS = ("status", "állapot")
 STATUS_ICONS = "✅🟡🔵⚪ "  # done, partial, in progress, open
 NOWRAP_HEADERS = ("Source", "Forrás")
+CONTENTS = {"en": "Contents", "hu": "Tartalom"}
 FOOTER = {"en": "Generated: {stamp} · source: {path}", "hu": "Generálva: {stamp} · forrás: {path}"}
 
 CSS = """
@@ -39,7 +41,11 @@ CSS = """
 * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { font: 9.5pt/1.45 "Segoe UI", Arial, sans-serif; color: #1f2933; margin: 0; }
 h1 { font-size: 19pt; margin: 0 0 6px; color: #102a43; border-bottom: 3px solid #2f6fed; padding-bottom: 6px; }
-h2 { font-size: 12.5pt; margin: 16px 0 6px; color: #1d4ed8; break-after: avoid; }
+h2 { font-size: 13pt; margin: 22px 0 8px; color: #1d4ed8; border-bottom: 1.5px solid #bfd3fa; padding-bottom: 3px; break-after: avoid; }
+.toc { background: #f4f7fb; border: 1px solid #d9e2ec; border-radius: 6px; padding: 7px 12px; margin: 8px 0 4px; break-inside: avoid; }
+.toc b { display: block; margin-bottom: 2px; color: #243b53; }
+.toc a { display: block; color: #1d4ed8; text-decoration: none; }
+.toc a.sub { padding-left: 14px; color: #486581; font-size: 8.6pt; }
 h3 { font-size: 10.5pt; margin: 10px 0 4px; color: #243b53; break-after: avoid; }
 p { margin: 4px 0 8px; }
 table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; font-size: 8.8pt; }
@@ -99,7 +105,7 @@ def split_row(line):
 def convert(md, source, lang):
     lines = md.splitlines()
     title = next((ln[2:].strip() for ln in lines if ln.startswith("# ")), source.stem)
-    out, i = [], 0
+    out, i, toc = [], 0, []
     while i < len(lines):
         ln = lines[i]
         if not ln.strip():
@@ -132,7 +138,11 @@ def convert(md, source, lang):
             out.append("</ol>")
         elif m := re.match(r"(#{1,4})\s+(.*)", ln):
             n = len(m.group(1))
-            out.append(f"<h{n}>{inline(m.group(2))}</h{n}>")
+            anchor = ""
+            if n in (2, 3):
+                anchor = f' id="s{len(toc) + 1}"'
+                toc.append((n, len(toc) + 1, m.group(2), len(out)))
+            out.append(f"<h{n}{anchor}>{inline(m.group(2))}</h{n}>")
             i += 1
         elif ln.startswith("|") and i + 1 < len(lines) and re.match(r"\|[\s:|-]+\|?\s*$", lines[i + 1]):
             head = split_row(ln)
@@ -170,6 +180,10 @@ def convert(md, source, lang):
                 para.append(lines[i].strip())
                 i += 1
             out.append(f"<p>{inline(' '.join(para))}</p>")
+    if sum(n == 2 for n, *_ in toc) >= 3:  # table of contents before the first section
+        links = "".join(f'<a href="#s{k}"{"" if n == 2 else " class=sub"}>{inline(text)}</a>'
+                        for n, k, text, _ in toc)
+        out.insert(toc[0][3], f'<nav class="toc"><b>{CONTENTS[lang]}</b>{links}</nav>')
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     foot = FOOTER[lang].format(stamp=stamp, path=source.relative_to(ROOT).as_posix())
     return (f"<!doctype html><html lang='{lang}'><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
