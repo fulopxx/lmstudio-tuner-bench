@@ -35,6 +35,7 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `harness/sdk-probe.ts` | Probe of the official SDK: applied settings, VRAM and speed |
 | `harness/sdk-persist.ts` | Probe: a model stays loaded after the loading process exits |
 | `harness/spec-probe.ts` | Speculative decoding probe (task 24, phase 0): draft model and MTP loads, read-back, draft counters, REST fields, persistence; plan from `configs/spec-probe.example.json` (own copy: `spec-probe.local.json`) |
+| `harness/tools-probe.ts` | Probe of single-round tool calls with `respond()` and `rawTools`: callbacks, tool result round trip, no-tool case, abort |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | Pure parts of the probe (plan check, load configs per mode, draft ratios) and their offline test |
 | `harness/package.json` | Node.js version requirement and the pinned SDK version |
 | `configs/*.json` | Measurement grids (section 4.1) |

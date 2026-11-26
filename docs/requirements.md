@@ -65,6 +65,21 @@ Draft, to be detailed before step G.
 | H6 | Own tool loop behind a `ModelBackend` interface: `LmsSdkBackend` (one prediction round with `respond()` and `rawTools`) and `ScriptedBackend` (deterministic offline tests without a GPU) | Invalid tool calls must be logged raw; `.act()` throws on an unparseable call. Single-round tool calls exist in the SDK 2.1.0 types; a short live check is still needed |
 | H7 | M1 scope: tools `read_file` (path resolved inside the sandbox, size limit) and `mock_lookup` (deterministic, configurable delay and error for timeout cases); limits per tool call, rounds and total time; a throwaway sandbox folder per task with a copy of the fixtures; no shell; CLI command `bench agent run` | Thin M1 slice; the sandbox decision for shell commands can wait |
 
+**Live check of H6 (2026-11-26, `harness/tools-probe.ts`, three models at 4k context, temperature 0):**
+
+- `respond()` with `rawTools` works for one round: with a model that uses the expected tool-call format the callbacks
+  arrive in order (start, name, argument fragments, end with the parsed request and the raw arguments), and the stop
+  reason is `toolCalls`. Sending the tool result back as a `tool` message gives a correct final answer.
+- A 7B coder model wrote the tool call as JSON inside a fenced text block. The SDK did not recognize it: no tool-call
+  callback, stop reason `eosFound`. Only the raw text shows the attempt, which confirms that the harness must log raw
+  output and that repairs (task 19) are needed. A 1B model did not call a tool and answered without the data.
+- No model needed a tool for a simple sum, and none called one.
+- An abort through the `AbortSignal` ends the prediction with stop reason `userStopped` and the partial text, without
+  an exception.
+- `content` contains the reasoning text of thinking models; the harness has to use `nonReasoningContent`. After an
+  abort during reasoning, an internal LM Studio separator string appeared in `content`.
+- No `onToolCallRequestFailure` callback was seen.
+
 The headless assistant beta API of the LM Studio Bionic application (listed in the 1.2.1 release notes) is not used in
 M1; the installed version is 1.2.0.
 

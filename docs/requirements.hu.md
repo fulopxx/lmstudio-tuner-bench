@@ -68,6 +68,22 @@ Vázlat, a G lépés előtt részletezendő.
 | H6 | Saját tool loop egy `ModelBackend` interfész mögött: `LmsSdkBackend` (egy predikciós kör `respond()` és `rawTools` használatával) és `ScriptedBackend` (determinisztikus offline tesztek GPU nélkül) | Az érvénytelen tool-hívást nyersen kell naplózni; a `.act()` értelmezhetetlen hívásnál kivételt dob. Az egykörös tool-hívás az SDK 2.1.0 típusaiban megvan; rövid élő ellenőrzés még kell |
 | H7 | M1 hatókör: `read_file` (útvonal a sandboxon belül feloldva, méretkorlát) és `mock_lookup` (determinisztikus, beállítható késleltetéssel és hibával a timeout-esetekhez); korlát tool-hívásra, körszámra és teljes időre; feladatonként eldobható sandbox mappa a fixture-ök másolatával; nincs shell; CLI parancs: `bench agent run` | Vékony M1 szelet; a shell-parancsok sandbox-döntése várhat |
 
+**A H6 élő ellenőrzése (2026-11-26, `harness/tools-probe.ts`, három modell, 4k context, temperature 0):**
+
+- A `respond()` a `rawTools` mezővel egy körre működik: ha a modell a várt tool-hívás formátumot használja, a
+  callbackek sorrendben érkeznek (start, név, argumentum-darabok, end az értelmezett kéréssel és a nyers
+  argumentumokkal), a leállás oka `toolCalls`. A tool eredményét `tool` üzenetként visszaküldve helyes végső válasz jön.
+- Egy 7B-s kódmodell a tool-hívást JSON-ként, kódblokkban írta ki. Az SDK nem ismerte fel: nincs tool-hívás callback, a
+  leállás oka `eosFound`. A próbálkozás csak a nyers szövegben látszik; ez megerősíti, hogy a harnessnek a nyers
+  kimenetet is naplóznia kell, és hogy kellenek a javítási módszerek (19. feladat). Egy 1B-s modell nem hívott toolt,
+  és az adat nélkül válaszolt.
+- Egyszerű összeadáshoz egyik modellnek sem kellett tool, és egyik sem hívott.
+- Az `AbortSignal` általi megszakítás `userStopped` leállási okkal és a részleges szöveggel zárja a predikciót,
+  kivétel nélkül.
+- A `content` a gondolkodó modellek gondolatmenetét is tartalmazza; a harnessnek a `nonReasoningContent` mezőt kell
+  használnia. Gondolatmenet közbeni megszakítás után egy belső LM Studio elválasztó szöveg jelent meg a `content`-ben.
+- `onToolCallRequestFailure` callbacket nem láttunk.
+
 A LM Studio Bionic alkalmazás headless asszisztens béta API-ját (az 1.2.1 kiadási jegyzetében szerepel) M1-ben nem
 használjuk; a telepített verzió 1.2.0.
 
