@@ -38,9 +38,12 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `harness/tools-probe.ts` | Probe of single-round tool calls with `respond()` and `rawTools`: callbacks, tool result round trip, no-tool case, abort |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | Pure parts of the probe (plan check, load configs per mode, draft ratios) and their offline test |
 | `runner/agent.py` | `bench agent run`: loads one model, starts the harness, passes a stop on, judges each attempt from its trace with the task's checks |
+| `runner/failures.py` | Failure taxonomy (single machine-readable source) and the rule-based categorizer of agent attempts; pure functions |
+| `configs/sampling.json` | Sampling profiles per model family for agent runs, with sources |
 | `harness/run-tasks.ts` | Agent harness entry point: spec on stdin, tool loop per task attempt, `RESULT:` summary |
 | `harness/agent/` | Harness modules: spec, model backends (SDK and scripted), tool loop, tools, sandbox, trace; offline tests in `agent.test.ts` |
-| `tasks/examples.json`, `tasks/fixtures/` | Example agent tasks with declarative checks, and the files copied into their sandboxes |
+| `tasks/examples.json`, `tasks/fixtures/` | Example agent tasks (format v2: declarative mock tools, expected calls, checks), and the files copied into their sandboxes |
+| `tests/fixtures/traces/` | Recorded live traces used as regression samples for the categorizer |
 | `harness/package.json` | Node.js version requirement, the pinned SDK version, TypeScript type check and test scripts |
 | `configs/*.json` | Measurement grids (section 4.1) |
 | `tools/export_docs.py` | PDF export of the documents (English and Hungarian) |

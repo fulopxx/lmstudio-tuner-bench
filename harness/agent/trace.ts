@@ -1,7 +1,7 @@
 // JSONL trace per task attempt (decision H4). Each line is complete on its own, so a killed run leaves a readable file.
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { SCHEMA_VERSION } from "./spec.ts";
+import { TRACE_SCHEMA_VERSION } from "./spec.ts";
 
 export type TraceEventType =
   | "task_start" | "prediction" | "tool_call" | "tool_result" | "limit_hit" | "error" | "task_end";
@@ -18,7 +18,7 @@ export class FileTrace implements Trace {
     mkdirSync(dirname(path), { recursive: true });
   }
   write(event: TraceEventType, data: Record<string, unknown>): void {
-    appendFileSync(this.path, JSON.stringify({ schema_version: SCHEMA_VERSION, seq: this.seq++,
+    appendFileSync(this.path, JSON.stringify({ schema_version: TRACE_SCHEMA_VERSION, seq: this.seq++,
       t: new Date().toISOString(), event, ...data }) + "\n");
   }
 }
@@ -27,6 +27,6 @@ export class FileTrace implements Trace {
 export class MemoryTrace implements Trace {
   readonly events: Record<string, unknown>[] = [];
   write(event: TraceEventType, data: Record<string, unknown>): void {
-    this.events.push({ event, ...data });
+    this.events.push({ seq: this.events.length, event, ...data });
   }
 }

@@ -1,7 +1,7 @@
 // Model backends behind one interface (decision H6): LM Studio through the SDK, and a scripted one for tests.
 import type { ChatMessageData, LLM, LLMTool } from "@lmstudio/sdk";
 import { Chat } from "@lmstudio/sdk";
-import type { ScriptedReply } from "./spec.ts";
+import type { Sampling, ScriptedReply } from "./spec.ts";
 
 export interface ToolCall {
   id?: string;
@@ -37,11 +37,11 @@ export interface RoundResult {
 export interface RoundOptions {
   signal: AbortSignal;
   maxTokens: number;
-  temperature: number;
+  sampling: Sampling;
 }
 
 export interface ModelBackend {
-  startTask(taskId: string): void;
+  startTask(taskId: string, attempt: number): void;
   round(history: Message[], tools: ToolDef[], opts: RoundOptions): Promise<RoundResult>;
 }
 
@@ -83,7 +83,13 @@ export class LmsSdkBackend implements ModelBackend {
     }));
     const result = await this.model.respond(Chat.from({ messages: toChatData(history) }), {
       rawTools: rawTools.length ? { type: "toolArray", tools: rawTools } : { type: "none" },
-      temperature: opts.temperature,
+      // every sampling value explicitly (FA-20); a missing one would fall back to LM Studio's default
+      temperature: opts.sampling.temperature,
+      ...(opts.sampling.topP !== undefined ? { topPSampling: opts.sampling.topP } : {}),
+      ...(opts.sampling.topK !== undefined ? { topKSampling: opts.sampling.topK } : {}),
+      ...(opts.sampling.minP !== undefined ? { minPSampling: opts.sampling.minP } : {}),
+      ...(opts.sampling.repeatPenalty !== undefined ? { repeatPenalty: opts.sampling.repeatPenalty } : {}),
+      contextOverflowPolicy: "stopAtLimit", // FA-13: overflow must show as a stop reason, not be truncated silently
       maxTokens: opts.maxTokens,
       signal: opts.signal,
       onToolCallRequestEnd: (_callId, info) => {
@@ -114,14 +120,17 @@ export class LmsSdkBackend implements ModelBackend {
 export class ScriptedBackend implements ModelBackend {
   private replies: ScriptedReply[] = [];
   private next = 0;
-  private readonly script: Record<string, ScriptedReply[]>;
+  private readonly script: Record<string, ScriptedReply[] | ScriptedReply[][]>;
 
-  constructor(script: Record<string, ScriptedReply[]>) {
+  constructor(script: Record<string, ScriptedReply[] | ScriptedReply[][]>) {
     this.script = script;
   }
 
-  startTask(taskId: string): void {
-    this.replies = this.script[taskId] ?? [];
+  /** A task's script is one reply list for every attempt, or one list per attempt (the last one repeats). */
+  startTask(taskId: string, attempt: number): void {
+    const s = this.script[taskId] ?? [];
+    const perAttempt = s.length > 0 && Array.isArray(s[0]);
+    this.replies = perAttempt ? (s as ScriptedReply[][])[Math.min(attempt, s.length) - 1] : (s as ScriptedReply[]);
     this.next = 0;
   }
 
@@ -141,8 +150,8 @@ export class ScriptedBackend implements ModelBackend {
       .map((c, i) => ({ id: `call-${this.next}-${i}`, name: c.name, arguments: c.arguments, raw: JSON.stringify(c.arguments ?? {}) }));
     const answer = reply.text ?? "";
     const text = (reply.reasoning ? `<think>${reply.reasoning}</think>` : "") + answer;
-    return this.result(text, answer, calls, reply.failure ? [reply.failure] : [], calls.length ? "toolCalls" : "eosFound",
-      reply.reasoning?.length ?? 0);
+    return this.result(text, answer, calls, reply.failure ? [reply.failure] : [],
+      reply.stopReason ?? (calls.length ? "toolCalls" : "eosFound"), reply.reasoning?.length ?? 0);
   }
 
   private result(text: string, answer: string, toolCalls: ToolCall[], failures: { error: string; raw?: string }[],

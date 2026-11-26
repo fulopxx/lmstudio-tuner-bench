@@ -1,37 +1,50 @@
 {
-  "schema_version": 1,
-  "comment": "Example tasks for `bench agent run`. Fixture folders are below tasks/fixtures and are copied into a fresh sandbox per attempt. checks are judged by the core from the trace and the final answer (case-insensitive).",
+  "schema_version": 2,
+  "comment": "Example tasks for `bench agent run` (format v2). `toolsets` declares the mock tools; read_file is built in. Fixture folders are below tasks/fixtures and are copied into a fresh sandbox per attempt. Checks and expected calls are judged by the core from the trace and the final answer (case-insensitive).",
   "fixtures": "fixtures",
   "limits": { "maxRounds": 6, "toolTimeoutMs": 10000, "wallTimeMs": 180000, "maxToolResultChars": 8000, "maxTokensPerRound": 2048 },
+  "toolsets": {
+    "mock_lookup": {
+      "description": "Look up the status of an order by its id.",
+      "parameters": { "type": "object", "properties": { "order_id": { "type": "string", "description": "Order id, for example A-1042" } }, "required": ["order_id"] },
+      "rules": [
+        { "when": { "order_id": { "equals": "A-1042" } }, "result": "{\"order_id\": \"A-1042\", \"status\": \"shipped\", \"carrier\": \"DHL\", \"eta\": \"2026-12-01\"}" },
+        { "when": { "order_id": { "equals": "B-7" } }, "error": "order service unavailable (HTTP 503)" },
+        { "when": { "order_id": { "equals": "C-55" } }, "result": "{\"status\": \"delivered\"}", "delayMs": 8000 }
+      ],
+      "default": { "error": "order not found", "errorKind": "not_found" }
+    }
+  },
   "tasks": [
     {
       "id": "file-marker",
       "prompt": "What is the marker written in the file notes.txt?",
       "fixtures": "notes",
       "tools": ["read_file", "mock_lookup"],
-      "checks": { "tool_called": "read_file", "answer_contains": ["BLUE-HERON-17"] }
+      "expected_calls": [{ "name": "read_file", "arguments": { "path": { "equals": "notes.txt" } } }],
+      "checks": { "answer_contains": ["BLUE-HERON-17"] }
     },
     {
       "id": "order-status",
       "prompt": "Where is my order A-1042 and when will it arrive?",
       "tools": ["read_file", "mock_lookup"],
-      "mock": { "A-1042": { "result": "{\"order_id\": \"A-1042\", \"status\": \"shipped\", \"carrier\": \"DHL\", \"eta\": \"2026-12-01\"}" } },
-      "checks": { "tool_called": "mock_lookup", "answer_contains": ["shipped"], "answer_contains_any": ["2026-12-01", "december 1", "dec 1", "1 december", "12/01", "01.12"] }
+      "expected_calls": [{ "name": "mock_lookup", "arguments": { "order_id": { "equals": "A-1042" } } }],
+      "checks": { "answer_contains": ["shipped"], "answer_contains_any": ["2026-12-01", "december 1", "dec 1", "1 december", "12/01", "01.12"] }
     },
     {
       "id": "tool-error",
       "prompt": "What is the status of my order B-7?",
       "tools": ["read_file", "mock_lookup"],
-      "mock": { "B-7": { "error": "order service unavailable (HTTP 503)" } },
-      "checks": { "tool_called": "mock_lookup", "mentions_failure": ["unavailable", "error", "could not", "couldn't", "unable", "not available", "failed", "503"] }
+      "expected_calls": [{ "name": "mock_lookup", "arguments": { "order_id": { "equals": "B-7" } } }],
+      "checks": { "mentions_failure": ["unavailable", "error", "could not", "couldn't", "unable", "not available", "failed", "503"], "answer_not_contains": ["shipped", "delivered", "in transit"] }
     },
     {
       "id": "tool-timeout",
       "prompt": "Check the status of order C-55 for me.",
       "tools": ["read_file", "mock_lookup"],
-      "mock": { "C-55": { "result": "{\"status\": \"delivered\"}", "delayMs": 8000 } },
       "limits": { "toolTimeoutMs": 2000 },
-      "checks": { "tool_called": "mock_lookup", "mentions_failure": ["did not answer", "timed out", "timeout", "time out", "could not", "couldn't", "unable", "not respond", "try again", "failed"] }
+      "expected_calls": [{ "name": "mock_lookup", "arguments": { "order_id": { "equals": "C-55" } } }],
+      "checks": { "mentions_failure": ["did not answer", "timed out", "timeout", "time out", "could not", "couldn't", "unable", "not respond", "try again", "failed"], "answer_not_contains": ["delivered"] }
     }
   ]
 }

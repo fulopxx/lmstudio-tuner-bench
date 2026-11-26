@@ -9,6 +9,10 @@ What the planned parts have to do. Task numbers refer to the [roadmap](roadmap.m
 - Start, pause, resume, stop; live status.
 - Views: Pareto scatter plot (VRAM vs speed, point size = context length), model × test suite heatmap, radar chart for
   2–4 models, filterable table with Excel export.
+- Agent views (data from the core, see FA-43 and FA-47): failure category heatmap (model × category), composition
+  of failures (stacked bars, treemap or sunburst over level, category and subcode), share of silent failures per
+  model, primary to secondary categories (Sankey); per attempt a timeline of rounds and tool calls and a step view
+  with the evidence event highlighted.
 - Warning at measurement time: the browser uses VRAM and GPU.
 - Measure the browser overhead on a fixed configuration: dashboard closed / open with hardware acceleration / open
   without it. Include an offloaded configuration (without acceleration the CPU load rises). How to read per-process VRAM
@@ -53,7 +57,7 @@ Draft, to be detailed before step G.
 - Interrupt and recovery cases: stop during a tool call, truncated output, resume.
 - Second round (after M1): context truncation and summarization, tool result size limits, behaviour as context grows.
 
-### Interface to the core (decided 2026-11-26, not implemented)
+### Interface to the core (decided and implemented 2026-11-26)
 
 | ID | Decision | Reason |
 |---|---|---|
@@ -100,6 +104,91 @@ reasoning model passed 4 of 4; a 7B coder model passed 0 of 4 because it wrote e
 
 The headless assistant beta API of the LM Studio Bionic application (listed in the 1.2.1 release notes) is not used in
 M1; the installed version is 1.2.0.
+
+### Failure analysis plan for M1 step 5 (agreed 2026-11-26)
+
+M1 step 5 turns the harness into a measurement: a fixed task set, repeated attempts and a report that explains why a
+model fails. The plan was reviewed independently before it was accepted; the review's findings are folded in below,
+with the reason for each requirement, so that the decisions can be re-examined later.
+
+The step is split in two. **5a, foundations:** a live pre-check of sampling, additional trace fields, the task format v2
+with declarative mock tools, the categorizer and the taxonomy document. **5b, measurement:** the 20-task set with
+reference solutions, the report and the live runs. The split lets the categorizer be checked on synthetic and existing
+live traces before effort goes into the tasks.
+
+**Task format (v2, own schema version)**
+
+| ID | Requirement | Reason |
+|---|---|---|
+| FA-01 | Mock tools are declared in the task file (`toolsets`: name, description, parameter schema, response rules); tasks refer to them by name. `read_file` stays a built-in tool | New tools and tasks without code changes |
+| FA-02 | Response rules: the first matching rule wins (argument condition: `equals`, `one_of`, `any`); a rule can answer by call count (`sequence`, for "pending" and transient-error tasks); a default answer is required. No template language | Deterministic, reviewable tool behaviour |
+| FA-03 | Tool arguments are validated against a schema subset (`type`, `enum`, `required`) without a new dependency; a number sent as a string is `wrong_type`, not silently converted | Small models often get types wrong; that is data, not noise |
+| FA-04 | `expected_calls` is an ordered subsequence with argument matchers: the minimal call sequence must appear, extra calls are allowed and only flagged. `forbidden_tools` lists calls that fail the attempt | Exact matching would punish recovery from errors and harmless extra calls (the reason BFCL v3 moved to subsequence matching) |
+| FA-05 | Values a correct answer needs are unique, unguessable tokens; in chains the next argument comes from the previous result | A correct answer cannot appear without the tool calls; the order is forced by the data, not by the check |
+| FA-06 | `answer_not_contains` (deny list) next to the keyword checks | A keyword such as "error" can sit next to an invented result; a value the model cannot know is a sure sign of fabrication |
+| FA-07 | An attempt that ends with status `limit` fails unless the task accepts it | Otherwise a model that repeats until the round limit and answers after the harness note looks successful |
+| FA-08 | Every task has a scripted reference solution that passes and at least one scripted reply that fails with the expected category | Tests the task and the categorizer together |
+
+**Trace and run metadata**
+
+| ID | Requirement | Reason |
+|---|---|---|
+| FA-10 | `task_start` records run and attempt ids, model key, context length, the sampling settings actually sent, the system prompt, a hash of the offered tool schemas, a hash of the task file and the harness version | A trace must be re-evaluable on its own |
+| FA-11 | `prediction` records its start time and duration; `tool_call` and `tool_result` carry an own call sequence number next to the model's call id (which may be missing); `tool_result` carries an `errorKind` (`not_found`, `outside_sandbox`, `invalid_arguments`, `unknown_tool`, `timeout`, `mock_error`, `cancelled`) | The categorizer must not match error texts; round duration is not readable today |
+| FA-12 | Separate schema versions for the task file and the trace | They change at different times |
+| FA-13 | The harness asks LM Studio to stop at the context limit (`contextOverflowPolicy: stopAtLimit`) | The other policies truncate silently, which would hide context overflow |
+| FA-14 | A flat event trace stays; no span tree yet. The fields above keep a later export to OpenTelemetry GenAI spans lossless (attempt → `invoke_agent`, prediction → `chat`, tool call and result → `execute_tool`, `errorKind` → `error.type`) | One agent and three levels gain nothing from a span tree; a span is written when it closes, so an interrupted run would lose it; the convention is still in development |
+
+**Sampling**
+
+| ID | Requirement | Reason |
+|---|---|---|
+| FA-20 | A sampling profile per model family (temperature, top_p, top_k, min_p, repeat penalty, source URL) in a config file, with 0.7 as the fallback temperature; `--temperature` overrides; the harness sends every value explicitly | Today only the temperature is sent; the rest comes from LM Studio defaults, so results are not reproducible. Model cards differ (Qwen3 discourages greedy decoding) |
+| FA-21 | Before the task set is written, a live check: one task, five attempts at a temperature above 0; do the outputs differ? | The seed is a load parameter; if repeats were identical, repeating would measure nothing |
+
+**Categories and priority**
+
+| ID | Requirement | Reason |
+|---|---|---|
+| FA-30 | Few top-level categories, details as subcodes (list in the [failure taxonomy](failure_taxonomy.md)); every failed attempt gets exactly one primary category, further findings are secondary | 100–200 attempts per model would be spread too thin over many categories |
+| FA-31 | Three levels: structural (fixed order), behavioural (the detector whose first evidence comes earliest in the trace wins), outcome (fixed order, only if no behavioural finding) | A fixed global order misjudges chains of consequences (wrong argument → tool error → repetition → round limit); the cause shows in the time order |
+| FA-32 | Every finding carries evidence: trace file, event sequence number, rule name | Turns the report into diagnosis |
+| FA-33 | A text tool call (a call written as text in the answer, naming an offered tool in call form) is `format_invalid/text_tool_call`, not "no tool called" | Observed live: such a reply has no tool-call event at all |
+| FA-34 | `unclassified` for failures no rule explains; its share measures the taxonomy's coverage | Without it the last category becomes a catch-all |
+| FA-35 | Failures are also classed as silent (the user cannot notice: wrong result, invented value, hidden limit) or loud | The headline number of the report; it corresponds to an undetected fault in functional safety |
+| FA-36 | Secondary flags also on successful attempts: `recovered_error`, `redundant_calls`, `parallel_calls`, `reasoning_leak`, `sandbox_escape_attempt` | Recovery is the baseline for task 19; a reasoning leak can make a check pass falsely |
+| FA-37 | Heuristic rules are marked as such; their agreement with a manual review of about 50 failed attempts is published | Keyword rules have false positives and negatives |
+| FA-38 | One machine-readable source of the categories (id, level, silent or loud, reliability); a test checks that each id appears in the English and Hungarian taxonomy document | Keeps code and documents in step |
+| FA-39 | If almost all failures of a model are `format_invalid`, the report says that its other abilities could not be measured | Zeros would be misleading |
+
+**Runs and report (5b)**
+
+| ID | Requirement | Reason |
+|---|---|---|
+| FA-40 | `bench agent run --models a,b,c` runs the models one after another; an error of one model is recorded and the next one runs | One comparison table |
+| FA-41 | If the harness ends without a result line, the core rebuilds the attempts from the traces | Today a killed harness loses every result |
+| FA-42 | The run's time limit is computed from tasks, repeats and the attempt limit; the task file is copied into the run folder; result rows carry the taxonomy version | Slow models; later re-evaluation |
+| FA-43 | `bench agent report` recomputes categories from the traces and writes Markdown and JSON: per model and task the success rate with a Wilson interval, categories, median rounds and time, pass^k, the share of silent failures; also a model × category matrix and the counts of primary → secondary category pairs, as text | Small samples need intervals; pass^k shows reliability in one number |
+| FA-44 | Longest reliable chain: two tasks per chain length, ten attempts each; a length counts when at least 16 of 20 attempts pass and every shorter length counts too | One task × 5 is noisy and not monotonic (≥4/5 lets a 60 % model through in about one case in three) |
+| FA-45 | Five repeats by default, ten for published tables | 5/5 has a Wilson interval of 0.57–1.00 |
+| FA-46 | Mitigations are shown as "possible mitigation (not measured)" until task 19 measures them | No claim without measurement |
+| FA-47 | `bench agent show <run> <task-attempt>` prints an attempt's steps with their sequence numbers (predictions, tool calls with arguments, results with error kind, limits) and marks the evidence event of its category | The manual review of FA-37 needs a readable view of a trace; the same data feeds the graphical step view later |
+
+**Status of 5a (2026-11-26).** Implemented and covered by offline tests: FA-01 to FA-07, FA-10 to FA-14, FA-20,
+FA-30 to FA-36, FA-38, FA-41 (rebuild from traces) and the run folder copy of the task file from FA-42; default
+repeats raised to 5 (FA-45). FA-21, live: five attempts of one task on an 8B reasoning model at temperature 0.7 gave
+five different reasoning texts and the same final answer, so repeats do measure variation. Open for 5b: FA-08 (with
+the task set), FA-37, FA-39, FA-40, the computed time limit of FA-42, FA-43, FA-44, FA-46, FA-47.
+
+**Task set (5b), 20 tasks:** direct single tool (2), tool choice among close decoys including a destructive one (2),
+exact arguments: types, a hard identifier, a missing required parameter where asking back is correct (3), chains of 2,
+3 and 4 steps (1 + 2 + 2), tool error, missing file and a transient error that justifies one retry (3), timeout with a
+deny list (1), no tool needed: knowledge, answer already in the prompt, needed tool not offered (3), a "pending, check
+again" tool where success means stopping on its own within a call budget (1).
+
+**Out of M1:** language switch as a category, mandatory parallel calls, prompt injection in tool results, truncated
+large tool results (task 22), FMEA risk priority numbers (measured frequency and the silent / loud class instead),
+automatic choice of mitigations, the 14B model as a required row.
 
 ### Open
 
@@ -200,7 +289,7 @@ speculative load.
 
 Training draft models is out of scope. Downloading draft models or running third-party builds needs approval each time.
 
-### Phase 0 trial plan (agreed 2026-11-26, not run)
+### Phase 0 trial plan (agreed and run 2026-11-26)
 
 Boundaries: a standalone probe script (`harness/spec-probe.ts`), no grid integration, no application, runtime or SDK
 update, LM Studio settings files untouched. Models: a 7B coder model with a small draft model of the same family at 4k

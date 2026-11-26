@@ -122,6 +122,10 @@ Behaviour:
   not executed; it is kept in the trace.
 - Ctrl+C cancels the running prediction or tool call, records the attempt as aborted and skips the remaining ones; a
   second Ctrl+C kills the harness. The model is unloaded in both cases.
+- Sampling follows the model family's profile in `configs\sampling.json` (values from the model cards);
+  `--temperature` overrides the temperature. Five attempts per task by default.
+- Every failed attempt gets a failure category with the trace event as evidence, and is marked silent when the
+  answer gives the user no sign of the problem ([failure taxonomy](docs/failure_taxonomy.md)).
 - Results: one JSON line per attempt in `results\agent_<run>.jsonl`; the trace of every attempt (each prediction, tool
   call and result) and its sandbox below `results\agent\<run>\`.
 
@@ -145,13 +149,13 @@ of the grid (`.\bench run --help`). Agent runs take the model key directly (`--m
 
 | Folder | Contents |
 |---|---|
-| `configs\` | Sweep grids (model list, default load settings, the configurations to compare) and the sample plan of the speculative decoding probe |
+| `configs\` | Sweep grids (model list, default load settings, the configurations to compare), sampling profiles for agent runs and the sample plan of the speculative decoding probe |
 | `runner\` | Python code: the `bench` CLI, the sweep runner with its status and control files, the evaluation, the agent run (loading, starting the harness, checking the answers) and shared helpers |
 | `harness\` | TypeScript code on the LM Studio SDK: the model loader used by both runs, the agent harness (`run-tasks.ts` and `agent\`: tool loop, tools, sandbox, trace) and the probes. Search, git and shell tools are planned here, behind a sandbox restriction |
 | `tasks\` | Agent tasks with their checks, and the fixture files copied into each task's sandbox |
 | `tests\` | Offline tests (no GPU) and one live control test that uses the GPU |
 | `tools\` | PDF export of the documents and the diagram generator |
-| `docs\` | [Roadmap](docs/roadmap.md), [requirements](docs/requirements.md), [architecture](docs/architecture.md), [findings](docs/findings.md) and [load parameters](docs/lmstudio_load_parameters.md), in English and Hungarian |
+| `docs\` | [Roadmap](docs/roadmap.md), [requirements](docs/requirements.md), [architecture](docs/architecture.md), [findings](docs/findings.md), [failure taxonomy](docs/failure_taxonomy.md) and [load parameters](docs/lmstudio_load_parameters.md), in English and Hungarian |
 
 Created while running, not tracked by git:
 

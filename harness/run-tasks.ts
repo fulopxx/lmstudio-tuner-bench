@@ -14,7 +14,7 @@ import { LMStudioClient } from "@lmstudio/sdk";
 import { LmsSdkBackend, ScriptedBackend, type ModelBackend } from "./agent/backend.ts";
 import { runAttempt, type AttemptOutcome } from "./agent/loop.ts";
 import { createSandbox } from "./agent/sandbox.ts";
-import { checkSpec, limitsFor, type RunSpec } from "./agent/spec.ts";
+import { checkSpec, DEFAULT_SAMPLING, HARNESS_VERSION, limitsFor, type RunSpec } from "./agent/spec.ts";
 import { FileTrace } from "./agent/trace.ts";
 
 const stop = new AbortController();
@@ -89,8 +89,9 @@ try {
       let sandbox: string | null = null;
       try {
         sandbox = createSandbox(spec.outDir, name, spec.fixturesRoot, task.fixtures);
-        outcome = await runAttempt({ task, attempt, limits: limitsFor(spec, task), backend, sandbox,
-          trace: new FileTrace(tracePath), stop: stop.signal, temperature: spec.temperature ?? 0 });
+        outcome = await runAttempt({ run: spec.run, task, attempt, limits: limitsFor(spec, task), mocks: spec.tools ?? {},
+          backend, sandbox, trace: new FileTrace(tracePath), stop: stop.signal,
+          sampling: spec.sampling ?? DEFAULT_SAMPLING, meta: spec.meta });
       } catch (e) {
         outcome = { status: "error", answer: "", rounds: 0, toolCalls: 0, limitsHit: [], seconds: 0,
           error: String((e as Error)?.message ?? e).slice(0, 800) };
@@ -101,7 +102,7 @@ try {
     }
   }
   await client?.[Symbol.asyncDispose]();
-  finish({ schemaVersion: spec.schemaVersion, run: spec.run, backend: spec.backend.type, app,
+  finish({ schemaVersion: spec.schemaVersion, harnessVersion: HARNESS_VERSION, run: spec.run, backend: spec.backend.type, app,
     stopped: stop.signal.aborted, attempts }, 0);
 } catch (e) {
   try { await client?.[Symbol.asyncDispose](); } catch { /* already broken */ }

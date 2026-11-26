@@ -30,7 +30,7 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 14 | Másodlagos NiceGUI irányítófelület | ⚪ nyitott, alacsony prioritás |
 | 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | 🟡 részben (dokumentumok kész, felület nincs) |
 | 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (M1 harness: fájlolvasás és mock toolok, korlátok, leállítás, trace; keresés, git, shell, helyreállítás és kontextuskezelés nyitott) |
-| 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd [követelmények](requirements.hu.md), 3. pont) | ⚪ nyitott |
+| 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (1. verziós taxonómia és szabályalapú kategorizáló bizonyítékkal; a modellenkénti riport nyitott) |
 | 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | ✅ kész |
 | 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | ⚪ nyitott |
 | 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | ⚪ nyitott |
@@ -45,6 +45,8 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 - Eredményformátum: sémaverzió és hardver-ujjlenyomat (GPU, driver, LM Studio és runtime verzió).
 - Modellenként ajánlott preset, összevetve a jelenlegi LM Studio-beállításokkal. Alkalmazás csak megerősítés után.
 - Később: mintavételi paraméterek hangolása.
+- M1 után (17. feladat): sok próbálkozás összesített tool-átmenet gráfja (élvastagság = gyakoriság; ciklusok és a
+  helyes lánctól való letérések), modell, feladat és kategória szerint szűrhetően, a core DOT-exportjával.
 
 ## 2. Sorrend
 
@@ -58,7 +60,7 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 | 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | ✅ kész |
 | 3 | Repó előkészítése, licenc, publikus kiadás | 🔵 folyamatban |
 | 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | ✅ kész (2026-11-26: `bench agent run`, élőben 4/4 példafeladat egy modellen; a Ctrl+C leállítás csak offline tesztelve) |
-| 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | ⚪ nyitott |
+| 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | 🔵 folyamatban (az 5a alapjai 2026-11-26-án elkészültek: v2 feladatformátum, mintavételi profilok, trace-mezők, kategorizáló, [hibataxonómia](failure_taxonomy.hu.md); az 5b feladatkészlet, riport és élő futások nyitottak) |
 | 6 | Eredménytábla a README-ben | ⚪ nyitott |
 
 M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGUI.
@@ -110,6 +112,7 @@ lépéssel együtt.
 | Webes fejlesztés | A D lépés után indul, a `web/` mappában; előbb a core interfészét egyeztetjük |
 | Agent harness | Saját modul hibaelemzéssel, kezdettől TypeScriptben. Az első változatban nincs shell tool |
 | Harness interfész | Modellenként és feladatcsomagonként egy harness process, JSON spec a stdinen, `RESULT:` összegzés, JSONL trace; ellenőrzés és kategorizálás a core-ban; saját tool loop SDK-s és scriptelt backenddel (2026-11-26; [követelmények](requirements.hu.md), 3. pont) |
+| Agent-eredmények nézetei | A táblázatokat és a gráfmodelleket a core állítja elő, a CLI exportálja (JSON; DOT, amikor az első gráfnézet készül); a felületek csak rajzolnak. Harmadik felület nincs (tkinter sem). Gráfkönyvtár (`networkx`) vagy a Graphviz bináris csak külön döntéssel, ha gráfalgoritmus kell (2026-11-26) |
 
 ### Nyelv és dokumentáció
 
@@ -138,13 +141,14 @@ lépéssel együtt.
 | Háttér VRAM-foglalás | A sebességmérés csak szabad GPU-n érvényes. Hiányzik a mód arra, hogy a VRAM határán lévő konfigurációk összehasonlításakor a háttérfoglalás rögzített vagy kontrollált legyen | ⚪ nyitott |
 | CLI `lms load` | A per-modell default config értékekhez való viszonya nem mért | ⚪ nyitott |
 | Speculative decoding | A 0. fázis próbája 2026-11-26-án kész ([követelmények](requirements.hu.md), 5. pont): csak a loadnál kapcsolható, számlálók az SDK-ban és a REST-ben. Nyitott az 1. fázisra: a draft párok kompatibilitás-ellenőrzése, a maximális draft token, miért tér el a greedy kimenet a baseline-tól | ⚪ nyitott |
+| Értékek eredete az agent-trace-ekben | Egy gráf arról, honnan származik egy argumentum- vagy válaszérték (prompt, korábbi tool-eredmények), kiválthatná a `wrong_arguments/invented_value` mögötti szövegkeresést, és megmutatná, hogyan jut el egy tool-hiba a válaszig. Az élek meghatározása bizonytalan, mert a modellek átfogalmazzák az értékeket; M1 után kipróbálandó | ⚪ nyitott |
 
 ### Stabilitás és tesztelés
 
 | Pont | Jelenlegi ismeret | Állapot |
 |---|---|---|
 | Élőben nem próbált (sweep) | `stop --now`; automatikus szünet foglalt GPU-nál és az utána következő automatikus folytatás (csak offline tesztek); generálás közben megszakadt kapcsolat (csak offline tesztek); Ctrl+C; betöltési timeout; `--redo-failed`; a GPU-támogatás nélküli runtime figyelmeztetése. A gépújraindítás utáni folytatást 2026-11-26-án egyszer használtuk | ⚪ nyitott |
-| Élőben nem próbált (agent harness) | Valódi futás leállítása: Ctrl+C vagy a stop parancs, a harnesst leállító második Ctrl+C és az utána maradó trace; `--run-timeout`; körkorlát és próbálkozási időkorlát valódi modellel; az SDK által értelmezhetetlennek jelzett tool-hívás (`onToolCallRequestFailure`, még nem láttuk); egy megszakadt futás után bent maradt `bench-agent` eltávolítása; 1-nél több `--repeats`, 0-nál nagyobb temperature, 8192-től eltérő context; valódi modell próbálkozása a sandboxon kívüli olvasással. Az utolsó három kivételével offline tesztek lefedik | ⚪ nyitott |
+| Élőben nem próbált (agent harness) | Valódi futás leállítása: Ctrl+C vagy a stop parancs, a harnesst leállító második Ctrl+C és az utána maradó trace; `--run-timeout`; körkorlát és próbálkozási időkorlát valódi modellel; az SDK által értelmezhetetlennek jelzett tool-hívás (`onToolCallRequestFailure`, még nem láttuk); egy megszakadt futás után bent maradt `bench-agent` eltávolítása; 1-nél több `--repeats`, 0-nál nagyobb temperature, 8192-től eltérő context; valódi modell próbálkozása a sandboxon kívüli olvasással. Az utolsó három kivételével offline tesztek lefedik. Az 5a lépésben új, csak offline: a teljes mintavételi profil (top_p, top_k, min_p, repeat penalty) és a `stopAtLimit` küldése a LM Studiónak; hívásszám szerinti mock-válasz (`sequence`); a próbálkozások felépítése a trace-ekből leállított harness után; a kategorizáló valódi futáson (csak két rögzített trace-en) | ⚪ nyitott |
 | Késő heartbeat | A 2026-11-26-i sweepek közben a `status --watch` többször „process gone” üzenetet adott, pedig a futás ment tovább. A nézet egy élő process késő heartbeatjénél már nem lép ki; hogy a heartbeat miért késett, ismeretlen (nem reprodukáltuk) | 🟡 részben |
 | Kijelző lefagyása | Ugyanezen sweepek alatt egyszer a kijelző nem reagált tovább (a Windows szerint az `explorer.exe` a `dwm.exe`-re várt), miközben a futtató még írta a heartbeatjét; a gépet újra kellett indítani, és a `resume` folytatta a futást. Videódriver-reset vagy hardverhiba nem került a naplóba; az ok ismeretlen | ⚪ nyitott |
 

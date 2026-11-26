@@ -38,9 +38,12 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `harness/tools-probe.ts` | Az egykörös tool-hívás próbája `respond()` és `rawTools` használatával: callbackek, a tool eredményének visszaküldése, tool nélküli eset, megszakítás |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | A próba tiszta részei (tervellenőrzés, módonkénti load config, draft arányok) és offline tesztjük |
 | `runner/agent.py` | `bench agent run`: betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel értékel |
+| `runner/failures.py` | Hibataxonómia (az egyetlen gépileg olvasható forrás) és az agent-próbálkozások szabályalapú kategorizálója; tiszta függvények |
+| `configs/sampling.json` | Modellcsaládonkénti mintavételi profilok az agent-futásokhoz, forrással |
 | `harness/run-tasks.ts` | Az agent harness belépési pontja: spec a stdinen, tool loop feladat-próbálkozásonként, `RESULT:` összegzés |
 | `harness/agent/` | A harness moduljai: spec, modell-backendek (SDK-s és scriptelt), tool loop, toolok, sandbox, trace; offline tesztek az `agent.test.ts`-ben |
-| `tasks/examples.json`, `tasks/fixtures/` | Példa agent-feladatok deklaratív ellenőrzésekkel, és a sandboxukba másolt fájlok |
+| `tasks/examples.json`, `tasks/fixtures/` | Példa agent-feladatok (v2 formátum: deklaratív mock toolok, várt hívások, ellenőrzések), és a sandboxukba másolt fájlok |
+| `tests/fixtures/traces/` | Rögzített élő trace-ek a kategorizáló regressziós mintáiként |
 | `harness/package.json` | Node.js verziókövetelmény, a rögzített SDK verzió, TypeScript típusellenőrzés és teszt scriptek |
 | `configs/*.json` | Mérési rácsok (4.1) |
 | `tools/export_docs.py` | A dokumentumok (angol és magyar) PDF-exportja |

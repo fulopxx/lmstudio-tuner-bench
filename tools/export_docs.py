@@ -25,7 +25,7 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PUBLIC_DOCS = ("roadmap", "requirements", "findings", "architecture")
+PUBLIC_DOCS = ("roadmap", "requirements", "findings", "architecture", "failure_taxonomy")
 LOCAL_SETTINGS = ROOT / "tools" / "export_docs.local.json"
 LANGS = {"": "en", ".hu": "hu"}  # file suffix -> language; English is primary
 STATES = {"done": "done", "partial": "partial", "in progress": "running", "open": "open",

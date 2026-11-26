@@ -30,7 +30,7 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 14 | Secondary NiceGUI control panel | ⚪ open, low priority |
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | 🟡 partial (documents done, no UI yet) |
 | 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see [requirements](requirements.md), section 3) | 🟡 partial (M1 harness: file read and mock tools, limits, stop, trace; search, git, shell, recovery and context handling open) |
-| 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see [requirements](requirements.md), section 3) | ⚪ open |
+| 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see [requirements](requirements.md), section 3) | 🟡 partial (taxonomy v1 and rule-based categorizer with evidence; report per model open) |
 | 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | ✅ done |
 | 19 | Model-specific tool-call differences and repair methods (retry, schema constraint, grammar) | ⚪ open |
 | 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | ⚪ open |
@@ -45,6 +45,8 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 - Result format: schema version and hardware fingerprint (GPU, driver, LM Studio and runtime version).
 - Recommended preset per model, compared with the current LM Studio settings. Applied only after confirmation.
 - Later: tuning of sampling parameters.
+- After M1 (task 17): an aggregated tool transition graph over many attempts (edge weight = frequency; loops and
+  departures from the correct chain), filterable by model, task and category, exported by the core as DOT.
 
 ## 2. Order of work
 
@@ -58,7 +60,7 @@ M1 comes first: one thin slice that works end to end. The A–L table below appl
 | 2 | Clean sweep, evaluation, recommended settings per model | ✅ done |
 | 3 | Repository preparation, license, public release | 🔵 in progress |
 | 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | ✅ done (2026-11-26: `bench agent run`, 4/4 example tasks live on one model; Ctrl+C stop tested offline only) |
-| 5 | 10–20 fixed tasks, repeated runs, failure category report | ⚪ open |
+| 5 | 10–20 fixed tasks, repeated runs, failure category report | 🔵 in progress (5a foundations done 2026-11-26: task format v2, sampling profiles, trace fields, categorizer, [failure taxonomy](failure_taxonomy.md); 5b task set, report and live runs open) |
 | 6 | Result table in the README | ⚪ open |
 
 After M1: web dashboard, quality suites, context management measurements, NiceGUI.
@@ -109,6 +111,7 @@ with step C.
 | Web development | Starts after step D and lives in the `web/` folder; the core interface is agreed first |
 | Agent harness | Own module with failure analysis, written in TypeScript from the start. The first version has no shell tool |
 | Harness interface | One harness process per model and task set, JSON spec on stdin, `RESULT:` summary, JSONL trace; checks and categories in the core; own tool loop with an SDK and a scripted backend (2026-11-26; [requirements](requirements.md), section 3) |
+| Agent result views | The core produces the tables and graph models, the CLI exports them (JSON; DOT when the first graph view is built); interfaces only draw. No third interface (no tkinter). A graph library (`networkx`) or the Graphviz binary only by a separate decision, when a graph algorithm is needed (2026-11-26) |
 
 ### Language and documentation
 
@@ -137,13 +140,14 @@ with step C.
 | Background VRAM use | Speed measurements are only valid on an idle GPU. A way to hold or record the background use when comparing configurations near the VRAM limit is missing | ⚪ open |
 | CLI `lms load` | Its relation to the per-model default config values has not been measured | ⚪ open |
 | Speculative decoding | Phase 0 trial done on 2026-11-26 ([requirements](requirements.md), section 5): switched at load only, counters in the SDK and REST. Open for phase 1: compatibility check of draft pairs, max draft tokens, why greedy outputs differ from the baseline | ⚪ open |
+| Value provenance in agent traces | A graph of where each argument and answer value comes from (prompt, earlier tool results) could replace the text search behind `wrong_arguments/invented_value` and show how a tool error reaches the answer. Defining the edges is uncertain, since models rephrase values; to be tried after M1 | ⚪ open |
 
 ### Stability and testing
 
 | Item | Current knowledge | Status |
 |---|---|---|
 | Not tried live (sweep) | `stop --now`; automatic pause on a busy GPU and the automatic resume after it (offline tests only); a connection breaking during generation (offline tests only); Ctrl+C; load timeout; `--redo-failed`; the warning for a runtime without GPU support. Resume after a reboot was used once on 2026-11-26 | ⚪ open |
-| Not tried live (agent harness) | Stop of a real run: Ctrl+C or the stop command, the second Ctrl+C that kills the harness and the trace it leaves; `--run-timeout`; round limit and attempt time limit with a real model; a tool call the SDK reports as unparsable (`onToolCallRequestFailure`, never seen); removal of a `bench-agent` instance left over from a killed run; `--repeats` above 1, a temperature above 0, a context other than 8192; a real model trying to read outside the sandbox. All but the last three are covered by offline tests | ⚪ open |
+| Not tried live (agent harness) | Stop of a real run: Ctrl+C or the stop command, the second Ctrl+C that kills the harness and the trace it leaves; `--run-timeout`; round limit and attempt time limit with a real model; a tool call the SDK reports as unparsable (`onToolCallRequestFailure`, never seen); removal of a `bench-agent` instance left over from a killed run; `--repeats` above 1, a temperature above 0, a context other than 8192; a real model trying to read outside the sandbox. All but the last three are covered by offline tests. New in step 5a, offline only: the full sampling profile (top_p, top_k, min_p, repeat penalty) and `stopAtLimit` sent to LM Studio; mock answers by call count (`sequence`); the rebuild of attempts from traces after a killed harness; the categorizer on a real run (only two recorded traces) | ⚪ open |
 | Late heartbeat | During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced) | 🟡 partial |
 | Display freeze | Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display driver reset or hardware error was logged; the cause is unknown | ⚪ open |
 

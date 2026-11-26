@@ -126,6 +126,10 @@ Viselkedés:
   kiírt tool-hívás nem fut le; a trace-ben megmarad.
 - A Ctrl+C megszakítja a futó predikciót vagy tool-hívást, a próbálkozást megszakítottként rögzíti, a hátralévőket
   kihagyja; a második Ctrl+C leállítja a harnesst. A modell mindkét esetben eltávolításra kerül.
+- A mintavétel a modellcsalád profilját követi a `configs\sampling.json` fájlból (értékek a modellkártyákról); a
+  `--temperature` felülírja a temperature-t. Alapból feladatonként öt próbálkozás.
+- Minden sikertelen próbálkozás hibakategóriát kap, bizonyítékként a trace megfelelő eseményével, és csendesnek
+  jelölődik, ha a válasz semmilyen jelét nem adja a hibának ([hibataxonómia](docs/failure_taxonomy.hu.md)).
 - Eredmények: próbálkozásonként egy JSON sor a `results\agent_<run>.jsonl` fájlban; minden próbálkozás trace-e (minden
   predikció, tool-hívás és eredmény) és sandboxa a `results\agent\<run>\` mappában.
 
@@ -150,13 +154,13 @@ kapja (`--model`).
 
 | Mappa | Tartalom |
 |---|---|
-| `configs\` | Sweep rácsok (modellista, alapértelmezett load beállítások, az összehasonlítandó konfigurációk) és a speculative decoding próba mintaterve |
+| `configs\` | Sweep rácsok (modellista, alapértelmezett load beállítások, az összehasonlítandó konfigurációk), az agent-futások mintavételi profiljai és a speculative decoding próba mintaterve |
 | `runner\` | Python kód: a `bench` CLI, a sweep futtató az állapot- és vezérlőfájljaival, a kiértékelés, az agent-futás (betöltés, a harness indítása, a válaszok ellenőrzése) és a közös segédfüggvények |
 | `harness\` | TypeScript kód a LM Studio SDK-ra építve: a két futás közös modellbetöltője, az agent harness (`run-tasks.ts` és `agent\`: tool loop, toolok, sandbox, trace) és a próbák. Ide kerülnek majd a keresés, git és shell toolok, sandbox-korlátozással |
 | `tasks\` | Agent-feladatok az ellenőrzéseikkel, és a feladatonkénti sandboxba másolt fixture-fájlok |
 | `tests\` | Offline tesztek (GPU nélkül) és egy GPU-t használó live vezérlési teszt |
 | `tools\` | A dokumentumok PDF-exportja és az ábragenerátor |
-| `docs\` | [Roadmap](docs/roadmap.hu.md), [követelmények](docs/requirements.hu.md), [architektúra](docs/architecture.hu.md), [megállapítások](docs/findings.hu.md) és [load paraméterek](docs/lmstudio_load_parameters.hu.md), angolul és magyarul |
+| `docs\` | [Roadmap](docs/roadmap.hu.md), [követelmények](docs/requirements.hu.md), [architektúra](docs/architecture.hu.md), [megállapítások](docs/findings.hu.md), [hibataxonómia](docs/failure_taxonomy.hu.md) és [load paraméterek](docs/lmstudio_load_parameters.hu.md), angolul és magyarul |
 
 Futás közben keletkeznek, a git nem követi őket:
 

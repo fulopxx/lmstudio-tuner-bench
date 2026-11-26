@@ -8,7 +8,7 @@
     { "text": "Your order A-1042 has shipped with DHL and should arrive on 2026-12-01." }
   ],
   "tool-error": [
-    { "text": "I cannot see your order without looking it up, but it is probably fine." }
+    { "text": "Your order B-7 is on its way and should arrive soon." }
   ],
   "tool-timeout": [
     { "toolCalls": [{ "name": "mock_lookup", "arguments": { "order_id": "C-55" } }] },

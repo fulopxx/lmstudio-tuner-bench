@@ -1,15 +1,18 @@
-"""Agent task runs: load one model, run a task set through the TypeScript harness, check the answers.
+"""Agent task runs: load one model, run a task set through the TypeScript harness, check and categorize the attempts.
 
   bench agent run --model qwen3-8b [--tasks tasks/examples.json] [--repeats 1] [--context 8192]
   bench agent run --scripted replies.json      offline: scripted model replies, no GPU and no LM Studio
 
-The harness (harness/run-tasks.ts) executes the tool loop and writes one JSONL trace per attempt; this module
-loads and unloads the model, starts the harness, passes Ctrl+C on as a stop command and judges each attempt
-from its trace with the task's declarative checks. Results: results/agent_<run>.jsonl, traces and sandboxes
-below results/agent/<run>/. Only the model instance loaded here ("bench-agent") is unloaded.
+The harness (harness/run-tasks.ts) executes the tool loop and writes one JSONL trace per attempt; this module loads
+and unloads the model, starts the harness, passes Ctrl+C on as a stop command, judges each attempt from its trace with
+the task's checks and expected calls, and gives every failed attempt a category (runner/failures.py). Results:
+results/agent_<run>.jsonl; traces, sandboxes and a copy of the task file below results/agent/<run>/. Only the model
+instance loaded here ("bench-agent") is unloaded.
 """
 import argparse
+import hashlib
 import json
+import re
 import shutil
 import statistics
 import subprocess
@@ -20,15 +23,23 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import failures  # noqa: E402
 import sweep  # noqa: E402
 from smoke import LMS, StepError, sh  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 HARNESS = ROOT / "harness"
 IDENTIFIER = "bench-agent"
-SCHEMA_VERSION = 1
+TASKS_SCHEMA_VERSION = 2  # the task file (FA-12)
+SPEC_SCHEMA_VERSION = 2  # the run spec sent to the harness
+SAMPLING_FILE = ROOT / "configs" / "sampling.json"
 STOP_GRACE_S = 20  # after a stop command, the harness gets this long before it is killed
-CHECK_KEYS = ("answer_contains", "answer_contains_any", "tool_called", "tool_not_called", "mentions_failure")
+BUILTIN_TOOLS = ("read_file",)
+CHECK_KEYS = ("answer_contains", "answer_contains_any", "answer_not_contains", "tool_called", "tool_not_called",
+              "mentions_failure")
+TASK_KEYS = ("id", "comment", "prompt", "system", "fixtures", "tools", "limits", "expected_calls", "forbidden_tools",
+             "checks", "accept_limit", "no_tool_needed", "max_tool_calls", "loop_threshold")
+HARNESS_TASK_KEYS = ("id", "prompt", "system", "fixtures", "tools", "limits")
 
 
 def log(m):
@@ -41,6 +52,58 @@ def load_settings(context):
             "physical_batch_size": 512, "parallel": 1, "offload_kv_cache_to_gpu": True, "unified_kv": True,
             "threads": 8, "kv_quant": None}
 
+
+# ---------------------------------------------------------------- task file and sampling profile
+
+def load_tasks(path):
+    """Reads and checks a task file (format v2); returns the data and its hash."""
+    raw = Path(path).read_bytes()
+    data = json.loads(raw.decode("utf-8"))
+    if data.get("schema_version") != TASKS_SCHEMA_VERSION:
+        raise StepError("fail", f"{path}: schema_version must be {TASKS_SCHEMA_VERSION}")
+    toolsets = data.get("toolsets", {})
+    problems = []
+    ids = set()
+    for t in data.get("tasks", []):
+        tid = t.get("id")
+        if tid in ids:
+            problems.append(f"task id '{tid}' is not unique")
+        ids.add(tid)
+        problems += [f"task {tid}: unknown key '{k}'" for k in t if k not in TASK_KEYS]
+        problems += [f"task {tid}: unknown check '{k}'" for k in t.get("checks", {}) if k not in CHECK_KEYS]
+        offered = set(t.get("tools", []))
+        for name in offered:
+            if name not in BUILTIN_TOOLS and name not in toolsets:
+                problems.append(f"task {tid}: tool '{name}' is not declared in toolsets")
+        for e in t.get("expected_calls", []):
+            if e.get("name") not in offered:
+                problems.append(f"task {tid}: expected call to '{e.get('name')}', which is not offered")
+            for arg, m in e.get("arguments", {}).items():
+                if not isinstance(m, dict) or len(m) != 1 or next(iter(m)) not in ("equals", "one_of", "any"):
+                    problems.append(f"task {tid}: matcher of '{arg}' must be one of equals, one_of, any")
+        if t.get("no_tool_needed") and t.get("expected_calls"):
+            problems.append(f"task {tid}: no_tool_needed together with expected_calls")
+    if not ids:
+        problems.append("no tasks")
+    if problems:
+        raise StepError("fail", f"{path}: " + "; ".join(problems))
+    return data, hashlib.sha256(raw).hexdigest()[:16]
+
+
+def sampling_for(model, temperature=None, path=SAMPLING_FILE):
+    """The sampling profile of a model key (FA-20); `temperature` overrides only the temperature."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    profile = next((p for p in data["profiles"] if re.search(p["match"], model or "", re.I)), data["fallback"])
+    s = {"temperature": profile["temperature"], "topP": profile.get("top_p"), "topK": profile.get("top_k"),
+         "minP": profile.get("min_p"), "repeatPenalty": profile.get("repeat_penalty"),
+         "source": f"{profile['id']}: {profile.get('source', '')}"}
+    if temperature is not None:
+        s["temperature"] = temperature
+        s["source"] += " (temperature overridden)"
+    return {k: v for k, v in s.items() if v is not None}
+
+
+# ---------------------------------------------------------------- traces and judging
 
 def read_events(trace_path):
     """Events of one trace; a broken last line (killed harness) is skipped."""
@@ -58,40 +121,78 @@ def read_events(trace_path):
 
 
 def evaluate_attempt(task, attempt, events):
-    """Pass/fail of one attempt from its outcome and trace (the checks are declared in the task file)."""
+    """Pass/fail of one attempt from its outcome and trace: checks, expected calls (ordered subsequence, extra calls
+    allowed, FA-04), forbidden tools, call budget. Status `limit` fails unless the task accepts it (FA-07)."""
     checks = task.get("checks", {})
     answer = (attempt.get("answer") or "").lower()
-    called = [e.get("name") for e in events if e.get("event") == "tool_call" and e.get("parsed")]
+    calls = failures.parsed_calls(events)
+    called = [c.get("name") for c in calls]
     results = {}
     if "answer_contains" in checks:
         results["answer_contains"] = all(s.lower() in answer for s in checks["answer_contains"])
     if "answer_contains_any" in checks:
         results["answer_contains_any"] = any(s.lower() in answer for s in checks["answer_contains_any"])
+    if "answer_not_contains" in checks:
+        results["answer_not_contains"] = not any(s.lower() in answer for s in checks["answer_not_contains"])
+    if "mentions_failure" in checks:
+        results["mentions_failure"] = any(s.lower() in answer for s in checks["mentions_failure"])
     if "tool_called" in checks:
         results["tool_called"] = checks["tool_called"] in called
     if "tool_not_called" in checks:
         name = checks["tool_not_called"]
         results["tool_not_called"] = not called if name == "*" else name not in called
-    if "mentions_failure" in checks:
-        results["mentions_failure"] = any(s.lower() in answer for s in checks["mentions_failure"])
-    ran = attempt.get("status") in ("done", "limit")
-    return {"passed": ran and all(results.values()), "checks": results,
-            "tools_called": called, "trace_complete": bool(events) and events[-1].get("event") == "task_end"}
+    if task.get("no_tool_needed"):
+        results["no_tool_called"] = not called
+    if task.get("expected_calls"):
+        done, _ = failures.subsequence_prefix(task["expected_calls"], calls)
+        results["expected_calls"] = done == len(task["expected_calls"])
+    if task.get("forbidden_tools"):
+        results["forbidden_tools"] = not set(called) & set(task["forbidden_tools"])
+    if task.get("max_tool_calls") is not None:
+        results["max_tool_calls"] = len(calls) <= task["max_tool_calls"]
+    status = attempt.get("status")
+    ran = status == "done" or (status == "limit" and bool(task.get("accept_limit")))
+    return {"passed": ran and all(results.values()), "checks": results, "tools_called": called,
+            "trace_complete": bool(events) and events[-1].get("event") == "task_end"}
 
 
-def load_tasks(path):
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if data.get("schema_version") != SCHEMA_VERSION:
-        raise StepError("fail", f"{path}: schema_version must be {SCHEMA_VERSION}")
-    for t in data["tasks"]:
-        unknown = set(t.get("checks", {})) - set(CHECK_KEYS)
-        if unknown:
-            raise StepError("fail", f"task {t.get('id')}: unknown checks {sorted(unknown)}")
-    return data
+def attempts_from_traces(out_dir, tasks, repeats):
+    """FA-41: rebuilds the attempt list from the traces when the harness gave no result line."""
+    attempts = []
+    for t in tasks:
+        for n in range(1, repeats + 1):
+            path = Path(out_dir) / "traces" / f"{t['id']}-{n}.jsonl"
+            if not path.is_file():
+                attempts.append({"task": t["id"], "attempt": n, "status": "skipped"})
+                continue
+            events = read_events(path)
+            end = next((e for e in reversed(events) if e.get("event") == "task_end"), None)
+            row = {"task": t["id"], "attempt": n, "trace": str(path),
+                   "sandbox": str(Path(out_dir) / "sandbox" / f"{t['id']}-{n}")}
+            if end:
+                row.update(status=end.get("status"), answer=end.get("answer"), rounds=end.get("rounds"),
+                           toolCalls=end.get("toolCalls"), limitsHit=end.get("limitsHit"), seconds=end.get("seconds"),
+                           error=end.get("error"))
+            else:
+                row.update(status="error", error="trace ended without task_end (harness stopped)")
+            attempts.append(row)
+    return attempts
+
+
+# ---------------------------------------------------------------- harness process
+
+def send_stop(p):
+    try:
+        p.stdin.write(json.dumps({"cmd": "stop"}) + "\n")
+        p.stdin.flush()
+    except OSError:
+        pass
+    return time.time()
 
 
 def run_harness(spec, timeout_s):
-    """Starts the harness, streams its progress, sends stop on Ctrl+C; returns the RESULT summary."""
+    """Starts the harness, streams its progress, sends stop on Ctrl+C. Returns the RESULT summary, or None when the
+    harness ended without one (killed, crashed); raises if the harness reported an unusable spec."""
     p = subprocess.Popen([shutil.which("node") or "node", "run-tasks.ts"], cwd=HARNESS, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
                          errors="replace")
@@ -139,20 +240,13 @@ def run_harness(spec, timeout_s):
             pass
     line = next((ln for ln in reversed(lines) if ln.startswith("RESULT:")), None)
     if not line:
-        raise StepError("fail", "harness ended without a result: " + "\n".join(errors or lines)[-600:])
+        log("harness ended without a result: rebuilding the attempts from the traces. " +
+            "\n".join(errors or lines)[-300:])
+        return None
     result = json.loads(line[len("RESULT:"):])
     if "error" in result:
         raise StepError("fail", "harness: " + result["error"])
     return result
-
-
-def send_stop(p):
-    try:
-        p.stdin.write(json.dumps({"cmd": "stop"}) + "\n")
-        p.stdin.flush()
-    except OSError:
-        pass
-    return time.time()
 
 
 def machine_ready(min_free_mib, max_util):
@@ -171,8 +265,10 @@ def machine_ready(min_free_mib, max_util):
         raise StepError("fail", f"GPU not idle: {total - used} MiB free, {util}% busy")
 
 
+# ---------------------------------------------------------------- the run command
+
 def cmd_run(a):
-    data = load_tasks(a.tasks)
+    data, task_hash = load_tasks(a.tasks)
     tasks = data["tasks"]
     if a.only:
         wanted = set(a.only.split(","))
@@ -181,11 +277,20 @@ def cmd_run(a):
             raise StepError("fail", f"no task matches --only {a.only}")
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = ROOT / "results" / "agent" / run_id
-    harness_tasks = [{k: v for k, v in t.items() if k != "checks"} for t in tasks]
-    spec = {"schemaVersion": SCHEMA_VERSION, "run": run_id, "tasks": harness_tasks, "repeats": a.repeats,
-            "limits": data.get("limits", {}), "temperature": a.temperature, "outDir": str(out_dir),
-            "fixturesRoot": str((Path(a.tasks).resolve().parent / data.get("fixtures", "fixtures")))}
-    meta = {"run": run_id, "tasks_file": str(a.tasks), "repeats": a.repeats, "temperature": a.temperature}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(a.tasks, out_dir / "tasks.json")  # FA-42: the run can be re-evaluated later
+    used_tools = {n for t in tasks for n in t.get("tools", [])}
+    model_key = "scripted" if a.scripted else a.model
+    sampling = sampling_for(model_key, a.temperature)
+    spec = {"schemaVersion": SPEC_SCHEMA_VERSION, "run": run_id,
+            "tools": {k: v for k, v in data.get("toolsets", {}).items() if k in used_tools},
+            "tasks": [{k: v for k, v in t.items() if k in HARNESS_TASK_KEYS} for t in tasks],
+            "repeats": a.repeats, "limits": data.get("limits", {}), "sampling": sampling, "outDir": str(out_dir),
+            "fixturesRoot": str((Path(a.tasks).resolve().parent / data.get("fixtures", "fixtures"))),
+            "meta": {"model": model_key, "contextLength": None if a.scripted else a.context,
+                     "taskFile": str(a.tasks), "taskFileHash": task_hash}}
+    meta = {"run": run_id, "tasks_file": str(a.tasks), "tasks_hash": task_hash, "repeats": a.repeats,
+            "sampling": sampling, "taxonomy_version": failures.TAXONOMY_VERSION}
     loaded = False
     try:
         if a.scripted:
@@ -207,36 +312,41 @@ def cmd_run(a):
             spec["backend"] = {"type": "lmstudio", "identifier": IDENTIFIER}
             meta.update(model=a.model, backend="lmstudio", app_version=info.get("app"), context=a.context,
                         env=sweep.environment())
-        log(f"run {run_id}: {len(tasks)} task(s) x {a.repeats}")
+        log(f"run {run_id}: {len(tasks)} task(s) x {a.repeats}, sampling {sampling['source']}")
         summary = run_harness(spec, a.run_timeout)
     finally:
         if loaded:
             sh([LMS, "unload", IDENTIFIER], 60)
+    attempts = summary["attempts"] if summary else attempts_from_traces(out_dir, tasks, a.repeats)
 
     by_id = {t["id"]: t for t in tasks}
     rows = []
     results_file = ROOT / "results" / f"agent_{run_id}.jsonl"
-    for at in summary["attempts"]:
-        verdict = evaluate_attempt(by_id[at["task"]], at, read_events(at["trace"])) if at.get("trace") else \
-            {"passed": False, "checks": {}, "tools_called": [], "trace_complete": False}
-        row = {"schema_version": SCHEMA_VERSION, **meta, "task": at["task"], "attempt": at["attempt"],
-               "status": at["status"], **verdict, "answer": at.get("answer"), "rounds": at.get("rounds"),
+    for at in attempts:
+        task = by_id[at["task"]]
+        events = read_events(at["trace"]) if at.get("trace") else []
+        verdict = evaluate_attempt(task, at, events)
+        category = failures.classify(task, at, events, verdict["passed"])
+        row = {"schema_version": TASKS_SCHEMA_VERSION, **meta, "task": at["task"], "attempt": at["attempt"],
+               "status": at["status"], **verdict, **category, "answer": at.get("answer"), "rounds": at.get("rounds"),
                "tool_calls": at.get("toolCalls"), "limits_hit": at.get("limitsHit"), "seconds": at.get("seconds"),
-               "error": at.get("error"), "trace": at.get("trace"), "sandbox": at.get("sandbox")}
+               "error": at.get("error"), "trace": at.get("trace"), "sandbox": at.get("sandbox"),
+               "rebuilt_from_traces": summary is None}
         sweep.append_row(results_file, row)
         rows.append(row)
-    print_summary(rows, summary.get("stopped"))
+    print_summary(rows, summary.get("stopped") if summary else True)
     log(f"results: {results_file}")
     return 0
 
 
 def print_summary(rows, stopped):
     log("")
-    log(f"{'task':<22} {'try':>3}  {'status':<8} {'pass':<5} {'rounds':>6} {'tools':>5}  checks")
+    log(f"{'task':<22} {'try':>3}  {'status':<8} {'pass':<5} {'rounds':>6} {'tools':>5}  category")
     for r in rows:
-        failed = [k for k, v in r["checks"].items() if not v]
+        cat = "" if r["passed"] else f"{r['primary']}" + (f"/{r['subcode']}" if r["subcode"] else "") + \
+            (" (silent)" if r["silent"] else "")
         log(f"{r['task']:<22} {r['attempt']:>3}  {r['status']:<8} {'yes' if r['passed'] else 'no':<5} "
-            f"{r['rounds'] or 0:>6} {r['tool_calls'] or 0:>5}  {'failed: ' + ', '.join(failed) if failed else 'ok'}")
+            f"{r['rounds'] or 0:>6} {r['tool_calls'] or 0:>5}  {cat}")
     passed = sum(r["passed"] for r in rows)
     log(f"passed {passed}/{len(rows)}" + (" (stopped early)" if stopped else ""))
 
@@ -248,9 +358,9 @@ def main(argv=None):
     r.add_argument("--model", help="model key from `lms ls`")
     r.add_argument("--tasks", default=str(ROOT / "tasks" / "examples.json"))
     r.add_argument("--only", help="comma separated task ids")
-    r.add_argument("--repeats", type=int, default=1)
+    r.add_argument("--repeats", type=int, default=5)
     r.add_argument("--context", type=int, default=8192)
-    r.add_argument("--temperature", type=float, default=0.0)
+    r.add_argument("--temperature", type=float, help="overrides the temperature of the model's sampling profile")
     r.add_argument("--load-timeout", type=int, default=240)
     r.add_argument("--run-timeout", type=int, default=3600, help="seconds for the whole task set")
     r.add_argument("--min-free-mib", type=int, default=3500)

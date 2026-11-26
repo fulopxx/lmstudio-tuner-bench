@@ -10,6 +10,10 @@ vannak.
 - Indítás, szünet, folytatás, leállítás; élő státusz.
 - Nézetek: Pareto-pontdiagram (VRAM–sebesség, méret = kontextus), modell × tesztcsomag hőtérkép, radar 2–4 modellre,
   szűrhető táblázat Excel-exporttal.
+- Agent-nézetek (az adat a core-ból, lásd FA-43 és FA-47): hibakategória-hőtérkép (modell × kategória), a bukások
+  összetétele (halmozott oszlop, treemap vagy sunburst szint, kategória és alkód szerint), a csendes bukások aránya
+  modellenként, elsődleges → másodlagos kategóriák (Sankey); próbálkozásonként a körök és tool-hívások idővonala és
+  egy lépésnézet a bizonyíték-esemény kiemelésével.
 - Méréskor figyelmeztetés: a böngésző VRAM-ot és GPU-t használ.
 - Böngésző-többlet mérése rögzített konfiguráción: dashboard zárva / nyitva gyorsítással / nyitva gyorsítás nélkül.
   Legyen benne offloadolt konfiguráció is (gyorsítás nélkül a CPU terhelése nő). A folyamatonkénti VRAM kiolvasásának
@@ -56,7 +60,7 @@ Vázlat, a G lépés előtt részletezendő.
 - Megszakítás és helyreállítás esetei: leállítás tool-hívás közben, félbehagyott kimenet, folytatás.
 - Második kör (M1 után): kontextus vágása és összegzése, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál.
 
-### Interfész a core felé (döntve 2026-11-26, nincs megvalósítva)
+### Interfész a core felé (döntve és megvalósítva 2026-11-26)
 
 | ID | Döntés | Indok |
 |---|---|---|
@@ -107,6 +111,91 @@ mellett: egy 8B-s gondolkodó modell 4-ből 4-et teljesített; egy 7B-s kódmode
 
 A LM Studio Bionic alkalmazás headless asszisztens béta API-ját (az 1.2.1 kiadási jegyzetében szerepel) M1-ben nem
 használjuk; a telepített verzió 1.2.0.
+
+### Hibaelemzési terv az M1 5. lépéséhez (elfogadva 2026-11-26)
+
+Az M1 5. lépése méréssé teszi a harnesst: rögzített feladatkészlet, ismételt próbálkozások és egy riport, amely
+megmondja, miért bukik el egy modell. A tervet elfogadás előtt függetlenül átnézettük; az átnézés megállapításai
+alább beépültek, minden követelmény mellett az indokkal, hogy a döntések később újra vizsgálhatók legyenek.
+
+A lépés két részből áll. **5a, alapok:** élő előpróba a mintavételre, kiegészítő trace-mezők, v2 feladatformátum
+deklaratív mock toolokkal, a kategorizáló és a taxonómia-dokumentum. **5b, mérés:** a 20 feladatos készlet
+referenciamegoldásokkal, a riport és az élő futások. A bontás miatt a kategorizáló szintetikus és meglévő élő
+trace-eken ellenőrizhető, mielőtt a feladatokba munka kerül.
+
+**Feladatformátum (v2, saját sémaverzióval)**
+
+| ID | Követelmény | Indok |
+|---|---|---|
+| FA-01 | A mock toolok a feladatfájlban vannak megadva (`toolsets`: név, leírás, paraméterséma, válaszszabályok); a feladatok névvel hivatkoznak rájuk. A `read_file` beépített tool marad | Új toolok és feladatok kódváltozás nélkül |
+| FA-02 | Válaszszabályok: az első illeszkedő nyer (argumentumfeltétel: `equals`, `one_of`, `any`); egy szabály hívásszám szerint is válaszolhat (`sequence`, a „pending” és az átmeneti hiba feladathoz); alapértelmezett válasz kötelező. Sablonnyelv nincs | Determinisztikus, átnézhető tool-viselkedés |
+| FA-03 | A tool-argumentumok egy sémarészhalmaz (`type`, `enum`, `required`) szerint ellenőrződnek, új függőség nélkül; a stringként küldött szám `wrong_type`, nem csendes átalakítás | A kis modellek gyakran tévesztik a típust; ez adat, nem zaj |
+| FA-04 | Az `expected_calls` rendezett részsorozat argumentumillesztőkkel: a minimális hívássornak szerepelnie kell, a többlethívás megengedett, csak jelölődik. A `forbidden_tools` a próbálkozást elbuktató hívásokat sorolja fel | A pontos egyezés büntetné a hibából való visszatérést és az ártalmatlan többlethívást (a BFCL v3 ezért tért át a részsorozat-illesztésre) |
+| FA-05 | A helyes válaszhoz szükséges értékek egyedi, kitalálhatatlan tokenek; láncoknál a következő argumentum az előző eredményből jön | Helyes válasz nem jöhet létre a tool-hívások nélkül; a sorrendet az adat kényszeríti ki, nem az ellenőrzés |
+| FA-06 | `answer_not_contains` (tiltólista) a kulcsszavas ellenőrzések mellett | Egy „error” szó állhat kitalált eredmény mellett; a modell számára ismeretlen érték biztos jele a kitalálásnak |
+| FA-07 | A `limit` állapottal záruló próbálkozás bukás, kivéve ha a feladat elfogadja | Különben a körkorlátig ismétlő, majd a harness megjegyzése után válaszoló modell sikeresnek látszik |
+| FA-08 | Minden feladathoz van scriptelt referenciamegoldás, amely átmegy, és legalább egy scriptelt válasz, amely a várt kategóriával bukik | A feladatot és a kategorizálót együtt teszteli |
+
+**Trace és futási metaadatok**
+
+| ID | Követelmény | Indok |
+|---|---|---|
+| FA-10 | A `task_start` rögzíti a futás- és próbálkozásazonosítót, a modellkulcsot, a contexthosszt, a ténylegesen elküldött mintavételi beállításokat, a system promptot, a felkínált tool-sémák hash-ét, a feladatfájl hash-ét és a harness verzióját | Egy trace önmagában is újraértékelhető legyen |
+| FA-11 | A `prediction` rögzíti a kezdetét és a hosszát; a `tool_call` és a `tool_result` saját hívás-sorszámot kap a modell (esetleg hiányzó) hívásazonosítója mellett; a `tool_result` `errorKind` mezőt kap (`not_found`, `outside_sandbox`, `invalid_arguments`, `unknown_tool`, `timeout`, `mock_error`, `cancelled`) | A kategorizáló ne hibaszöveget illesszen; a kör hossza ma nem olvasható ki |
+| FA-12 | Külön sémaverzió a feladatfájlnak és a trace-nek | Más-más időpontban változnak |
+| FA-13 | A harness a context határán megállást kér a LM Studiótól (`contextOverflowPolicy: stopAtLimit`) | A többi beállítás csendben csonkol, ami elrejtené a kontextus-túlcsordulást |
+| FA-14 | Marad a lapos eseménysor, span-fa egyelőre nincs. A fenti mezők miatt a későbbi export OpenTelemetry GenAI spanekbe veszteségmentes (próbálkozás → `invoke_agent`, predikció → `chat`, tool-hívás és eredmény → `execute_tool`, `errorKind` → `error.type`) | Egy ügynök és három szint mellett a span-fa nem ad semmit; a span lezáráskor íródik, így megszakított futásnál elveszne; a konvenció még fejlesztés alatt áll |
+
+**Mintavétel**
+
+| ID | Követelmény | Indok |
+|---|---|---|
+| FA-20 | Modellcsaládonként mintavételi profil (temperature, top_p, top_k, min_p, repeat penalty, forrás-URL) egy konfigurációs fájlban, tartalék temperature 0,7; a `--temperature` felülírja; a harness minden értéket explicit küld | Ma csak a temperature megy át, a többi a LM Studio alapértéke, így az eredmény nem reprodukálható. A modellkártyák eltérnek (a Qwen3 ellenzi a greedy dekódolást) |
+| FA-21 | A feladatkészlet megírása előtt élő próba: egy feladat, öt próbálkozás 0-nál nagyobb temperature-rel; eltérnek-e a kimenetek? | A seed load-paraméter; ha az ismétlések azonosak lennének, az ismétlés semmit nem mérne |
+
+**Kategóriák és prioritás**
+
+| ID | Követelmény | Indok |
+|---|---|---|
+| FA-30 | Kevés felső szintű kategória, a részletek alkódként (lista a [hibataxonómiában](failure_taxonomy.hu.md)); minden sikertelen próbálkozás pontosan egy elsődleges kategóriát kap, a további találatok mellékesek | Modellenként 100–200 próbálkozás túl vékonyan oszlana el sok kategória között |
+| FA-31 | Három szint: szerkezeti (rögzített sorrend), viselkedési (az a detektor nyer, amelynek első bizonyítéka a legkorábban van a trace-ben), kimeneti (rögzített sorrend, csak ha nincs viselkedési találat) | A rögzített globális sorrend téved a következmény-láncoknál (rossz argumentum → tool-hiba → ismétlés → körkorlát); az ok az időrendből látszik |
+| FA-32 | Minden találathoz bizonyíték tartozik: trace-fájl, esemény-sorszám, szabálynév | Ettől lesz a riport diagnosztika |
+| FA-33 | A szöveges tool-hívás (a válaszban szövegként leírt hívás, amely egy felkínált tool nevét hívásformában tartalmazza) `format_invalid/text_tool_call`, nem „nem hívott toolt” | Élőben megfigyelve: egy ilyen válaszhoz egyáltalán nincs tool-hívás esemény |
+| FA-34 | `unclassified` azokra a bukásokra, amelyeket egy szabály sem magyaráz; az aránya a taxonómia lefedettségét méri | Nélküle az utolsó kategória gyűjtővé válik |
+| FA-35 | A bukások csendes (a felhasználó nem veheti észre: rossz eredmény, kitalált érték, elhallgatott korlát) és hangos osztályba is sorolódnak | A riport vezető száma; a funkcionális biztonság nem detektált hibájának felel meg |
+| FA-36 | Mellékjelzők a sikeres próbálkozásokon is: `recovered_error`, `redundant_calls`, `parallel_calls`, `reasoning_leak`, `sandbox_escape_attempt` | A helyreállás a 19. feladat kiindulási adata; a gondolatmenet-szivárgás hamis sikert okozhat |
+| FA-37 | A heurisztikus szabályok jelölve vannak; egy kb. 50 sikertelen próbálkozásos kézi átnézéssel mért egyezésük publikus | A kulcsszavas szabályoknak vannak hamis pozitív és negatív találatai |
+| FA-38 | A kategóriák egy gépileg olvasható forrásban vannak (azonosító, szint, csendes vagy hangos, megbízhatóság); teszt ellenőrzi, hogy minden azonosító szerepel az angol és a magyar taxonómia-dokumentumban | A kód és a dokumentumok összhangban maradnak |
+| FA-39 | Ha egy modell szinte minden bukása `format_invalid`, a riport kimondja, hogy a többi képessége nem volt mérhető | A nullák félrevezetők lennének |
+
+**Futások és riport (5b)**
+
+| ID | Követelmény | Indok |
+|---|---|---|
+| FA-40 | A `bench agent run --models a,b,c` egymás után futtatja a modelleket; egy modell hibája rögzül, és a következő fut | Egy összehasonlító tábla |
+| FA-41 | Ha a harness eredménysor nélkül ér véget, a core a trace-ekből építi fel a próbálkozásokat | Ma egy leállított harness minden eredményt elveszít |
+| FA-42 | A futás időkorlátja a feladatokból, az ismétlésekből és a próbálkozási korlátból számolódik; a feladatfájl a futás mappájába másolódik; az eredménysorok a taxonómia verzióját is tartalmazzák | Lassú modellek; későbbi újraértékelés |
+| FA-43 | A `bench agent report` a trace-ekből újraszámolja a kategóriákat, és Markdownt és JSON-t ír: modellenként és feladatonként sikerarány Wilson-intervallummal, kategóriák, medián kör és idő, pass^k, a csendes bukások aránya; emellett modell × kategória mátrix és az elsődleges → másodlagos kategóriapárok darabszáma, szövegesen | Kis mintához intervallum kell; a pass^k egy számban mutatja a megbízhatóságot |
+| FA-44 | Leghosszabb megbízható lánc: lánchosszonként két feladat, mindegyik tíz próbálkozással; egy hossz akkor számít, ha a 20 próbálkozásból legalább 16 sikeres, és minden rövidebb hossz is számít | Egy feladat × 5 zajos és nem monoton (a ≥4/5 egy 60%-os modellt kb. minden harmadik esetben átenged) |
+| FA-45 | Alapból öt ismétlés, publikált táblázathoz tíz | Az 5/5 Wilson-intervalluma 0,57–1,00 |
+| FA-46 | Az ellenintézkedések „lehetséges ellenintézkedés (nem mért)” jelöléssel jelennek meg, amíg a 19. feladat nem méri őket | Mérés nélkül nincs állítás |
+| FA-47 | A `bench agent show <run> <feladat-próbálkozás>` sorszámmal kiírja egy próbálkozás lépéseit (predikciók, tool-hívások argumentumokkal, eredmények hibafajtával, korlátok), és megjelöli a kategóriája bizonyíték-eseményét | A FA-37 kézi átnézéséhez olvasható trace-nézet kell; ugyanez az adat táplálja később a grafikus lépésnézetet |
+
+**Az 5a állapota (2026-11-26).** Megvalósítva, offline tesztekkel lefedve: FA-01–FA-07, FA-10–FA-14, FA-20,
+FA-30–FA-36, FA-38, FA-41 (felépítés a trace-ekből) és a FA-42-ből a feladatfájl másolata a futás mappájába; az
+alapértelmezett ismétlésszám 5 lett (FA-45). FA-21, élőben: egy feladat öt próbálkozása egy 8B-s gondolkodó modellen
+temperature 0,7 mellett öt különböző gondolatmenetet és azonos végső választ adott, tehát az ismétlés mér szórást.
+Az 5b-re nyitott: FA-08 (a feladatkészlettel), FA-37, FA-39, FA-40, a FA-42 számolt időkorlátja, FA-43, FA-44, FA-46, FA-47.
+
+**Feladatkészlet (5b), 20 feladat:** közvetlen, egy tool (2); toolválasztás közeli csalik között, köztük egy romboló
+(2); pontos argumentumok: típusok, nehéz azonosító, hiányzó kötelező paraméter, ahol a visszakérdezés a helyes (3);
+2, 3 és 4 lépéses láncok (1 + 2 + 2); tool-hiba, hiányzó fájl és egy átmeneti hiba, amely egy újrapróbálást indokol
+(3); timeout tiltólistával (1); nem kell tool: tudás, a válasz már a promptban, a szükséges tool nincs felkínálva (3);
+„pending, check again” tool, ahol a siker az önálló megállás egy hívás-kereten belül (1).
+
+**Nem része az M1-nek:** nyelvváltás mint kategória, kötelező párhuzamos hívás, prompt injection a tool-eredményben,
+csonkolt nagy tool-eredmény (22. feladat), FMEA kockázati pontszám (helyette mért gyakoriság és a csendes / hangos
+osztály), az ellenintézkedések automatikus kiválasztása, a 14B-s modell kötelező sora.
 
 ### Nyitott
 
@@ -213,7 +302,7 @@ igazoltunk.
 A draft modellek tanítása nincs a hatókörben. Draft modell letöltéséhez vagy harmadik féltől származó build
 futtatásához minden esetben jóváhagyás kell.
 
-### A 0. fázis próbaterve (elfogadva 2026-11-26, nem futott)
+### A 0. fázis próbaterve (elfogadva és lefuttatva 2026-11-26)
 
 Határok: önálló próbascript (`harness/spec-probe.ts`), rácsintegráció nélkül, alkalmazás-, runtime- és SDK-frissítés
 nélkül, a LM Studio beállításfájljai érintetlenek. Modellek: egy 7B-s kódmodell ugyanabból a családból származó kis
