@@ -29,7 +29,7 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 13 | Project shareable on git | 🟡 partial (not released yet) |
 | 14 | Secondary NiceGUI control panel | ⚪ open, low priority |
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | 🟡 partial (documents done, no UI yet) |
-| 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see [requirements](requirements.md), section 3) | ⚪ open |
+| 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see [requirements](requirements.md), section 3) | 🟡 partial (M1 harness: file read and mock tools, limits, stop, trace; search, git, shell, recovery and context handling open) |
 | 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see [requirements](requirements.md), section 3) | ⚪ open |
 | 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | ✅ done |
 | 19 | Model-specific tool-call differences and repair methods (retry, schema constraint, grammar) | ⚪ open |
@@ -57,7 +57,7 @@ M1 comes first: one thin slice that works end to end. The A–L table below appl
 | 1 | SDK trial on the installed LM Studio (task 18) | ✅ done |
 | 2 | Clean sweep, evaluation, recommended settings per model | ✅ done |
 | 3 | Repository preparation, license, public release | 🔵 in progress |
-| 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | ⚪ open |
+| 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | ✅ done (2026-11-26: `bench agent run`, 4/4 example tasks live on one model; Ctrl+C stop tested offline only) |
 | 5 | 10–20 fixed tasks, repeated runs, failure category report | ⚪ open |
 | 6 | Result table in the README | ⚪ open |
 

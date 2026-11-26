@@ -49,6 +49,8 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 | `.\bench stop` / `.\bench stop --now` | Kilépés, később folytatható |
 | `.\bench evaluate` | A lefutott sweepet becsült válaszidő szerint rangsorolja és riportot ír (offline) |
 | `.\bench evaluate --in-tokens 8000 --out-tokens 300` | Ugyanez más input / output arányra |
+| `.\bench agent run --model qwen3-8b` | A példa agent-feladatokat (`tasks\examples.json`) futtatja egy modellen a harnessen át, és ellenőrzi a válaszokat; Ctrl+C leállítja |
+| `.\bench agent run --model qwen3-8b --repeats 3 --only file-marker` | Kiválasztott feladatok, mindegyik többször |
 
 ## Viselkedés
 
@@ -77,7 +79,8 @@ timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`).
 |---|---|
 | `configs\` | Mérési rácsok: modellista, alapértelmezett load beállítások és az összehasonlítandó konfigurációk |
 | `runner\` | Python kód: sweep futtató és CLI, kiértékelés, közös segédfüggvények és a smoke teszt |
-| `harness\` | TypeScript kód: modellbetöltés a LM Studio SDK-val, annak tesztje és az SDK-próbák |
+| `harness\` | TypeScript kód: modellbetöltés a LM Studio SDK-val, az agent harness (`run-tasks.ts`, `agent\`), tesztek és az SDK-próbák |
+| `tasks\` | Agent-feladatok az ellenőrzéseikkel, és a feladatonkénti sandboxba másolt fixture-fájlok |
 | `tests\` | Offline Python tesztek és egy GPU-t használó live vezérlési teszt |
 | `tools\` | A dokumentumok PDF-exportja és az ábragenerátor |
 | `docs\` | [Roadmap](docs/roadmap.hu.md), [követelmények](docs/requirements.hu.md), [architektúra](docs/architecture.hu.md), [megállapítások](docs/findings.hu.md) és [load paraméterek](docs/lmstudio_load_parameters.hu.md), angolul és magyarul |
@@ -94,7 +97,8 @@ Futás közben keletkeznek, a git nem követi őket:
 ## Tesztek
 
 ```
-node --test harness\load-config.test.ts   # offline
+cd harness; npm.cmd test; npm.cmd run typecheck; cd ..   # offline (TypeScript tesztek és típusellenőrzés)
+python tests\test_agent.py           # offline (a harnesst is futtatja scriptelt modellválaszokkal)
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline
 python tests\test_stream_errors.py    # offline

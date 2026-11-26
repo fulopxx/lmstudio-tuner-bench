@@ -205,9 +205,9 @@ def runtime_warning(runtime, jobs):
             "check `lms runtime ls`")
 
 
-def sdk_load(model_path, settings, timeout):
+def sdk_load(model_path, settings, timeout, identifier=IDENTIFIER):
     """Load through the Node helper (harness/load-model.ts). The model stays loaded after it exits."""
-    request = {"model": model_path, "identifier": IDENTIFIER, "settings": settings, "timeoutMs": timeout * 1000}
+    request = {"model": model_path, "identifier": identifier, "settings": settings, "timeoutMs": timeout * 1000}
     try:
         p = subprocess.run([shutil.which("node") or "node", "load-model.ts"], cwd=HARNESS, input=json.dumps(request),
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout + 30)
@@ -666,6 +666,10 @@ def cmd_evaluate(a):
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["agent"]:  # agent task runs live in their own module
+        import agent
+        return agent.main(argv[1:])
     ap = argparse.ArgumentParser(prog="bench")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")

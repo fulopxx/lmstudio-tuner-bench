@@ -29,7 +29,7 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 13 | Gitre megosztható projekt | 🟡 részben (még nincs kiadva) |
 | 14 | Másodlagos NiceGUI irányítófelület | ⚪ nyitott, alacsony prioritás |
 | 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | 🟡 részben (dokumentumok kész, felület nincs) |
-| 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd [követelmények](requirements.hu.md), 3. pont) | ⚪ nyitott |
+| 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (M1 harness: fájlolvasás és mock toolok, korlátok, leállítás, trace; keresés, git, shell, helyreállítás és kontextuskezelés nyitott) |
 | 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd [követelmények](requirements.hu.md), 3. pont) | ⚪ nyitott |
 | 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | ✅ kész |
 | 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | ⚪ nyitott |
@@ -57,7 +57,7 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 | 1 | SDK-próba a telepített LM Studión (18. feladat) | ✅ kész |
 | 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | ✅ kész |
 | 3 | Repó előkészítése, licenc, publikus kiadás | 🔵 folyamatban |
-| 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | ⚪ nyitott |
+| 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | ✅ kész (2026-11-26: `bench agent run`, élőben 4/4 példafeladat egy modellen; a Ctrl+C leállítás csak offline tesztelve) |
 | 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | ⚪ nyitott |
 | 6 | Eredménytábla a README-ben | ⚪ nyitott |
 

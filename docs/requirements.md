@@ -80,6 +80,24 @@ Draft, to be detailed before step G.
   abort during reasoning, an internal LM Studio separator string appeared in `content`.
 - No `onToolCallRequestFailure` callback was seen.
 
+**M1 implementation (2026-11-26):** `bench agent run` (`runner/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
+implements H1–H7. Further details fixed by the implementation:
+
+- Task files (`tasks/*.json`, `schema_version` 1) hold per task: prompt, optional system prompt, fixture folder, tools,
+  mock table (result, error, delay per id), limit overrides and declarative checks: `answer_contains`,
+  `answer_contains_any`, `tool_called`, `tool_not_called` (`*` for any tool), `mentions_failure`. Checks compare the
+  final answer case-insensitively; only tool calls the SDK parsed count as called.
+- Default limits: 6 tool rounds, 10 s per tool call, 180 s per attempt, 8000 characters per tool result, 2048 tokens
+  per round. When the round limit is hit, the model gets one more round without tools and a note to answer the user;
+  the attempt ends with status `limit`.
+- An unknown tool or invalid arguments go back to the model as an error result; a tool call the SDK could not parse is
+  logged raw and ends the attempt (no repair in M1).
+- An attempt is passed when it ended `done` or `limit` and all its checks hold.
+- The scripted backend runs the whole path offline (`bench agent run --scripted <file>`), which the Python tests use.
+
+First live run with the four example tasks (file read, order lookup, tool error, tool timeout), temperature 0: an 8B
+reasoning model passed 4 of 4; a 7B coder model passed 0 of 4 because it wrote every tool call as text.
+
 The headless assistant beta API of the LM Studio Bionic application (listed in the 1.2.1 release notes) is not used in
 M1; the installed version is 1.2.0.
 

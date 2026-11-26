@@ -37,7 +37,11 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `harness/spec-probe.ts` | Speculative decoding próba (24. feladat, 0. fázis): load draft modellel és MTP-vel, visszaolvasás, draft számlálók, REST-mezők, beragadás; a terv mintája a `configs/spec-probe.example.json` (saját példány: `spec-probe.local.json`) |
 | `harness/tools-probe.ts` | Az egykörös tool-hívás próbája `respond()` és `rawTools` használatával: callbackek, a tool eredményének visszaküldése, tool nélküli eset, megszakítás |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | A próba tiszta részei (tervellenőrzés, módonkénti load config, draft arányok) és offline tesztjük |
-| `harness/package.json` | Node.js verziókövetelmény és a rögzített SDK verzió |
+| `runner/agent.py` | `bench agent run`: betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel értékel |
+| `harness/run-tasks.ts` | Az agent harness belépési pontja: spec a stdinen, tool loop feladat-próbálkozásonként, `RESULT:` összegzés |
+| `harness/agent/` | A harness moduljai: spec, modell-backendek (SDK-s és scriptelt), tool loop, toolok, sandbox, trace; offline tesztek az `agent.test.ts`-ben |
+| `tasks/examples.json`, `tasks/fixtures/` | Példa agent-feladatok deklaratív ellenőrzésekkel, és a sandboxukba másolt fájlok |
+| `harness/package.json` | Node.js verziókövetelmény, a rögzített SDK verzió, TypeScript típusellenőrzés és teszt scriptek |
 | `configs/*.json` | Mérési rácsok (4.1) |
 | `tools/export_docs.py` | A dokumentumok (angol és magyar) PDF-exportja |
 | `tools/make_diagrams.py` | A `docs/img/` SVG ábráinak generátora |
@@ -52,6 +56,10 @@ bench run / resume  (futtató process)
   |-- HTTP szerver       generálás és mérés (REST, streamelve)
   |-- nvidia-smi         VRAM, GPU-kihasználtság, driver
 bench status / pause / resume / stop  (külön processek, fájlokon át beszélnek a futtatóval)
+bench agent run  (agent process)
+  |-- node load-model.ts  betölti a modellt (identifier: bench-agent)
+  |-- node run-tasks.ts   a harness: spec és leállítás a stdinen, haladás és RESULT a stdouton, próbálkozásonként egy trace
+  |-- lms.exe             betöltött modellek, unload
 ```
 
 ### Egy job
@@ -91,7 +99,7 @@ web/      React + Vite + TypeScript, Mantine, ECharts
 ```
 
 Az agent harness feladatokat futtat egy betöltött modellen és trace-t ír; a core-ban lévő hibaelemzés a trace-ekből
-kategóriákat és riportot készít. A core felé az interfész 2026-11-26-án eldőlt, még nincs megvalósítva
+kategóriákat és riportot készít. A core felé az interfész 2026-11-26-án eldőlt, és még aznap megvalósult M1-re
 (`docs/requirements.hu.md`, 3. pont, H1–H7):
 
 ```
@@ -224,6 +232,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
+| `bench agent run [--model] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.

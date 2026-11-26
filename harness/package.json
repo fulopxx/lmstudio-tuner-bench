@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc -p .",
-    "test": "node --test load-config.test.ts spec-probe-lib.test.ts"
+    "test": "node --test load-config.test.ts spec-probe-lib.test.ts agent/agent.test.ts"
   },
   "engines": {
     "node": ">=24"

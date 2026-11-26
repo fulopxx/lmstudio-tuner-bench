@@ -84,6 +84,27 @@ Vázlat, a G lépés előtt részletezendő.
   használnia. Gondolatmenet közbeni megszakítás után egy belső LM Studio elválasztó szöveg jelent meg a `content`-ben.
 - `onToolCallRequestFailure` callbacket nem láttunk.
 
+**M1 megvalósítás (2026-11-26):** a `bench agent run` (`runner/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
+megvalósítja a H1–H7 döntéseket. A megvalósítás által rögzített további részletek:
+
+- A feladatfájlok (`tasks/*.json`, `schema_version` 1) feladatonként tartalmazzák: prompt, opcionális system prompt,
+  fixture mappa, toolok, mock táblázat (azonosítónként eredmény, hiba, késleltetés), korlát-felülírások és deklaratív
+  ellenőrzések: `answer_contains`, `answer_contains_any`, `tool_called`, `tool_not_called` (`*` bármely toolra),
+  `mentions_failure`. Az ellenőrzések a végső választ kis- és nagybetűtől függetlenül vizsgálják; hívottnak csak az SDK
+  által értelmezett tool-hívás számít.
+- Alapértelmezett korlátok: 6 tool-kör, tool-hívásonként 10 s, próbálkozásonként 180 s, tool-eredményenként 8000
+  karakter, körönként 2048 token. A körkorlát elérésekor a modell még egy kört kap toolok nélkül, egy megjegyzéssel,
+  hogy válaszoljon a felhasználónak; a próbálkozás `limit` állapottal zárul.
+- Az ismeretlen tool vagy az érvénytelen argumentum hibaeredményként megy vissza a modellnek; az SDK által nem
+  értelmezett tool-hívás nyersen naplózódik, és lezárja a próbálkozást (M1-ben nincs javítás).
+- Egy próbálkozás sikeres, ha `done` vagy `limit` állapottal ért véget, és minden ellenőrzése teljesül.
+- A scriptelt backend offline futtatja a teljes utat (`bench agent run --scripted <fájl>`); ezt használják a Python
+  tesztek.
+
+Első élő futás a négy példafeladattal (fájlolvasás, rendelés lekérdezése, tool-hiba, tool-timeout), temperature 0
+mellett: egy 8B-s gondolkodó modell 4-ből 4-et teljesített; egy 7B-s kódmodell 0-t, mert minden tool-hívást szövegként
+írt ki.
+
 A LM Studio Bionic alkalmazás headless asszisztens béta API-ját (az 1.2.1 kiadási jegyzetében szerepel) M1-ben nem
 használjuk; a telepített verzió 1.2.0.
 

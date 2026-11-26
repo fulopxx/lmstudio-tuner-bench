@@ -48,6 +48,8 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
 | `.\bench stop` / `.\bench stop --now` | Exit; can be resumed later |
 | `.\bench evaluate` | Ranks the finished sweep by estimated response time and writes a report (offline) |
 | `.\bench evaluate --in-tokens 8000 --out-tokens 300` | The same for a different input / output ratio |
+| `.\bench agent run --model qwen3-8b` | Runs the example agent tasks (`tasks\examples.json`) on one model through the harness and checks the answers; Ctrl+C stops it |
+| `.\bench agent run --model qwen3-8b --repeats 3 --only file-marker` | Selected tasks, several attempts each |
 
 ## Behaviour
 
@@ -75,7 +77,8 @@ of the grid (`.\bench run --help`).
 |---|---|
 | `configs\` | Measurement grids: model list, default load settings and the configurations to compare |
 | `runner\` | Python code: sweep runner and CLI, evaluation, shared helpers and the smoke test |
-| `harness\` | TypeScript code: model loading through the LM Studio SDK, its test and the SDK probes |
+| `harness\` | TypeScript code: model loading through the LM Studio SDK, the agent harness (`run-tasks.ts`, `agent\`), tests and the SDK probes |
+| `tasks\` | Agent tasks with their checks, and the fixture files copied into each task's sandbox |
 | `tests\` | Offline Python tests and one live control test that uses the GPU |
 | `tools\` | PDF export of the documents and diagram generator |
 | `docs\` | [Roadmap](docs/roadmap.md), [requirements](docs/requirements.md), [architecture](docs/architecture.md), [findings](docs/findings.md) and [load parameters](docs/lmstudio_load_parameters.md), in English and Hungarian |
@@ -92,7 +95,8 @@ Created while running, not tracked by git:
 ## Tests
 
 ```
-node --test harness\load-config.test.ts   # offline
+cd harness; npm.cmd test; npm.cmd run typecheck; cd ..   # offline (TypeScript tests and type check)
+python tests\test_agent.py           # offline (also runs the harness with scripted model replies)
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline
 python tests\test_stream_errors.py    # offline

@@ -1,0 +1,17 @@
+{
+  "file-marker": [
+    { "toolCalls": [{ "name": "read_file", "arguments": { "path": "notes.txt" } }] },
+    { "text": "The marker is BLUE-HERON-17.", "reasoning": "The tool returned the file." }
+  ],
+  "order-status": [
+    { "toolCalls": [{ "name": "mock_lookup", "arguments": { "order_id": "A-1042" } }] },
+    { "text": "Your order A-1042 has shipped with DHL and should arrive on 2026-12-01." }
+  ],
+  "tool-error": [
+    { "text": "I cannot see your order without looking it up, but it is probably fine." }
+  ],
+  "tool-timeout": [
+    { "toolCalls": [{ "name": "mock_lookup", "arguments": { "order_id": "C-55" } }] },
+    { "text": "The order service did not answer in time, so I could not check C-55. Please try again later." }
+  ]
+}

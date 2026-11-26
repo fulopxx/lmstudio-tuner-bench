@@ -37,7 +37,11 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `harness/spec-probe.ts` | Speculative decoding probe (task 24, phase 0): draft model and MTP loads, read-back, draft counters, REST fields, persistence; plan from `configs/spec-probe.example.json` (own copy: `spec-probe.local.json`) |
 | `harness/tools-probe.ts` | Probe of single-round tool calls with `respond()` and `rawTools`: callbacks, tool result round trip, no-tool case, abort |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | Pure parts of the probe (plan check, load configs per mode, draft ratios) and their offline test |
-| `harness/package.json` | Node.js version requirement and the pinned SDK version |
+| `runner/agent.py` | `bench agent run`: loads one model, starts the harness, passes a stop on, judges each attempt from its trace with the task's checks |
+| `harness/run-tasks.ts` | Agent harness entry point: spec on stdin, tool loop per task attempt, `RESULT:` summary |
+| `harness/agent/` | Harness modules: spec, model backends (SDK and scripted), tool loop, tools, sandbox, trace; offline tests in `agent.test.ts` |
+| `tasks/examples.json`, `tasks/fixtures/` | Example agent tasks with declarative checks, and the files copied into their sandboxes |
+| `harness/package.json` | Node.js version requirement, the pinned SDK version, TypeScript type check and test scripts |
 | `configs/*.json` | Measurement grids (section 4.1) |
 | `tools/export_docs.py` | PDF export of the documents (English and Hungarian) |
 | `tools/make_diagrams.py` | Generator of the SVG diagrams in `docs/img/` |
@@ -52,6 +56,10 @@ bench run / resume  (runner process)
   |-- HTTP server        generation and measurement (REST, streamed)
   |-- nvidia-smi         VRAM, GPU utilization, driver
 bench status / pause / resume / stop  (separate processes, talk to the runner through files)
+bench agent run  (agent process)
+  |-- node load-model.ts  loads the model (identifier bench-agent)
+  |-- node run-tasks.ts   the harness: spec and stop on stdin, progress and RESULT on stdout, one trace per attempt
+  |-- lms.exe             loaded models, unload
 ```
 
 ### One job
@@ -90,7 +98,7 @@ web/      React + Vite + TypeScript, Mantine, ECharts
 ```
 
 The agent harness runs tasks against a loaded model and writes a trace; failure analysis in the core turns traces into
-categories and reports. The interface to the core was decided on 2026-11-26 and is not implemented yet
+categories and reports. The interface to the core was decided on 2026-11-26 and implemented for M1 the same day
 (`docs/requirements.md`, section 3, H1–H7):
 
 ```
@@ -222,6 +230,7 @@ The API routes are proposals and not implemented.
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
+| `bench agent run [--model] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 
 Exit codes of `run` and `resume`: 0 when the run is done or was stopped by the user, 3 when it was aborted, 2 for
 unusable arguments. `bench <command> --help` lists the defaults.
