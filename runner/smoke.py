@@ -12,6 +12,7 @@ Safety rules (by design):
   * Only stdlib. Talks to LM Studio via `lms.exe` and the local server on 127.0.0.1.
 """
 import argparse
+import http.client
 import json
 import os
 import re
@@ -108,6 +109,7 @@ def stream_chat(model, messages, max_tokens, total_timeout, idle_timeout=45, on_
     t0 = time.perf_counter()
     t_first = t_last = None
     content, reasoning, usage, chunks = [], [], None, 0
+    finished = False
     try:
         with urllib.request.urlopen(req, timeout=idle_timeout) as resp:
             for raw in resp:
@@ -120,11 +122,13 @@ def stream_chat(model, messages, max_tokens, total_timeout, idle_timeout=45, on_
                     continue
                 payload = line[5:].strip()
                 if payload == "[DONE]":
+                    finished = True
                     break
                 obj = json.loads(payload)
                 if obj.get("usage"):
                     usage = obj["usage"]
                 for ch in obj.get("choices", []):
+                    finished = finished or bool(ch.get("finish_reason"))
                     d = ch.get("delta", {})
                     c = d.get("content") or ""
                     r = d.get("reasoning_content") or d.get("reasoning") or ""
@@ -143,6 +147,10 @@ def stream_chat(model, messages, max_tokens, total_timeout, idle_timeout=45, on_
         if isinstance(e.reason, (TimeoutError, socket.timeout)):
             raise StepError("timeout", f"connect/idle timeout ({idle_timeout}s)")
         raise StepError("fail", f"request failed: {e.reason}")
+    except (OSError, http.client.HTTPException, ValueError) as e:  # reset, truncated or garbled stream
+        raise StepError("fail", f"connection broke during generation: {e!r}")
+    if not finished:
+        raise StepError("fail", "stream ended before the generation finished")
     m = {"ttft_s": round(t_first - t0, 3) if t_first else None,
          "total_s": round(time.perf_counter() - t0, 3),
          "stream_chunks": chunks, "usage": usage,
