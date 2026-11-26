@@ -63,7 +63,7 @@ A futtató és a vezérlő parancsok külön folyamatok, fájlokon át kommunik�
 
 | Fájl | Tartalom |
 |---|---|
-| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat`, `pid` |
+| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat`, `pid`, `pid_created` |
 | `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
 | `state/latest.txt` | A legutóbbi futás azonosítója |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (runtime, driver, loader) |
@@ -89,9 +89,12 @@ Hibás sorban `error` szerepel, és a mérési mezők hiányozhatnak. A `status`
 | `done` | Minden feladat lefutott | `resume --from` / `--redo-failed` új folyamatot indít |
 | `aborted` | Hiba vagy két egymást követő timeout | `resume` új folyamatot indít |
 
-A futtató akkor számít élőnek, ha a `heartbeat` 20 másodpercnél frissebb. Egyszerre egy futás lehet aktív. Ha a
-process végállapot nélkül hal meg (kill, újraindítás), ezt az elavult heartbeat mutatja, és a `resume` új processt
-indít, amely először eltávolítja a megszakadt futás után bent maradt modellt. A gráfot a `tools/make_diagrams.py` generálja.
+A futtató akkor számít élőnek, ha a `heartbeat` 20 másodpercnél frissebb, vagy ha még létezik az a process, amelyik
+írta (azonos `pid` és `pid_created`, így egy újra kiosztott PID nem számít). Egy élő process késő heartbeatje csak
+figyelmeztetésként jelenik meg. Egyszerre egy futás lehet aktív. Ha a process végállapot nélkül hal meg (kill,
+újraindítás), ezt a `status` mutatja, és a `resume` új processt indít, amely először eltávolítja a megszakadt futás
+után bent maradt modellt. A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki. A gráfot a
+`tools/make_diagrams.py` generálja.
 
 ## 6. Parancsok és tervezett API
 

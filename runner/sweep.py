@@ -19,6 +19,7 @@ instance is unloaded. Models are loaded through the LM Studio SDK (harness/load-
 per-model config files are not touched; generation and measurement use the HTTP server.
 """
 import argparse
+import ctypes
 import json
 import os
 import re
@@ -28,6 +29,7 @@ import subprocess
 import sys
 import threading
 import time
+from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
@@ -45,6 +47,7 @@ STATUS = STATE / "status.json"
 LATEST = STATE / "latest.txt"
 ACTIVE = ("starting", "running", "paused")
 BUSY_RETRY_S = 90  # re-check interval while paused because the machine was not ready
+HEARTBEAT_LATE_S = 20  # an older heartbeat is reported, and trusted only if the process still exists
 
 
 def log(m):
@@ -85,8 +88,40 @@ def control():
     return read_json(CONTROL, {"cmd": "run", "now": False})
 
 
+def process_created(pid):
+    """Creation time of a running process as an integer; None if there is no such process. Together with
+    the PID it identifies one process, even if Windows reuses the PID later (for example after a reboot)."""
+    if os.name != "nt" or not pid:
+        return None
+    k = ctypes.WinDLL("kernel32")
+    k.OpenProcess.argtypes, k.OpenProcess.restype = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE
+    k.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    k.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
+    k.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return None
+    try:
+        code = wintypes.DWORD()
+        if not k.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value != 259:  # STILL_ACTIVE
+            return None
+        times = [wintypes.FILETIME() for _ in range(4)]
+        if not k.GetProcessTimes(handle, *(ctypes.byref(t) for t in times)):
+            return None
+        return (times[0].dwHighDateTime << 32) | times[0].dwLowDateTime
+    finally:
+        k.CloseHandle(handle)
+
+
 def runner_alive(st):
-    return bool(st) and st.get("state") in ACTIVE and time.time() - st.get("heartbeat", 0) < 20
+    """An active run counts as alive while its heartbeat is fresh, or while the very process that wrote it
+    still exists: a late heartbeat alone must not end the status view or allow a second runner."""
+    if not st or st.get("state") not in ACTIVE:
+        return False
+    if time.time() - st.get("heartbeat", 0) < HEARTBEAT_LATE_S:
+        return True
+    created = st.get("pid_created")
+    return created is not None and process_created(st.get("pid")) == created
 
 
 # ---------------------------------------------------------------- plan and results
@@ -199,7 +234,7 @@ class Fatal(Exception):
 
 class Status:
     def __init__(self, base):
-        self.data = dict(base, heartbeat=time.time(), pid=os.getpid())
+        self.data = dict(base, heartbeat=time.time(), pid=os.getpid(), pid_created=process_created(os.getpid()))
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self.update()
@@ -510,6 +545,10 @@ def status_text(show_jobs=False):
                    f"({fmt_dur(time.time() - st.get('job_started', time.time()))})")
     if st and st.get("reason"):
         out.append(f"reason: {st['reason']}")
+    late = time.time() - st.get("heartbeat", 0) if alive else 0
+    if late >= HEARTBEAT_LATE_S:
+        out.append(f"warning: no heartbeat for {fmt_dur(late)}, but the runner process (PID {st.get('pid')}) "
+                   "is still there; if it stays like this, check the runner's window")
     if alive:
         cmd = control()
         if cmd["cmd"] != "run" and st["state"] == "running":
@@ -649,12 +688,14 @@ def main(argv=None):
         return cmd_resume(a)
     if a.cmd == "status":
         try:
+            finished_reads = 0
             while True:
                 text, finished = status_text(a.jobs)
                 if a.watch:
                     os.system("cls" if os.name == "nt" else "clear")
                 print(text, flush=True)
-                if not a.watch or finished:
+                finished_reads = finished_reads + 1 if finished else 0
+                if not a.watch or finished_reads >= 2:  # one odd reading must not end the view
                     return 0
                 time.sleep(3)
         except KeyboardInterrupt:

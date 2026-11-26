@@ -1,7 +1,10 @@
 """Offline test of job planning, resume selection and invalidation (no GPU, no LM Studio)."""
 import json
+import os
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -37,6 +40,42 @@ class SweepLogicTest(unittest.TestCase):
             self.assertEqual(ids(redo_failed=True), [2, 4])
             sweep.append_row(p, {"job_id": "m|3", "status": "invalidated"})  # resume --from 3
             self.assertEqual(ids(), [3, 4])
+
+
+class RunnerAliveTest(unittest.TestCase):
+    def status(self, age, **kw):
+        return dict({"state": "running", "heartbeat": time.time() - age}, **kw)
+
+    def test_fresh_heartbeat_and_end_states(self):
+        self.assertTrue(sweep.runner_alive(self.status(1)))
+        self.assertFalse(sweep.runner_alive(self.status(1, state="done")))
+        self.assertFalse(sweep.runner_alive(None))
+
+    @unittest.skipUnless(os.name == "nt", "process check is implemented for Windows")
+    def test_late_heartbeat_trusts_only_the_same_process(self):
+        pid, created = os.getpid(), sweep.process_created(os.getpid())
+        self.assertIsNotNone(created)
+        self.assertTrue(sweep.runner_alive(self.status(600, pid=pid, pid_created=created)))
+        self.assertFalse(sweep.runner_alive(self.status(600, pid=pid, pid_created=created + 1)))  # PID reused
+        self.assertFalse(sweep.runner_alive(self.status(600, pid=pid)))  # status without a creation time
+
+    @unittest.skipUnless(os.name == "nt", "process check is implemented for Windows")
+    def test_ended_process_is_gone(self):
+        child = subprocess.Popen([sys.executable, "-c", "input()"], stdin=subprocess.PIPE)
+        try:
+            created = sweep.process_created(child.pid)
+            self.assertIsNotNone(created)
+        finally:
+            child.communicate(b"\n", timeout=30)
+        self.assertFalse(sweep.runner_alive(self.status(600, pid=child.pid, pid_created=created)))
+
+    def test_watch_ends_only_after_two_finished_readings(self):
+        readings = [("a", False), ("b", True), ("c", False), ("d", True), ("e", True)]
+        with mock.patch.object(sweep, "status_text", side_effect=readings) as read, \
+                mock.patch.object(sweep.os, "system"), mock.patch.object(sweep.time, "sleep"), \
+                mock.patch("builtins.print"):
+            self.assertEqual(sweep.main(["status", "--watch"]), 0)
+        self.assertEqual(read.call_count, 5)
 
 
 class PausedWaitTest(unittest.TestCase):
