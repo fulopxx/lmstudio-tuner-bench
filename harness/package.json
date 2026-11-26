@@ -5,10 +5,18 @@
   "type": "module",
   "description": "TypeScript parts of lmstudio-tuner-bench: SDK probe, later the agent harness",
   "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "test": "node --test load-config.test.ts spec-probe-lib.test.ts"
+  },
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
     "@lmstudio/sdk": "2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "7.0.2"
   }
 }

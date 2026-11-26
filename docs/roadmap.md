@@ -37,7 +37,7 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | ⚪ open |
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | ⚪ open |
 | 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see [requirements](requirements.md), section 4) | ⚪ open (not examined yet) |
-| 24 | Speculative decoding as an optimization dimension: draft model and MTP compared with speculation off, per task type (see [requirements](requirements.md), section 5) | ⚪ open |
+| 24 | Speculative decoding as an optimization dimension: draft model and MTP compared with speculation off, per task type (see [requirements](requirements.md), section 5) | 🔵 in progress (phase 0 done; phase 1 open) |
 | K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | ⚪ open (not examined yet) |
 
 ### Planned improvements
@@ -95,6 +95,7 @@ with step C.
 | LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; used by the sweep runner |
 | Error handling | Failed steps are not retried automatically; abort after two consecutive timeouts; pause when the GPU is busy, re-check every 90 s and continue by itself (a manual pause stays) |
 | Statistics | Median and spread, Pareto front, adjustable weighted score, bootstrap confidence intervals; Elo / Bradley–Terry for pairwise grading. No ML/DL needed |
+| Speculative decoding switch | Only at load, through the SDK load fields (`speculativeDraftMtp`; `speculativeDraftSimple` with `speculativeDraftModel`); measured over REST, which returns the draft counters (phase 0, 2026-11-26) |
 | Speculative decoding | Speculation off stays the baseline and may be the recommendation; LM Studio only for now, a second backend (`llama-server`) is decided later if results justify it |
 
 ### Architecture and interfaces
@@ -107,6 +108,7 @@ with step C.
 | Backend | FastAPI, `127.0.0.1` only |
 | Web development | Starts after step D and lives in the `web/` folder; the core interface is agreed first |
 | Agent harness | Own module with failure analysis, written in TypeScript from the start. The first version has no shell tool |
+| Harness interface | One harness process per model and task set, JSON spec on stdin, `RESULT:` summary, JSONL trace; checks and categories in the core; own tool loop with an SDK and a scripted backend (2026-11-26; [requirements](requirements.md), section 3) |
 
 ### Language and documentation
 
@@ -134,7 +136,7 @@ with step C.
 | Filled context | The sweeps have no prompts that actually fill the context | ⚪ open |
 | Background VRAM use | Speed measurements are only valid on an idle GPU. A way to hold or record the background use when comparing configurations near the VRAM limit is missing | ⚪ open |
 | CLI `lms load` | Its relation to the per-model default config values has not been measured | ⚪ open |
-| Speculative decoding | The installed SDK has load settings for draft model and MTP and draft statistics ([requirements](requirements.md), section 5); neither their effect nor their memory cost has been tried | ⚪ open |
+| Speculative decoding | Phase 0 trial done on 2026-11-26 ([requirements](requirements.md), section 5): switched at load only, counters in the SDK and REST. Open for phase 1: compatibility check of draft pairs, max draft tokens, why greedy outputs differ from the baseline | ⚪ open |
 
 ### Stability and testing
 

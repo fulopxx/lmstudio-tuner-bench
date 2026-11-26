@@ -21,3 +21,15 @@ promptok. Egyik prompt sem töltötte ki a 16k contextet, és a kimenet minősé
   másikban 6 t/s decode-ot adott (a prompt hossza is eltért).
 - A hosszabb prompttal a decode a befér modelleknél is 4–22%-kal lassabb volt; az ok (valószínűleg a prompt hossza) nem
   igazolt.
+
+## Speculative decoding próba (0. fázis), 2026-11-26
+
+Ugyanaz a gép, 4k context, egyszeri próbafutások a LM Studio alapértelmezett 3 draft tokenjével; részletek a
+[követelményekben](requirements.hu.md), 5. pont.
+
+- A külön draft modell (1.5B Q8_0 egy 7B Q4 kódmodellhez) lassította a decode-ot (kódon −12%, a szintetikus prompton
+  −44%), pedig kódon a draft tokenek 76%-a elfogadásra került. Valószínű ok (nem igazolt): ezen a GPU-n a decode-ot a
+  memória-sávszélesség korlátozza, és a fő modell méretének kb. 40%-át kitevő draft modell többe kerül, mint amennyit
+  megtakarít.
+- A beépített MTP-fejek három modellen gyorsítottak (+4% és +33% között), VRAM-többlet nélkül.
+- A spekuláció csak a loadnál kapcsolható; a REST chat végpont visszaadja a draft számlálókat.

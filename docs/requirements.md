@@ -53,9 +53,23 @@ Draft, to be detailed before step G.
 - Interrupt and recovery cases: stop during a tool call, truncated output, resume.
 - Second round (after M1): context truncation and summarization, tool result size limits, behaviour as context grows.
 
+### Interface to the core (decided 2026-11-26, not implemented)
+
+| ID | Decision | Reason |
+|---|---|---|
+| H1 | The core starts one `node harness/run-tasks.ts` process per model and task set. The spec is the first stdin line (JSON); the last stdout line is `RESULT:` followed by a JSON summary | Same pattern as the loader; a crash stays in one process; simple on Windows. Rejected: a long-lived JSON-RPC process, HTTP |
+| H2 | The harness does not load models; it receives the `identifier` of a model the existing loader loaded | One load path with the existing checks |
+| H3 | Stop arrives as a further stdin line (`{"cmd":"stop"}`) and triggers an `AbortSignal`; the trace records `aborted`. After a grace period the core kills the process | Windows has no reliable signal for a child process |
+| H4 | Trace: JSONL per task run with `schema_version`; events `task_start`, `prediction` (raw text, tokens, timing), `tool_call` (raw and parsed arguments, validation error), `tool_result` (size, error, duration), `limit_hit`, `error`, `task_end` | Appendable, readable even with a broken last line |
+| H5 | Pass/fail checks and failure categorization run in the Python core, from the trace and the kept final state of the sandbox; the harness only executes and logs | Logic lives in the core and is reachable from the CLI |
+| H6 | Own tool loop behind a `ModelBackend` interface: `LmsSdkBackend` (one prediction round with `respond()` and `rawTools`) and `ScriptedBackend` (deterministic offline tests without a GPU) | Invalid tool calls must be logged raw; `.act()` throws on an unparseable call. Single-round tool calls exist in the SDK 2.1.0 types; a short live check is still needed |
+| H7 | M1 scope: tools `read_file` (path resolved inside the sandbox, size limit) and `mock_lookup` (deterministic, configurable delay and error for timeout cases); limits per tool call, rounds and total time; a throwaway sandbox folder per task with a copy of the fixtures; no shell; CLI command `bench agent run` | Thin M1 slice; the sandbox decision for shell commands can wait |
+
+The headless assistant beta API of the LM Studio Bionic application (listed in the 1.2.1 release notes) is not used in
+M1; the installed version is 1.2.0.
+
 ### Open
 
-- Interface between the Python core and the TypeScript harness (process boundary, trace format).
 - How the sandbox restricts model-generated shell commands. This must be decided before any such command is executed.
 - Finding LM Studio's API port for the SDK without an internal file.
 
@@ -152,6 +166,62 @@ speculative load.
 | 2, optional | Direct `llama-server` backend for further methods (n-gram, EAGLE-3, DFlash and similar) | Measured into the same result format; only after a separate decision |
 
 Training draft models is out of scope. Downloading draft models or running third-party builds needs approval each time.
+
+### Phase 0 trial plan (agreed 2026-11-26, not run)
+
+Boundaries: a standalone probe script (`harness/spec-probe.ts`), no grid integration, no application, runtime or SDK
+update, LM Studio settings files untouched. Models: a 7B coder model with a small draft model of the same family at 4k
+context (headroom on the 8 GB GPU), and the locally available MTP models; their model cards are read first for usage
+notes.
+
+| Step | Content | GPU |
+|---|---|---|
+| P0 | Probe script, type check, hash of the LM Studio config folder. Done: `harness/spec-probe.ts` with offline tests and `--dry-run`; a real type check needs a TypeScript compiler, not installed | no |
+| P1 | Baseline with speculation off: VRAM, decode speed (warm-up and 3 runs), with a code-generation and the synthetic prompt | yes |
+| P2 | Draft model set at load: applied configuration read back, extra VRAM, whether the draft shows as a separately loaded model, draft counters, speed | yes |
+| P3 | Draft model set per prediction (`draftModel`) on a baseline load: statistics and speed | yes |
+| P4 | The same through the REST chat endpoint: raw response fields stored, are draft counters present | yes |
+| P5 | MTP on and off; a load failure is a reasoned "skipped" result | yes |
+| P6 | Persistence: reload with the speculative fields omitted and read back; switch from draft to MTP; config folder hash compared; an incompatible pair to see the error (SD-01) | yes |
+| P7 | Capability table into this section; findings and load parameter notes updated | no |
+
+Acceptance: every question of P1–P6 has a status (verified, does not work, blocked); every result records the
+application and runtime versions and the background VRAM use; the config folder is unchanged; no model is left loaded;
+about one hour of GPU time at most. Each GPU run is started only after approval.
+
+### Phase 0 results (2026-11-26, run on the GPU)
+
+Bionic 1.2.0, RTX 2070 8 GB, 4k context, full offload, f16 KV, temperature 0, warm-up and 3 runs of 200 output tokens
+per prompt. The probe's raw results stay local.
+
+| Question | Result | Status |
+|---|---|---|
+| Draft model at load (`speculativeDraftSimple` + `speculativeDraftModel`) | Applied and read back as requested. LM Studio defaults: 3 max draft tokens, minimum 0, continue probability 0 | verified |
+| Draft model per prediction (`draftModel`) | Refused by the engine: speculative decoding must be configured at load time | does not work in this version |
+| MTP at load (`speculativeDraftMtp`) | Applied and read back; draft counters present | verified |
+| Draft counters in the SDK | `usedDraftModelKey`, total, accepted, rejected; `ignoredDraftTokensCount` is not returned | verified |
+| Draft counters in the REST chat endpoint | A `stats` object (`draft_model`, `total_draft_tokens_count`, `accepted_draft_tokens_count`, `rejected_draft_tokens_count`) in the non-streamed response and in the last streamed chunk with `stream_options.include_usage` | verified |
+| Draft model in `lms ps` | Not listed; only the main model shows, the cost appears only as VRAM | verified |
+| Extra VRAM | Draft model (1.5B, Q8_0): about +1.2 GiB. MTP on and off: no difference (the heads seem to be loaded either way; inference) | verified, one measurement each |
+| Persistence | A later load that omits the speculative fields gets them off; a draft load followed by an MTP load leaves no draft model; the per-model config folder stays unchanged | verified |
+| Incompatible pair | A 1B Llama target with a 1.5B Qwen draft loads and answers, `usedDraftModelKey` is set, no counters. LM Studio does not reject it | verified; SD-01 needs its own compatibility check |
+| Greedy output against the baseline | With speculation on, most runs differ after 20 to 800 characters; the cause was not examined | observed |
+
+Decode speed, median of 3 (code prompt / synthetic prompt), all with the default of 3 max draft tokens:
+
+| Setup | Off, t/s | On, t/s | Change | Acceptance rate |
+|---|---|---|---|---|
+| 7B coder model + 1.5B Q8_0 draft of the same family | 63.4 / 60.6 | 55.8 / 34.2 | −12% / −44% | 0.76 / 0.36 |
+| 4B model, built-in MTP head | 78.5 / 77.1 | 96.4 / 96.5 | +23% / +25% | 0.70 / 0.72 |
+| 9B finetune, MTP head grafted from its base | 50.3 / 49.0 | 54.8 / 65.3 | +9% / +33% | 0.54 / 0.72 |
+| 0.8B model, built-in MTP head | 156.9 / 152.1 | 163.5 / 179.0 | +4% / +18% | 0.51 / 0.66 |
+
+These are single trial runs, not a comparison by SD-02 to SD-07.
+
+**Decision (phase 0 exit criterion):** speculation is switched only at load, through the SDK load fields: MTP with
+`speculativeDraftMtp`, a draft model with `speculativeDraftSimple` and `speculativeDraftModel`. Phase 1 can keep the
+current loader and measure over the REST endpoint, which returns the counters. Phase 1 adds: a sweep of the maximum
+draft tokens (model cards suggest 2 to 6), a compatibility check for draft pairs (tokenizer), and smaller draft models.
 
 ### Requirements
 

@@ -34,6 +34,8 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `harness/load-config.test.ts` | A leképezés offline tesztje |
 | `harness/sdk-probe.ts` | A hivatalos SDK próbája: alkalmazott beállítások, VRAM és sebesség |
 | `harness/sdk-persist.ts` | Próba: a modell a betöltő process kilépése után is betöltve marad |
+| `harness/spec-probe.ts` | Speculative decoding próba (24. feladat, 0. fázis): load draft modellel és MTP-vel, visszaolvasás, draft számlálók, REST-mezők, beragadás; a terv mintája a `configs/spec-probe.example.json` (saját példány: `spec-probe.local.json`) |
+| `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | A próba tiszta részei (tervellenőrzés, módonkénti load config, draft arányok) és offline tesztjük |
 | `harness/package.json` | Node.js verziókövetelmény és a rögzített SDK verzió |
 | `configs/*.json` | Mérési rácsok (4.1) |
 | `tools/export_docs.py` | A dokumentumok (angol és magyar) PDF-exportja |
@@ -88,8 +90,16 @@ web/      React + Vite + TypeScript, Mantine, ECharts
 ```
 
 Az agent harness feladatokat futtat egy betöltött modellen és trace-t ír; a core-ban lévő hibaelemzés a trace-ekből
-kategóriákat és riportot készít. A core-hoz kapcsolódó interfészét (processhatár és trace-formátum) a roadmap G lépése
-előtt kell meghatározni. Követelmények: `docs/requirements.hu.md`, 3. pont.
+kategóriákat és riportot készít. A core felé az interfész 2026-11-26-án eldőlt, még nincs megvalósítva
+(`docs/requirements.hu.md`, 3. pont, H1–H7):
+
+```
+core --stdin: load spec--------> node load-model.ts  --> LM Studio (SDK)
+core --stdin: task spec, stop--> node run-tasks.ts   --> LM Studio (SDK, predikciónként egy kör)
+     <--stdout: RESULT: összegzés--    |--> sandbox mappa feladatonként (read_file, mock_lookup)
+                                       |--> trace JSONL feladat-futásonként
+core: pass/fail ellenőrzés és hibakategóriák a trace-ekből és a sandbox végállapotából
+```
 
 ```
 core  ->  CLI
@@ -249,7 +259,6 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 
 ## 9. Nyitott kérdések
 
-- A Python core és a TypeScript harness közötti interfész (processhatár, trace-formátum).
 - Az SDK API-portjának megtalálása belső LM Studio fájl nélkül.
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).

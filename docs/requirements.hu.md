@@ -56,9 +56,23 @@ Vázlat, a G lépés előtt részletezendő.
 - Megszakítás és helyreállítás esetei: leállítás tool-hívás közben, félbehagyott kimenet, folytatás.
 - Második kör (M1 után): kontextus vágása és összegzése, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál.
 
+### Interfész a core felé (döntve 2026-11-26, nincs megvalósítva)
+
+| ID | Döntés | Indok |
+|---|---|---|
+| H1 | A core modellenként és feladatcsomagonként egy `node harness/run-tasks.ts` processt indít. A spec az első stdin-sor (JSON); az utolsó stdout-sor `RESULT:`, utána JSON összegzés | Ugyanaz a minta, mint a loadernél; a hiba egy processen belül marad; Windowson egyszerű. Elvetve: hosszú életű JSON-RPC process, HTTP |
+| H2 | A harness nem tölt be modellt; a meglévő loader által betöltött modell `identifier`-ét kapja | Egy betöltési út, a meglévő ellenőrzésekkel |
+| H3 | A leállítás további stdin-sorként érkezik (`{"cmd":"stop"}`), és `AbortSignal`-t vált ki; a trace `aborted` eseményt kap. Türelmi idő után a core leállítja a processt | Windowson nincs megbízható jelzés gyermekprocessnek |
+| H4 | Trace: feladat-futásonként JSONL, `schema_version` mezővel; események: `task_start`, `prediction` (nyers szöveg, tokenek, idők), `tool_call` (nyers és értelmezett argumentumok, validálási hiba), `tool_result` (méret, hiba, időtartam), `limit_hit`, `error`, `task_end` | Hozzáfűzhető, sérült utolsó sor mellett is olvasható |
+| H5 | A pass/fail ellenőrzés és a hibák kategorizálása a Python core-ban fut, a trace és a sandbox megtartott végállapota alapján; a harness csak végrehajt és naplóz | A logika a core-ban van, és a CLI-ből elérhető |
+| H6 | Saját tool loop egy `ModelBackend` interfész mögött: `LmsSdkBackend` (egy predikciós kör `respond()` és `rawTools` használatával) és `ScriptedBackend` (determinisztikus offline tesztek GPU nélkül) | Az érvénytelen tool-hívást nyersen kell naplózni; a `.act()` értelmezhetetlen hívásnál kivételt dob. Az egykörös tool-hívás az SDK 2.1.0 típusaiban megvan; rövid élő ellenőrzés még kell |
+| H7 | M1 hatókör: `read_file` (útvonal a sandboxon belül feloldva, méretkorlát) és `mock_lookup` (determinisztikus, beállítható késleltetéssel és hibával a timeout-esetekhez); korlát tool-hívásra, körszámra és teljes időre; feladatonként eldobható sandbox mappa a fixture-ök másolatával; nincs shell; CLI parancs: `bench agent run` | Vékony M1 szelet; a shell-parancsok sandbox-döntése várhat |
+
+A LM Studio Bionic alkalmazás headless asszisztens béta API-ját (az 1.2.1 kiadási jegyzetében szerepel) M1-ben nem
+használjuk; a telepített verzió 1.2.0.
+
 ### Nyitott
 
-- A Python core és a TypeScript harness közötti interfész (processhatár, trace-formátum).
 - Hogyan korlátozza a sandbox a modell által generált shell-parancsokat. Ezt az első ilyen parancs futtatása előtt el
   kell dönteni.
 - A LM Studio API-portjának megtalálása az SDK-hoz belső fájl nélkül.
@@ -161,6 +175,64 @@ igazoltunk.
 
 A draft modellek tanítása nincs a hatókörben. Draft modell letöltéséhez vagy harmadik féltől származó build
 futtatásához minden esetben jóváhagyás kell.
+
+### A 0. fázis próbaterve (elfogadva 2026-11-26, nem futott)
+
+Határok: önálló próbascript (`harness/spec-probe.ts`), rácsintegráció nélkül, alkalmazás-, runtime- és SDK-frissítés
+nélkül, a LM Studio beállításfájljai érintetlenek. Modellek: egy 7B-s kódmodell ugyanabból a családból származó kis
+draft modellel, 4k contexttel (tartalék a 8 GB-os GPU-n), valamint a helyben elérhető MTP-s modellek; ezek
+modellkártyáját előbb elolvassuk a használati megjegyzések miatt.
+
+| Lépés | Tartalom | GPU |
+|---|---|---|
+| P0 | Próbascript, típusellenőrzés, a LM Studio config mappájának hash-e. Kész: `harness/spec-probe.ts` offline tesztekkel és `--dry-run` móddal; valódi típusellenőrzéshez TypeScript fordító kell, nincs telepítve | nem |
+| P1 | Baseline kikapcsolt spekulációval: VRAM, decode-sebesség (bemelegítő és 3 futás), kódgeneráló és szintetikus prompttal | igen |
+| P2 | Draft modell a loadnál: az alkalmazott konfiguráció visszaolvasása, VRAM-többlet, külön betöltött modellként látszik-e a draft, draft számlálók, sebesség | igen |
+| P3 | Draft modell predikciónként (`draftModel`) baseline loadon: statisztika és sebesség | igen |
+| P4 | Ugyanez a REST chat végponton: a nyers válaszmezők mentése, vannak-e draft számlálók | igen |
+| P5 | MTP be- és kikapcsolva; a betöltési hiba indokolt "skipped" eredmény | igen |
+| P6 | Beragadás: újratöltés a spekulációs mezők elhagyásával és visszaolvasás; váltás draftról MTP-re; a config mappa hash-ének összevetése; nem kompatibilis pár a hibaüzenetért (SD-01) | igen |
+| P7 | Képességtábla ebbe a pontba; a megállapítások és a load paraméterek dokumentumának frissítése | nem |
+
+Elfogadás: a P1–P6 minden kérdésének van állapota (igazolt, nem működik, blokkolt); minden eredmény rögzíti az
+alkalmazás és a runtime verzióját és a háttér VRAM-foglalást; a config mappa változatlan; nem marad betöltött modell;
+legfeljebb kb. egy óra GPU-idő. Minden GPU-s futás csak jóváhagyás után indul.
+
+### A 0. fázis eredményei (2026-11-26, GPU-n futtatva)
+
+Bionic 1.2.0, RTX 2070 8 GB, 4k context, teljes offload, f16 KV, temperature 0, bemelegítő és promptonként 3 futás 200
+kimeneti tokennel. A próba nyers eredményei helyben maradnak.
+
+| Kérdés | Eredmény | Állapot |
+|---|---|---|
+| Draft modell a loadnál (`speculativeDraftSimple` + `speculativeDraftModel`) | A kért módon érvényesül, és visszaolvasható. LM Studio alapértékek: 3 maximális draft token, minimum 0, folytatási valószínűség 0 | igazolt |
+| Draft modell predikciónként (`draftModel`) | A motor elutasítja: a speculative decodingot a loadnál kell beállítani | ebben a verzióban nem működik |
+| MTP a loadnál (`speculativeDraftMtp`) | Érvényesül, visszaolvasható; vannak draft számlálók | igazolt |
+| Draft számlálók az SDK-ban | `usedDraftModelKey`, total, accepted, rejected; az `ignoredDraftTokensCount` nem jön vissza | igazolt |
+| Draft számlálók a REST chat végponton | `stats` objektum (`draft_model`, `total_draft_tokens_count`, `accepted_draft_tokens_count`, `rejected_draft_tokens_count`) a nem streamelt válaszban és `stream_options.include_usage` mellett az utolsó streamelt chunkban | igazolt |
+| Draft modell az `lms ps` listában | Nem szerepel; csak a fő modell látszik, a költség csak a VRAM-ban jelenik meg | igazolt |
+| VRAM-többlet | Draft modell (1.5B, Q8_0): kb. +1,2 GiB. MTP be és ki: nincs különbség (a fejek valószínűleg mindkét esetben betöltődnek; következtetés) | igazolt, egy-egy méréssel |
+| Beragadás | Egy későbbi load, amely elhagyja a spekulációs mezőket, kikapcsolt állapotot kap; draft load után MTP load nem hagy draft modellt; a per-modell config mappa változatlan | igazolt |
+| Nem kompatibilis pár | Egy 1B-s Llama fő modell 1.5B-s Qwen drafttal betölt és válaszol, a `usedDraftModelKey` ki van töltve, számlálók nincsenek. A LM Studio nem utasítja el | igazolt; az SD-01-hez saját kompatibilitás-ellenőrzés kell |
+| Greedy kimenet a baseline-hoz képest | Bekapcsolt spekulációval a futások többsége 20–800 karakter után eltér; az okot nem vizsgáltuk | megfigyelt |
+
+Decode-sebesség, 3 futás mediánja (kódprompt / szintetikus prompt), mindegyik az alapértelmezett 3 maximális draft
+tokennel:
+
+| Összeállítás | Ki, t/s | Be, t/s | Változás | Elfogadási arány |
+|---|---|---|---|---|
+| 7B kódmodell + ugyanabból a családból 1.5B Q8_0 draft | 63,4 / 60,6 | 55,8 / 34,2 | −12% / −44% | 0,76 / 0,36 |
+| 4B modell, beépített MTP-fej | 78,5 / 77,1 | 96,4 / 96,5 | +23% / +25% | 0,70 / 0,72 |
+| 9B finomhangolt modell, az alapmodellből átültetett MTP-fejjel | 50,3 / 49,0 | 54,8 / 65,3 | +9% / +33% | 0,54 / 0,72 |
+| 0.8B modell, beépített MTP-fej | 156,9 / 152,1 | 163,5 / 179,0 | +4% / +18% | 0,51 / 0,66 |
+
+Ezek egyszeri próbafutások, nem az SD-02–SD-07 szerinti összehasonlítás.
+
+**Döntés (a 0. fázis kilépési feltétele):** a spekuláció csak a loadnál kapcsolható, az SDK load mezőivel: MTP a
+`speculativeDraftMtp`, draft modell a `speculativeDraftSimple` és a `speculativeDraftModel` mezővel. Az 1. fázis
+megtarthatja a mostani loadert, és a REST végponton mérhet, amely visszaadja a számlálókat. Az 1. fázis újdonságai: a
+maximális draft token végigmérése (a modellkártyák 2–6-ot javasolnak), kompatibilitás-ellenőrzés a draft párokra
+(tokenizer), kisebb draft modellek.
 
 ### Követelmények
 

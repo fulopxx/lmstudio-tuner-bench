@@ -67,7 +67,9 @@ for the settings in the table above.
 
 The load config has experimental fields for speculative decoding (`speculativeDraftMtp`, `speculativeDraftSimple`,
 `speculativeDraftModel` and draft length and probability limits). The sweep switches speculation off explicitly, and the
-read-back shows it. Loading with speculation switched on has not been tried; see `docs/requirements.md`, section 5.
+read-back shows it. Loads with a draft model and with MTP were tried on 2026-11-26 (`harness/spec-probe.ts`): the fields
+are applied and read back, a later load without them gets them off, and the per-prediction `draftModel` is refused
+(speculation must be set at load). Results: `docs/requirements.md`, section 5.
 
 ### Model lifetime
 

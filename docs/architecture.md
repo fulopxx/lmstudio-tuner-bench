@@ -34,6 +34,8 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `harness/load-config.test.ts` | Offline test of that mapping |
 | `harness/sdk-probe.ts` | Probe of the official SDK: applied settings, VRAM and speed |
 | `harness/sdk-persist.ts` | Probe: a model stays loaded after the loading process exits |
+| `harness/spec-probe.ts` | Speculative decoding probe (task 24, phase 0): draft model and MTP loads, read-back, draft counters, REST fields, persistence; plan from `configs/spec-probe.example.json` (own copy: `spec-probe.local.json`) |
+| `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | Pure parts of the probe (plan check, load configs per mode, draft ratios) and their offline test |
 | `harness/package.json` | Node.js version requirement and the pinned SDK version |
 | `configs/*.json` | Measurement grids (section 4.1) |
 | `tools/export_docs.py` | PDF export of the documents (English and Hungarian) |
@@ -87,8 +89,16 @@ web/      React + Vite + TypeScript, Mantine, ECharts
 ```
 
 The agent harness runs tasks against a loaded model and writes a trace; failure analysis in the core turns traces into
-categories and reports. Its interface to the core (process boundary and trace format) is to be defined before roadmap
-step G. Requirements: `docs/requirements.md`, section 3.
+categories and reports. The interface to the core was decided on 2026-11-26 and is not implemented yet
+(`docs/requirements.md`, section 3, H1–H7):
+
+```
+core --stdin: load spec--------> node load-model.ts  --> LM Studio (SDK)
+core --stdin: task spec, stop--> node run-tasks.ts   --> LM Studio (SDK, one round per prediction)
+     <--stdout: RESULT: summary--      |--> sandbox folder per task (read_file, mock_lookup)
+                                       |--> trace JSONL per task run
+core: pass/fail checks and failure categories from the traces and the sandbox final state
+```
 
 ```
 core  ->  CLI
@@ -247,7 +257,6 @@ The runner is Windows specific (`lms.exe` path, process check).
 
 ## 9. Open questions
 
-- Interface between the Python core and the TypeScript harness (process boundary, trace format).
 - Finding the SDK's API port without an internal LM Studio file.
 - Detecting spill into shared GPU memory.
 - Final choice of test layers (pytest, Vitest, Playwright).

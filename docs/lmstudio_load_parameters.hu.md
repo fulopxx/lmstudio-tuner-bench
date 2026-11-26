@@ -68,7 +68,9 @@ csak a fenti táblázat beállításaira van dokumentálva.
 
 A load configban experimental mezők vannak a speculative decodinghoz (`speculativeDraftMtp`, `speculativeDraftSimple`,
 `speculativeDraftModel`, valamint draft hossz- és valószínűségi korlátok). A sweep explicit kikapcsolja a spekulációt,
-és ez a visszaolvasásban látszik. Bekapcsolt spekulációval még nem próbáltunk loadot; lásd `docs/requirements.hu.md`,
+és ez a visszaolvasásban látszik. Draft modellel és MTP-vel 2026-11-26-án próbáltunk loadot (`harness/spec-probe.ts`):
+a mezők érvényesülnek és visszaolvashatók, egy későbbi load nélkülük kikapcsolt állapotot kap, a predikciónkénti
+`draftModel`-t a motor elutasítja (a spekulációt a loadnál kell beállítani). Eredmények: `docs/requirements.hu.md`,
 5. pont.
 
 ### A betöltött modell élettartama

@@ -37,7 +37,7 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | ⚪ nyitott |
 | 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | ⚪ nyitott |
 | 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd [követelmények](requirements.hu.md), 4. pont) | ⚪ nyitott (még nem vizsgált) |
-| 24 | Speculative decoding mint optimalizálási dimenzió: draft modell és MTP a kikapcsolt spekulációval összevetve, feladattípusonként (lásd [követelmények](requirements.hu.md), 5. pont) | ⚪ nyitott |
+| 24 | Speculative decoding mint optimalizálási dimenzió: draft modell és MTP a kikapcsolt spekulációval összevetve, feladattípusonként (lásd [követelmények](requirements.hu.md), 5. pont) | 🔵 folyamatban (a 0. fázis kész; az 1. fázis nyitott) |
 | K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | ⚪ nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések
@@ -96,6 +96,7 @@ lépéssel együtt.
 | LM Studio elérés | Load a hivatalos TypeScript SDK-val (igazolt); CPU-szálak a llama.cpp argumentum-felülírással; a sweep futtató ezt használja |
 | Hibakezelés | Hibás lépést nem próbál újra magától; két egymást követő timeout után megszakítás; foglalt GPU esetén szünet, 90 s-onként újraellenőrzés és automatikus folytatás (a kézi szünet megmarad) |
 | Statisztika | Medián és szórás, Pareto-front, állítható súlyozott pontszám, bootstrap bizalmi intervallum; páros bírálatnál Elo / Bradley–Terry. ML/DL nem szükséges |
+| Speculative decoding kapcsolása | Csak a loadnál, az SDK load mezőivel (`speculativeDraftMtp`; `speculativeDraftSimple` a `speculativeDraftModel` mezővel); mérés a REST-en, amely visszaadja a draft számlálókat (0. fázis, 2026-11-26) |
 | Speculative decoding | A kikapcsolt spekuláció marad a baseline, és az is lehet az ajánlás; egyelőre csak LM Studio, második backendről (`llama-server`) később döntünk, ha az eredmények indokolják |
 
 ### Architektúra és felület
@@ -108,6 +109,7 @@ lépéssel együtt.
 | Backend | FastAPI, csak `127.0.0.1` |
 | Webes fejlesztés | A D lépés után indul, a `web/` mappában; előbb a core interfészét egyeztetjük |
 | Agent harness | Saját modul hibaelemzéssel, kezdettől TypeScriptben. Az első változatban nincs shell tool |
+| Harness interfész | Modellenként és feladatcsomagonként egy harness process, JSON spec a stdinen, `RESULT:` összegzés, JSONL trace; ellenőrzés és kategorizálás a core-ban; saját tool loop SDK-s és scriptelt backenddel (2026-11-26; [követelmények](requirements.hu.md), 3. pont) |
 
 ### Nyelv és dokumentáció
 
@@ -135,7 +137,7 @@ lépéssel együtt.
 | Kitöltött context | A sweepekben nincsenek a contextet ténylegesen kitöltő promptok | ⚪ nyitott |
 | Háttér VRAM-foglalás | A sebességmérés csak szabad GPU-n érvényes. Hiányzik a mód arra, hogy a VRAM határán lévő konfigurációk összehasonlításakor a háttérfoglalás rögzített vagy kontrollált legyen | ⚪ nyitott |
 | CLI `lms load` | A per-modell default config értékekhez való viszonya nem mért | ⚪ nyitott |
-| Speculative decoding | A telepített SDK-ban vannak load beállítások draft modellhez és MTP-hez, valamint draft statisztikák ([követelmények](requirements.hu.md), 5. pont); sem a hatásukat, sem a memóriaigényüket nem próbáltuk | ⚪ nyitott |
+| Speculative decoding | A 0. fázis próbája 2026-11-26-án kész ([követelmények](requirements.hu.md), 5. pont): csak a loadnál kapcsolható, számlálók az SDK-ban és a REST-ben. Nyitott az 1. fázisra: a draft párok kompatibilitás-ellenőrzése, a maximális draft token, miért tér el a greedy kimenet a baseline-tól | ⚪ nyitott |
 
 ### Stabilitás és tesztelés
 

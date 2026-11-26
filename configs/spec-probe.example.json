@@ -1,0 +1,14 @@
+{
+  "comment": "Plan for harness/spec-probe.ts (speculative decoding, phase 0). Copy to spec-probe.local.json and put model keys from `lms ls` in place of the placeholders. The draft model must share the target's tokenizer family.",
+  "target": "<target-model-key>",
+  "draft": "<small-draft-model-key-of-the-same-family>",
+  "mtp": ["<model-key-with-mtp-heads>"],
+  "incompatible": { "target": "<model-key-of-another-family>", "draft": "<small-draft-model-key-of-the-same-family>" },
+  "contextLength": 4096,
+  "repeats": 3,
+  "maxTokens": 200,
+  "minFreeMib": 5692,
+  "maxUtil": 30,
+  "loadTimeoutMs": 360000,
+  "predictTimeoutMs": 300000
+}

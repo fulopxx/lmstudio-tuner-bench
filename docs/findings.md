@@ -21,3 +21,14 @@ One machine (RTX 2070, 8 GB), 132 jobs on 7B to 14B models, all successful, 3 re
   and at 6 t/s in another (the prompt length differed too).
 - With the longer prompt, decode was 4 to 22 % slower for models that fit; the cause (probably prompt length) is not
   verified.
+
+## Speculative decoding trial (phase 0), 2026-11-26
+
+Same machine, 4k context, single trial runs with the LM Studio default of 3 draft tokens; details in the
+[requirements](requirements.md), section 5.
+
+- A separate draft model (1.5B Q8_0 for a 7B Q4 coder model) made decoding slower (−12 % on code, −44 % on the synthetic
+  prompt) although 76 % of the draft tokens were accepted on code. Probable reason (not verified): on this GPU decoding is
+  limited by memory bandwidth, and a draft model at about 40 % of the main model's size costs more than it saves.
+- Built-in MTP heads were faster on three models (+4 % to +33 %), with no extra VRAM.
+- Speculation is switched at load only; the REST chat endpoint returns the draft counters.
