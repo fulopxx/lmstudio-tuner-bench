@@ -31,6 +31,7 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `runner/probe_*.py` | One-off discovery scripts (REST keys, KV quantization) |
 | `configs/*.json` | Measurement grids: model list, defaults, configurations |
 | `harness/sdk-probe.ts` | Probe of the official SDK: applied settings, VRAM and speed |
+| `harness/sdk-persist.ts` | Probe: a model stays loaded after the loading process exits |
 | `tools/export_docs.py` | PDF export of the Markdown files in `docs` (English and Hungarian) |
 | `tests/` | Offline tests and one live control test that uses the GPU |
 
@@ -127,8 +128,8 @@ The API routes are proposals and not implemented.
 
 ## 9. Open questions
 
-- How the Python core loads through the official SDK (for example through a small Node process), whether a model stays
-  loaded after the client disconnects, and how to find the API port without an internal file.
+- How the Python core loads through the official SDK. A short-lived Node loader process is sufficient (verified: the
+  model stays loaded after it exits); how to find the API port without an internal file is still open.
 - Detecting spill into shared GPU memory.
 - Final choice of test layers (pytest, Vitest, Playwright).
 - Location and format of the machine-specific config file.

@@ -215,7 +215,10 @@ def export(name, folder, lang, html_dir, make_pdf):
         print("HTML:", html_path)
         return
     tmp_pdf = target.with_suffix(".tmp.pdf")
-    tmp_pdf.unlink(missing_ok=True)
+    try:
+        tmp_pdf.unlink(missing_ok=True)
+    except PermissionError:
+        raise SystemExit(f"{tmp_pdf} is open in a viewer; close it to export {name}")
     profile = Path(tempfile.gettempdir()) / "lmbench_edge_profile"
     subprocess.run([str(find_edge()), "--headless=new", "--disable-gpu", f"--user-data-dir={profile}",
                     "--no-pdf-header-footer", f"--print-to-pdf={tmp_pdf}", html_path.resolve().as_uri()],

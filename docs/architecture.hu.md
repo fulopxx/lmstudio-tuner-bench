@@ -31,6 +31,7 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `runner/probe_*.py` | Egyszeri felderítő scriptek (REST-kulcsok, KV-kvantálás) |
 | `configs/*.json` | Mérési rácsok: modellista, alapértékek, konfigurációk |
 | `harness/sdk-probe.ts` | A hivatalos SDK próbája: alkalmazott beállítások, VRAM és sebesség |
+| `harness/sdk-persist.ts` | Próba: a modell a betöltő process kilépése után is betöltve marad |
 | `tools/export_docs.py` | A `docs` Markdown fájljainak (angol és magyar) PDF-exportja |
 | `tests/` | Offline tesztek és egy GPU-t használó élő vezérlési teszt |
 
@@ -128,8 +129,8 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 
 ## 9. Nyitott kérdések
 
-- A Python core hogyan töltsön be a hivatalos SDK-n át (pl. egy kis Node processzel), betöltve marad-e a modell a
-  kliens bontása után, és hogyan található meg az API-port belső fájl nélkül.
+- A Python core hogyan töltsön be a hivatalos SDK-n át. Elég egy rövid életű Node loader process (igazolt: a modell a
+  kilépése után is betöltve marad); az API-port belső fájl nélküli megtalálása még nyitott.
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).
 - A gépfüggő beállítások konfigurációs fájljának helye és formátuma.

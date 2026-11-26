@@ -20,7 +20,7 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 | 7 | MCP / tool use: format, tool selection, parameters, result handling, multi-step chains, parallel calls; instruction following at three levels of detail (goal, numbered steps, one step at a time) | partial (a single tool probe in the smoke test) |
 | 8 | Tool timeout behaviour as a **model capability**: no endless retrying, stops after a limit and tells the user | open (only the harness's own timeouts exist) |
 | 9 | Skill use: picking the right skill, following its steps and prohibitions | open |
-| 10 | Narrowly scoped frontier-model grading in the final round | decision open |
+| 10 | Narrowly scoped frontier-model grading in the final round | open (decision pending) |
 | 11 | Web UI and dashboard; a simple Excel evaluation sheet with Excel charts | open |
 | 12 | Show and measure the browser's GPU usage | open |
 | 13 | Project shareable on git | partial (not released yet) |
@@ -33,7 +33,7 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 | 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | open |
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | open |
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | open |
-| K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | not examined yet |
+| K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | open (not examined yet) |
 
 ### Planned improvements
 
@@ -61,20 +61,20 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 
 ### Full order
 
-| Step | Content |
-|---|---|
-| A | Evaluate the trial sweep, final round |
-| B | Repository preparation, English and Hungarian documents |
-| C | Split core and CLI, versioned result format, model registry |
-| D | Finalize `docs/architecture.md`: data formats, control interface |
-| E | HTML dashboard and Excel export (after D) |
-| F | Web control UI |
-| G | Agent harness: tool loop, sandbox, trace log, CLI |
-| H | Tool calling, timeout and instruction following suite, running on the harness |
-| I | Failure analysis: categories and per-model report |
-| J | Quality suites |
-| L | Secondary NiceGUI panel (low priority) |
-| K | Skill porting (separate task) |
+| Step | Content | Status |
+|---|---|---|
+| A | Evaluate the trial sweep, final round | partial (trial sweep evaluated; final round pending) |
+| B | Repository preparation, English and Hungarian documents | partial (bilingual documents done; public release pending) |
+| C | Split core and CLI, versioned result format, model registry | open |
+| D | Finalize `docs/architecture.md`: data formats, control interface | partial (draft exists) |
+| E | HTML dashboard and Excel export (after D) | open |
+| F | Web control UI | open |
+| G | Agent harness: tool loop, sandbox, trace log, CLI | open |
+| H | Tool calling, timeout and instruction following suite, running on the harness | open |
+| I | Failure analysis: categories and per-model report | open |
+| J | Quality suites | open |
+| L | Secondary NiceGUI panel (low priority) | open (low priority) |
+| K | Skill porting (separate task) | open (separate task) |
 
 E–F and G–J can proceed in parallel. **Designing** the web UI (views, wireframes) without code can start earlier.
 
@@ -174,4 +174,5 @@ Draft, to be detailed before step G.
 
 - Interface between the Python core and the TypeScript harness (process boundary, trace format).
 - How the sandbox restricts model-generated shell commands. This must be decided before any such command is executed.
-- How the Python core loads through the SDK, and how to find LM Studio's API port without an internal file.
+- Loading from the Python core through the SDK: a short-lived Node loader is enough (verified: the model stays
+  loaded). Still open: finding LM Studio's API port without an internal file.

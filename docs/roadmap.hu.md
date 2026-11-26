@@ -20,7 +20,7 @@ a saját felhasználási esetekre, LM Studióval.
 | 7 | MCP / tool-használat: formátum, tool-választás, paraméterek, eredmény feldolgozása, többlépéses lánc, párhuzamos hívás; utasításkövetés három részletességi szinten (cél, számozott lépések, egy lépés egyszerre) | részben (egyetlen tool-próba a smoke-ban) |
 | 8 | Tool-timeout viselkedés mint **modellképesség**: nem próbálkozik végtelenül, idő után leáll és jelez a felhasználónak | nyitott (eddig csak a mérőrendszer saját timeoutjai vannak kész) |
 | 9 | Skill-használat: megfelelő skill kiválasztása, lépések és tiltások betartása | nyitott |
-| 10 | Szűk körű frontier pontozás a döntő körben | döntés nyitott |
+| 10 | Szűk körű frontier pontozás a döntő körben | nyitott (döntés függőben) |
 | 11 | Webes felület és dashboard; egyszerű Excel-értékelő táblázat Excel-grafikonokkal | nyitott |
 | 12 | Böngésző GPU-használatának jelzése és mérése | nyitott |
 | 13 | Gitre megosztható projekt | részben (még nincs kiadva) |
@@ -33,7 +33,7 @@ a saját felhasználási esetekre, LM Studióval.
 | 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | nyitott |
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | nyitott |
 | 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | nyitott |
-| K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | még nem vizsgált |
+| K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések
 
@@ -61,20 +61,20 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 
 ### Teljes sorrend
 
-| Lépés | Tartalom |
-|---|---|
-| A | Próbasweep kiértékelése, döntő kör |
-| B | Repó előkészítése, dokumentumok angol és magyar változata |
-| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter |
-| D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész |
-| E | HTML dashboard és Excel-export (D után) |
-| F | Webes vezérlőfelület |
-| G | Agent harness: tool loop, sandbox, trace log, CLI |
-| H | Tool-calling, timeout- és utasításkövetés-csomag a harnessen futtatva |
-| I | Hibaelemzés: kategóriák és modellenkénti riport |
-| J | Minőségcsomagok |
-| L | NiceGUI másodlagos felület (alacsony prioritás) |
-| K | Skill-átvitel (külön feladat) |
+| Lépés | Tartalom | Állapot |
+|---|---|---|
+| A | Próbasweep kiértékelése, döntő kör | részben (a próbasweep kiértékelve; a döntő kör hátravan) |
+| B | Repó előkészítése, dokumentumok angol és magyar változata | részben (kétnyelvű dokumentumok készek; a publikus kiadás hátravan) |
+| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | nyitott |
+| D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | részben (vázlat kész) |
+| E | HTML dashboard és Excel-export (D után) | nyitott |
+| F | Webes vezérlőfelület | nyitott |
+| G | Agent harness: tool loop, sandbox, trace log, CLI | nyitott |
+| H | Tool-calling, timeout- és utasításkövetés-csomag a harnessen futtatva | nyitott |
+| I | Hibaelemzés: kategóriák és modellenkénti riport | nyitott |
+| J | Minőségcsomagok | nyitott |
+| L | NiceGUI másodlagos felület (alacsony prioritás) | nyitott (alacsony prioritás) |
+| K | Skill-átvitel (külön feladat) | nyitott (külön feladat) |
 
 Az E–F és a G–J párhuzamosan haladhat. A webes felület **tervezése** (nézetek, drótváz) kód nélkül korábban is
 elkezdhető.
@@ -180,4 +180,5 @@ Vázlat, a G lépés előtt részletezendő.
 - A Python core és a TypeScript harness közötti interfész (processhatár, trace-formátum).
 - Hogyan korlátozza a sandbox a modell által generált shell-parancsokat. Ezt az első ilyen parancs futtatása előtt el
   kell dönteni.
-- A Python core hogyan töltsön be az SDK-n át, és hogyan található meg a LM Studio API-portja belső fájl nélkül.
+- Load a Python core-ból az SDK-n át: elég egy rövid életű Node loader (igazolt: a modell betöltve marad). Még
+  nyitott: a LM Studio API-portjának megtalálása belső fájl nélkül.

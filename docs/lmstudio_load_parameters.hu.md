@@ -39,7 +39,11 @@ be, 1 párhuzamos predikció, bemelegítő és 2 mért futás). A LM Studio per-
   olvastuk. Az alkalmazásnak futnia kell.
 - Egy `channelUnknown` kommunikációs figyelmeztetés jelent meg az egyik load/predikció közben; az eredményeken nem
   látszott hatása. Figyelni kell az SDK és az alkalmazás verziói közti protokolleltérésre.
-- Nem vizsgált: betöltve marad-e a modell az SDK-kliens bontása után; a load config többi beállítása.
+- A modell betöltve marad, miután a betöltő process megszűnt, az SDK-kliens lezárása és hirtelen kilépés után is
+  (`harness/sdk-persist.ts`, 8k context, `q8_0`). A beállítások megmaradnak, a HTTP-szerver az identifier alapján
+  generál a modellel, és az `lms unload` eltávolítja. Ezért elég egy rövid életű loader process; a megszakadt futás
+  után maradt modellt külön el kell takarítani.
+- Nem vizsgált: a load config többi beállítása.
 
 ## Default config kulcsok (a UI által mentett fájlokból)
 

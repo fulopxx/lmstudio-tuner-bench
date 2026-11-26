@@ -39,7 +39,11 @@ modified (checked byte for byte).
   The application has to be running.
 - One `channelUnknown` communication warning appeared during one load/prediction; results were not visibly affected.
   Watch for protocol mismatches between SDK and application versions.
-- Not tested: whether a model stays loaded after the SDK client disconnects; other settings of the load config.
+- A model stays loaded after the loading process is gone, both after closing the SDK client and after an abrupt exit
+  (`harness/sdk-persist.ts`, 8k context, `q8_0`). The settings survive, the HTTP server generates with the model by its
+  identifier, and `lms unload` removes it. A short-lived loader process is therefore enough; leftovers of a killed run
+  have to be cleaned up explicitly.
+- Not tested: other settings of the load config.
 
 ## Default config keys (read from files saved by the UI)
 
