@@ -127,12 +127,18 @@ elkezdhető.
   véglegesek. Tiszta, teljes sweep később, üres gép mellett.
 
 - Élőben nem próbált: `stop --now`, automatikus szünet foglalt GPU-nál és az utána következő automatikus folytatás
-  (csak offline tesztek fedik le), generálás közben megszakadt kapcsolat (csak offline tesztek), Ctrl+C, folytatás
-  gépújraindítás után, betöltési timeout, `--redo-failed`.
+  (csak offline tesztek fedik le), generálás közben megszakadt kapcsolat (csak offline tesztek), Ctrl+C, betöltési
+  timeout, `--redo-failed`. A gépújraindítás utáni folytatást 2026-11-26-án egyszer használtuk.
 - A megosztott GPU-memóriába csordulás felismerése: a mostani `near_vram_limit` jelző valószínűleg nem elég (a futó
   sweep részeredményeiben van olyan sebességesés, amelyet nem jelzett; ok még nem igazolt).
 - A CLI `lms load` út és a default-config értékek viszonya nem mért.
 - A sebességmérés csak szabad GPU-n érvényes.
+- A 2026-11-26-i sweepek közben a `status --watch` többször „process gone” üzenetet adott, pedig a futás ment tovább. A
+  nézet egy élő process késő heartbeatjénél már nem lép ki; hogy a heartbeat miért késett, ismeretlen (nem
+  reprodukáltuk).
+- Ugyanezen sweepek alatt egyszer a kijelző nem reagált tovább (a Windows szerint az `explorer.exe` a `dwm.exe`-re
+  várt), miközben a futtató még írta a heartbeatjét; a gépet újra kellett indítani, és a `resume` folytatta a futást.
+  Videódriver-reset vagy hardverhiba nem került a naplóba; az ok ismeretlen.
 - A tiszta sweephez: finomabb offload-lépések, valamint batch méret hosszabb context mellett a 12–14B modelleknél;
   a contexthossz és a KV-kvantálás szétválasztása; a contextet ténylegesen kitöltő promptok; legalább 3 ismétlés; a
   megosztott GPU-memória mérése a sebességből történő következtetés helyett.

@@ -125,12 +125,17 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 - The 56-job run of 2026-11-26 is a trial run: other programs may have been using the CPU, its numbers are not final. A
   clean full sweep follows later on an idle machine.
 - Not tried live: `stop --now`, automatic pause on a busy GPU and the automatic resume after it (covered by offline
-  tests only), a connection breaking during generation (offline tests only), Ctrl+C, resume after a reboot, load
-  timeout, `--redo-failed`.
+  tests only), a connection breaking during generation (offline tests only), Ctrl+C, load timeout, `--redo-failed`.
+  Resume after a reboot was used once on 2026-11-26.
 - Detecting spill into shared GPU memory: the current `near_vram_limit` flag is probably not enough (partial results of
   the trial sweep show a slowdown it did not flag; the cause is not verified yet).
 - The relation between CLI `lms load` and the per-model default config values has not been measured.
 - Speed measurements are only valid on an idle GPU.
+- During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The
+  view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced).
+- Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while
+  the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display
+  driver reset or hardware error was logged; the cause is unknown.
 - For the clean sweep: finer offload steps and batch size combined with longer context for 12–14B models; separate
   context length from KV quantization; prompts that actually fill the context; at least 3 repeats; measure shared GPU
   memory instead of guessing spill from speed.
