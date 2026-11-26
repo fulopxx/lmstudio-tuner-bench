@@ -14,15 +14,32 @@ Futtatással igazolt, kivéve ahol jelölve van. Más verziók eltérően viselk
 | REST `POST /api/v1/models/load` | `context_length`, `eval_batch_size`, `physical_batch_size`, `parallel`, `flash_attention`, `offload_kv_cache_to_gpu`, `num_experts`, `context_checkpoints`, `lazy_mode`, speculative mezők, `echo_load_config` | Szigorú séma: ismeretlen kulcsot HTTP 400-zal elutasít. GPU-offload arányra, KV-kvantálásra, CPU-szálakra, mmap-re és keep-in-memory-ra nem találtunk kulcsot (kb. 50 névvariáns) |
 | Per-modell default config fájl: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<modell>.gguf.json` | GPU-offload arány, KV-kvantálás, szálak és a lent felsorolt többi kulcs | Belső, nem dokumentált formátum. A benchmark csak ideiglenesen módosítja, mentéssel és bájtpontos visszaállítással (`runner/config_store.py`) |
 
-## Negyedik út: a hivatalos SDK (még nincs kipróbálva)
+## Negyedik út: a hivatalos TypeScript SDK (igazolt)
 
-Hozzáadva 2026-11-26. A hivatalos TypeScript SDK forrásában a load config séma
-([`LLMLoadModelConfig.ts`](https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-shared-types/src/llm/LLMLoadModelConfig.ts),
-`main` branch) többek között ezeket tartalmazza: `gpu.ratio`, `llamaKCacheQuantizationType`,
-`llamaVCacheQuantizationType` (`f32`, `f16`, `q8_0`, `q4_0`, `q4_1`, `iq4_nl`, `q5_0`, `q5_1`), `flashAttention`,
-`evalBatchSize`, `physicalBatchSize`, `useUnifiedKvCache`, `keepModelInMemory`, `tryMmap` és
-`llamaCppArgumentsOverride`. CPU-szál mezőt nem találtunk. **Futtatással nem igazolt:** a telepített LM Studio verzió
-nem feltétlenül tud mindent, ami a mai forrásban van. Ha működik, a config fájlok módosítása nagyrészt szükségtelen.
+Kipróbálva 2026-11-26-án, `@lmstudio/sdk` 2.1.0, LM Studio 1.2.0 (`harness/sdk-probe.ts`, Llama-3.2-1B, flash attention
+be, 1 párhuzamos predikció, bemelegítő és 2 mért futás). A LM Studio per-modell config fájljai **nem** módosultak
+(bájtra ellenőrizve).
+
+| Eset | Beállítás | VRAM-növekedés | decode t/s |
+|---|---|---|---|
+| gpu-fp16 | GPU max, 32k, KV-kvantálás ki | 2490 MiB | 177,1 |
+| gpu-q8 | GPU max, 32k, K és V `q8_0` | 2003 MiB | 164,6 |
+| gpu-half | GPU ratio 0,5, 4k | 998 MiB | 29,4 |
+| cpu-t2 | GPU ki, 4k, `--threads 2` | 308 MiB | 9,9 |
+| cpu-t8 | GPU ki, 4k, `--threads 8` | 115 MiB | 15,5 |
+
+- A `gpu.ratio`, a `llamaKCacheQuantizationType` és a `llamaVCacheQuantizationType` érvényesül; az értékek egyeznek a
+  fenti, config fájlos mérésekkel.
+- CPU-szálak: a load configban nincs külön mező, de a `llamaCppArgumentsOverride` `--threads` paramétere érvényesül (a
+  decode-sebesség ugyanúgy eltér, mint a config fájllal).
+- Az explicit értékek felülírták a mentett per-modell alapértékeket (mentve: KV-kvantálás ki, 6 szál).
+- A `getLoadConfig()` visszaadja az alkalmazott konfigurációt, a KV-típusokkal és az argumentum-felülírással együtt.
+- Az SDK automatikus portkeresése nem talált kapcsolatot, az `lms server start` portja pedig nem fogadja a
+  WebSocketjét (HTTP 200). A működő portot a `~/.lmstudio/apps/bionic/.internal/http-server.json` fájlból (belső fájl)
+  olvastuk. Az alkalmazásnak futnia kell.
+- Egy `channelUnknown` kommunikációs figyelmeztetés jelent meg az egyik load/predikció közben; az eredményeken nem
+  látszott hatása. Figyelni kell az SDK és az alkalmazás verziói közti protokolleltérésre.
+- Nem vizsgált: betöltve marad-e a modell az SDK-kliens bontása után; a load config többi beállítása.
 
 ## Default config kulcsok (a UI által mentett fájlokból)
 

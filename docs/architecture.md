@@ -30,6 +30,7 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `runner/config_store.py` | Backup, temporary write and restore of per-model config files |
 | `runner/probe_*.py` | One-off discovery scripts (REST keys, KV quantization) |
 | `configs/*.json` | Measurement grids: model list, defaults, configurations |
+| `harness/sdk-probe.ts` | Probe of the official SDK: applied settings, VRAM and speed |
 | `tools/export_docs.py` | PDF export of the Markdown files in `docs` (English and Hungarian) |
 | `tests/` | Offline tests and one live control test that uses the GPU |
 
@@ -112,6 +113,7 @@ The API routes are proposals and not implemented.
 | REST `POST /api/v1/models/load` | loading with explicit parameters |
 | REST `GET /api/v0/models/{id}` | checking the loaded model |
 | REST `POST /v1/chat/completions` | generation and measurement |
+| `@lmstudio/sdk` (Node) | planned loading path, verified by `harness/sdk-probe.ts` |
 | `nvidia-smi` | VRAM, GPU utilization, driver |
 | LM Studio per-model config folder (`apps/bionic/...`) | KV quantization, threads, GPU offload; details: `docs/lmstudio_load_parameters.md` |
 
@@ -125,8 +127,8 @@ The API routes are proposals and not implemented.
 
 ## 9. Open questions
 
-- Whether the official SDK (`@lmstudio/sdk`) works with the installed LM Studio version. If it does, how the Python
-  core uses it for loading (through the harness process, or the Python SDK), replacing the config file edits.
+- How the Python core loads through the official SDK (for example through a small Node process), whether a model stays
+  loaded after the client disconnects, and how to find the API port without an internal file.
 - Detecting spill into shared GPU memory.
 - Final choice of test layers (pytest, Vitest, Playwright).
 - Location and format of the machine-specific config file.

@@ -28,7 +28,7 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | partial (documents done, no UI yet) |
 | 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see section 7) | open |
 | 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see section 7) | open |
-| 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | open |
+| 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | partial (SDK verified; the sweep runner still edits config files) |
 | 19 | Model-specific tool-call differences and repair methods (retry, schema constraint, grammar) | open |
 | 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | open |
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | open |
@@ -50,7 +50,7 @@ M1 comes first: one thin slice that works end to end. The A–L table below appl
 
 | M1 step | Content | Status |
 |---|---|---|
-| 1 | SDK trial on the installed LM Studio (task 18) | open |
+| 1 | SDK trial on the installed LM Studio (task 18) | done |
 | 2 | Clean sweep, evaluation, recommended settings per model | in progress |
 | 3 | Repository preparation, license, public release | in progress |
 | 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | open |
@@ -92,7 +92,7 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 | Hungarian wording | Technical terms that are commonly used in English, or lack a good Hungarian equivalent, stay in English, especially in the UI |
 | Code | Code and comments in English |
 | Agent harness | Own module with failure analysis, written in TypeScript from the start. The first version has no shell tool |
-| LM Studio access | Try the official SDK first; undocumented config files only where the SDK cannot do it |
+| LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; config file edits to be removed when the sweep runner is switched over |
 | Focus | Failure taxonomy and trace-based diagnostics are what sets the project apart; speed benchmarking is the base |
 | License | MIT |
 | CLI parity | The terminal version comes first: it must be able to do everything, graphical interfaces cannot do more. New features appear in the core and CLI first |
@@ -133,6 +133,14 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
   context length from KV quantization; prompts that actually fill the context; at least 3 repeats; measure shared GPU
   memory instead of guessing spill from speed.
 
+- Dependency advisory in `harness/`: `npm audit` reports
+  [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) (memory exhaustion in `zod` below 4.6.6),
+  pulled in by `@lmstudio/sdk` 2.1.0, which requires `zod ^3.22.4`. Assessed as low risk for local use (availability
+  only; input comes from the local server and from model output, so limit tool argument sizes). Do not run
+  `npm audit fix --force` (it downgrades the SDK) and do not force zod 4 (reported to break the SDK). Already raised
+  upstream in [lmstudio-js issue 362](https://github.com/lmstudio-ai/lmstudio-js/issues/362); check again on every SDK
+  update.
+
 ## 7. Agent harness and failure analysis: initial requirements
 
 Draft, to be detailed before step G.
@@ -166,5 +174,4 @@ Draft, to be detailed before step G.
 
 - Interface between the Python core and the TypeScript harness (process boundary, trace format).
 - How the sandbox restricts model-generated shell commands. This must be decided before any such command is executed.
-- Whether the SDK works with the installed LM Studio version and covers CPU threads (no such field was found in its
-  load config source; the llama.cpp argument override may cover it).
+- How the Python core loads through the SDK, and how to find LM Studio's API port without an internal file.

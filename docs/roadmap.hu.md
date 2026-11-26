@@ -28,7 +28,7 @@ a saját felhasználási esetekre, LM Studióval.
 | 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | részben (dokumentumok kész, felület nincs) |
 | 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd 7. pont) | nyitott |
 | 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd 7. pont) | nyitott |
-| 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | nyitott |
+| 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | részben (az SDK igazolt; a sweep futtató még a config fájlokat módosítja) |
 | 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | nyitott |
 | 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | nyitott |
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | nyitott |
@@ -50,7 +50,7 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 
 | M1 lépés | Tartalom | Állapot |
 |---|---|---|
-| 1 | SDK-próba a telepített LM Studión (18. feladat) | nyitott |
+| 1 | SDK-próba a telepített LM Studión (18. feladat) | kész |
 | 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | folyamatban |
 | 3 | Repó előkészítése, licenc, publikus kiadás | folyamatban |
 | 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | nyitott |
@@ -93,7 +93,7 @@ elkezdhető.
 | Magyar szóhasználat | Az angolul elterjedt vagy jó magyar megfelelő nélküli szakkifejezés angolul marad, főleg a felületen |
 | Kód | Angol kód, angol kommentek |
 | Agent harness | Saját modul hibaelemzéssel, kezdettől TypeScriptben. Az első változatban nincs shell tool |
-| LM Studio elérés | Először a hivatalos SDK; nem dokumentált config fájl csak ott, ahol az SDK nem elég |
+| LM Studio elérés | Load a hivatalos TypeScript SDK-val (igazolt); CPU-szálak a llama.cpp argumentum-felülírással; a config fájlok módosítása a sweep futtató átállásakor megszűnik |
 | Fókusz | A projekt megkülönböztetője a hibataxonómia és a trace-alapú diagnosztika; a sebességmérés az alap |
 | Licenc | MIT |
 | CLI-paritás | A terminálos változat elsőbbséget élvez: mindent tudnia kell, a grafikus felületek nem tudhatnak többet. Új funkció először a core-ban és a CLI-ben jelenik meg |
@@ -135,6 +135,15 @@ elkezdhető.
   a contexthossz és a KV-kvantálás szétválasztása; a contextet ténylegesen kitöltő promptok; legalább 3 ismétlés; a
   megosztott GPU-memória mérése a sebességből történő következtetés helyett.
 
+- Függőségi figyelmeztetés a `harness/` mappában: az `npm audit` a
+  [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) jelzést adja (memóriakimerítés a 4.6.6 alatti
+  `zod`-ban), amelyet az `@lmstudio/sdk` 2.1.0 hoz be, mert `zod ^3.22.4`-et vár. Helyi használatban alacsony
+  kockázatúnak értékeltük (csak a rendelkezésre állást érinti; a bemenet a helyi szervertől és a modellkimenetből jön,
+  ezért a tool-paraméterek méretét korlátozni kell). Ne futtasd az `npm audit fix --force` parancsot (visszaléptetné az
+  SDK-t), és ne kényszeríts zod 4-et (a jelzések szerint eltöri az SDK-t). Upstream már jelezték
+  ([lmstudio-js 362. issue](https://github.com/lmstudio-ai/lmstudio-js/issues/362)); minden SDK-frissítéskor újra
+  ellenőrizni.
+
 ## 7. Agent harness és hibaelemzés: kezdeti követelmények
 
 Vázlat, a G lépés előtt részletezendő.
@@ -171,5 +180,4 @@ Vázlat, a G lépés előtt részletezendő.
 - A Python core és a TypeScript harness közötti interfész (processhatár, trace-formátum).
 - Hogyan korlátozza a sandbox a modell által generált shell-parancsokat. Ezt az első ilyen parancs futtatása előtt el
   kell dönteni.
-- Működik-e az SDK a telepített LM Studio verzióval, és lefedi-e a CPU-szálakat (a load config forrásában nem
-  találtunk ilyen mezőt; a llama.cpp argumentum-felülírás talán megoldja).
+- A Python core hogyan töltsön be az SDK-n át, és hogyan található meg a LM Studio API-portja belső fájl nélkül.

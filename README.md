@@ -24,8 +24,8 @@ systematically on my own tasks, so I started building it.
 
 **Known limitation:** KV quantization, CPU threads and GPU offload are set through LM Studio's undocumented per-model
 config files. The folder path is fixed in `runner\config_store.py` and may differ on other installations. Details:
-[load parameters](docs/lmstudio_load_parameters.md). The official SDK appears to expose most of these settings; it has
-not been tried yet.
+[load parameters](docs/lmstudio_load_parameters.md). The official TypeScript SDK sets them without touching those files (verified with a probe);
+the sweep runner still uses the files until it is switched over.
 
 ## Usage
 

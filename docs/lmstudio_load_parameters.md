@@ -14,15 +14,32 @@ Verified by running unless stated otherwise. Other versions may behave different
 | REST `POST /api/v1/models/load` | `context_length`, `eval_batch_size`, `physical_batch_size`, `parallel`, `flash_attention`, `offload_kv_cache_to_gpu`, `num_experts`, `context_checkpoints`, `lazy_mode`, speculative fields, `echo_load_config` | Strict schema: unknown keys are rejected with HTTP 400. No key found for GPU offload ratio, KV quantization, CPU threads, mmap or keep-in-memory (about 50 name variants tried) |
 | Per-model default config file: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<model>.gguf.json` | GPU offload ratio, KV quantization, threads and the other keys listed below | Internal, undocumented format. The benchmark edits it only temporarily, with backup and byte-exact restore (`runner/config_store.py`) |
 
-## Fourth path: the official SDK (not tried yet)
+## Fourth path: the official TypeScript SDK (verified)
 
-Added 2026-11-26. The load config schema in the source of the official TypeScript SDK
-([`LLMLoadModelConfig.ts`](https://github.com/lmstudio-ai/lmstudio-js/blob/main/packages/lms-shared-types/src/llm/LLMLoadModelConfig.ts),
-`main` branch) lists, among others: `gpu.ratio`, `llamaKCacheQuantizationType`, `llamaVCacheQuantizationType`
-(`f32`, `f16`, `q8_0`, `q4_0`, `q4_1`, `iq4_nl`, `q5_0`, `q5_1`), `flashAttention`, `evalBatchSize`,
-`physicalBatchSize`, `useUnifiedKvCache`, `keepModelInMemory`, `tryMmap` and `llamaCppArgumentsOverride`. No CPU
-thread field was found. **Not verified by running:** the installed LM Studio version may not support everything in the
-current source. If it works, most config file edits become unnecessary.
+Tried on 2026-11-26 with `@lmstudio/sdk` 2.1.0 against LM Studio 1.2.0 (`harness/sdk-probe.ts`, Llama-3.2-1B, flash
+attention on, 1 parallel prediction, warm-up plus 2 measured runs). LM Studio's per-model config files were **not**
+modified (checked byte for byte).
+
+| Case | Settings | VRAM increase | decode t/s |
+|---|---|---|---|
+| gpu-fp16 | GPU max, 32k, KV quantization off | 2490 MiB | 177.1 |
+| gpu-q8 | GPU max, 32k, K and V `q8_0` | 2003 MiB | 164.6 |
+| gpu-half | GPU ratio 0.5, 4k | 998 MiB | 29.4 |
+| cpu-t2 | GPU off, 4k, `--threads 2` | 308 MiB | 9.9 |
+| cpu-t8 | GPU off, 4k, `--threads 8` | 115 MiB | 15.5 |
+
+- `gpu.ratio`, `llamaKCacheQuantizationType` and `llamaVCacheQuantizationType` take effect; the values agree with the
+  config file measurements above.
+- CPU threads: there is no dedicated field in the load config, but `llamaCppArgumentsOverride` with the parameter
+  `--threads` takes effect (decode speed differs as with the config file).
+- Explicit values took precedence over the saved per-model defaults (saved: KV quantization off, 6 threads).
+- `getLoadConfig()` returns the applied configuration, including the KV types and the argument override.
+- The SDK's automatic port discovery failed, and the port of `lms server start` does not accept its WebSocket
+  (HTTP 200). The working port was read from `~/.lmstudio/apps/bionic/.internal/http-server.json` (internal file).
+  The application has to be running.
+- One `channelUnknown` communication warning appeared during one load/prediction; results were not visibly affected.
+  Watch for protocol mismatches between SDK and application versions.
+- Not tested: whether a model stays loaded after the SDK client disconnects; other settings of the load config.
 
 ## Default config keys (read from files saved by the UI)
 

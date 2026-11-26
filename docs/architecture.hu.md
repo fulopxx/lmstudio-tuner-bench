@@ -30,6 +30,7 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `runner/config_store.py` | Per-modell config-fájlok mentése, ideiglenes írása, visszaállítása |
 | `runner/probe_*.py` | Egyszeri felderítő scriptek (REST-kulcsok, KV-kvantálás) |
 | `configs/*.json` | Mérési rácsok: modellista, alapértékek, konfigurációk |
+| `harness/sdk-probe.ts` | A hivatalos SDK próbája: alkalmazott beállítások, VRAM és sebesség |
 | `tools/export_docs.py` | A `docs` Markdown fájljainak (angol és magyar) PDF-exportja |
 | `tests/` | Offline tesztek és egy GPU-t használó élő vezérlési teszt |
 
@@ -113,6 +114,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | REST `POST /api/v1/models/load` | betöltés explicit paraméterekkel |
 | REST `GET /api/v0/models/{id}` | a betöltött modell ellenőrzése |
 | REST `POST /v1/chat/completions` | generálás és mérés |
+| `@lmstudio/sdk` (Node) | tervezett load-útvonal, a `harness/sdk-probe.ts` igazolta |
 | `nvidia-smi` | VRAM, GPU-kihasználtság, driver |
 | LM Studio per-modell config mappa (`apps/bionic/...`) | KV-kvantálás, szálszám, GPU-offload; részletek: `docs/lmstudio_load_parameters.hu.md` |
 
@@ -126,8 +128,8 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 
 ## 9. Nyitott kérdések
 
-- Működik-e a hivatalos SDK (`@lmstudio/sdk`) a telepített LM Studio verzióval. Ha igen, a Python core hogyan
-  használja loadhoz (a harness processen át vagy a Python SDK-val), kiváltva a config fájlok módosítását.
+- A Python core hogyan töltsön be a hivatalos SDK-n át (pl. egy kis Node processzel), betöltve marad-e a modell a
+  kliens bontása után, és hogyan található meg az API-port belső fájl nélkül.
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).
 - A gépfüggő beállítások konfigurációs fájljának helye és formátuma.

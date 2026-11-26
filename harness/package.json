@@ -1,0 +1,14 @@
+{
+  "name": "lmstudio-tuner-bench-harness",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript parts of lmstudio-tuner-bench: SDK probe, later the agent harness",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@lmstudio/sdk": "2.1.0"
+  }
+}

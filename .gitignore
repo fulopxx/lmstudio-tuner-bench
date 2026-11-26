@@ -12,6 +12,7 @@
 /docs/*.pdf
 
 # Tool and editor files
+node_modules/
 __pycache__/
 *.pyc
 *.tmp

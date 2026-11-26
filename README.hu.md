@@ -24,8 +24,8 @@ beállítást a saját feladataimon, módszeresen mérjek és hasonlítsak össz
 
 **Ismert korlát:** a KV-kvantálás, a szálszám és a GPU-offload a LM Studio nem dokumentált, per-modell config
 fájljain keresztül állítható. A mappa útvonala a `runner\config_store.py`-ban rögzített, és más telepítésen eltérhet.
-Részletek: [load paraméterek](docs/lmstudio_load_parameters.hu.md). A hivatalos SDK a jelek szerint ezek többségét
-elérhetővé teszi; még nincs kipróbálva.
+Részletek: [load paraméterek](docs/lmstudio_load_parameters.hu.md). A hivatalos TypeScript SDK ezeket a fájlok módosítása
+nélkül is beállítja (próbával igazolt); a sweep futtató az átállásig még a fájlokat használja.
 
 ## Futtatás
 
