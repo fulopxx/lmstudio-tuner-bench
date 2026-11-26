@@ -5,7 +5,7 @@
 Last updated: 2026-11-26. Goal: tune and compare downloaded local models on your own hardware, for your own use cases,
 using LM Studio.
 
-Related documents: [requirements](requirements.md) (interface, testing, agent harness, bias investigation) and
+Related documents: [requirements](requirements.md) (interface, testing, agent harness, speculative decoding, bias investigation) and
 [measurement findings](findings.md).
 
 ## 1. Tasks
@@ -37,13 +37,14 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | ⚪ open |
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | ⚪ open |
 | 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see [requirements](requirements.md), section 4) | ⚪ open (not examined yet) |
+| 24 | Speculative decoding as an optimization dimension: draft model and MTP compared with speculation off, per task type (see [requirements](requirements.md), section 5) | ⚪ open |
 | K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | ⚪ open (not examined yet) |
 
 ### Planned improvements
 
 - Result format: schema version and hardware fingerprint (GPU, driver, LM Studio and runtime version).
 - Recommended preset per model, compared with the current LM Studio settings. Applied only after confirmation.
-- Later: tuning of speculative decoding and sampling parameters.
+- Later: tuning of sampling parameters.
 
 ## 2. Order of work
 
@@ -81,6 +82,9 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 
 E–F and G–J can proceed in parallel. **Designing** the web UI (views, wireframes) without code can start earlier.
 
+Task 24 (speculative decoding): the short trial (phase 0) comes before M1 step 4, the integration after M1 together
+with step C.
+
 ## 3. Decisions
 
 ### Measurement and runner
@@ -91,6 +95,7 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 | LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; used by the sweep runner |
 | Error handling | Failed steps are not retried automatically; abort after two consecutive timeouts; pause when the GPU is busy, re-check every 90 s and continue by itself (a manual pause stays) |
 | Statistics | Median and spread, Pareto front, adjustable weighted score, bootstrap confidence intervals; Elo / Bradley–Terry for pairwise grading. No ML/DL needed |
+| Speculative decoding | Speculation off stays the baseline and may be the recommendation; LM Studio only for now, a second backend (`llama-server`) is decided later if results justify it |
 
 ### Architecture and interfaces
 
@@ -129,6 +134,7 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 | Filled context | The sweeps have no prompts that actually fill the context | ⚪ open |
 | Background VRAM use | Speed measurements are only valid on an idle GPU. A way to hold or record the background use when comparing configurations near the VRAM limit is missing | ⚪ open |
 | CLI `lms load` | Its relation to the per-model default config values has not been measured | ⚪ open |
+| Speculative decoding | The installed SDK has load settings for draft model and MTP and draft statistics ([requirements](requirements.md), section 5); neither their effect nor their memory cost has been tried | ⚪ open |
 
 ### Stability and testing
 

@@ -64,6 +64,13 @@ méret, CPU-szálak és KV-kvantálás (ki és `q8_0`). A párhuzamos predikció
 unified KV cache csak egy-egy értékkel szerepelt. Az egyező érték azt mutatja, hogy a beállítást elfogadta; mért hatás
 csak a fenti táblázat beállításaira van dokumentálva.
 
+### Speculative decoding beállítások
+
+A load configban experimental mezők vannak a speculative decodinghoz (`speculativeDraftMtp`, `speculativeDraftSimple`,
+`speculativeDraftModel`, valamint draft hossz- és valószínűségi korlátok). A sweep explicit kikapcsolja a spekulációt,
+és ez a visszaolvasásban látszik. Bekapcsolt spekulációval még nem próbáltunk loadot; lásd `docs/requirements.hu.md`,
+5. pont.
+
 ### A betöltött modell élettartama
 
 A modell betöltve marad, miután a betöltő process megszűnt, az SDK-kliens lezárása és hirtelen kilépés után is

@@ -117,3 +117,61 @@ effect is intentional.
   one comparison, 5% significance).
 - Generated code runs only in an isolated sandbox; this depends on the sandbox decision of section 3.
 - The Hirundo results concern a 30B model; they say nothing about the smaller models that fit the 8 GB development GPU.
+
+## 5. Speculative decoding
+
+Task 24. Status: not tried; no measurement has been made.
+
+**Goal.** Treat speculative decoding as its own optimization dimension: per model and task type, measure the speed gain
+and the resource cost against the same configuration with speculation off, then recommend a setting, which may be "off".
+
+### Known about the installed version
+
+Read from the type definitions of `@lmstudio/sdk` 2.1.0 and from earlier observations; nothing was verified by running a
+speculative load.
+
+- Load config (marked experimental): `speculativeDraftMtp` (bundled multi-token prediction heads),
+  `speculativeDraftSimple` with `speculativeDraftModel` (separate draft model), `speculativeDraftMaxTokens`,
+  `speculativeDraftMinTokens`, `speculativeDraftMinContinueProbability`. The sweep runner sends the first two as `false`,
+  and they appear in the applied configuration read back after the load.
+- Predictions through the SDK accept `draftModel` and report `usedDraftModelKey`, `totalDraftTokensCount`,
+  `acceptedDraftTokensCount`, `rejectedDraftTokensCount` and `ignoredDraftTokensCount`.
+- `lms load` lists `--speculative-draft-*` options and the REST load call accepts speculative fields
+  ([load parameters](lmstudio_load_parameters.md)).
+- Whether the REST chat endpoint used for measurement returns draft counters is unknown.
+- Documentation: [LM Studio](https://lmstudio.ai/docs/app/advanced/speculative-decoding),
+  [llama.cpp](https://github.com/ggml-org/llama.cpp/blob/master/docs/speculative.md). The upstream llama.cpp offers more
+  methods than are known to be reachable through LM Studio.
+
+### Phases
+
+| Phase | Content | Exit criterion |
+|---|---|---|
+| 0, trial | Load with a draft model and with MTP through the SDK; read back the configuration; draft statistics through the SDK and the REST chat call; extra VRAM; whether a setting persists into later loads | Written capability table and a decision on how to switch MTP |
+| 1 | LM Studio: off, draft model, MTP | A reproducible comparison on at least one model |
+| 2, optional | Direct `llama-server` backend for further methods (n-gram, EAGLE-3, DFlash and similar) | Measured into the same result format; only after a separate decision |
+
+Training draft models is out of scope. Downloading draft models or running third-party builds needs approval each time.
+
+### Requirements
+
+"Today" describes the current sweep runner.
+
+| ID | Requirement | Today |
+|---|---|---|
+| SD-01 | Capability detection per model: MTP present, compatible draft models, runtime version. An unsupported combination is a reasoned "skipped" result, not a failure | missing |
+| SD-02 | Every speculative configuration is linked to an "off" measurement with the same model, quantization, context, offload and sampling; the order alternates | partly: baseline configurations exist, without a link; fixed order |
+| SD-03 | Configuration space from the grid: method, draft model and its quantization, maximum and minimum draft tokens, probability threshold, draft offload. Maximum draft tokens first coarse (1, 3, 6), then refined around the best | partly: the grid is extensible, the loader always switches speculation off |
+| SD-04 | Metrics: decode speed, time to first token, total time, peak VRAM and RAM, load time, draft counters, gain over the baseline. A missing value is "n/a", never an estimate | partly: no draft counters, total time per generation, RAM or gain |
+| SD-05 | Two separate fields: acceptance rate (accepted / generated draft tokens) and draft share (accepted draft tokens / output tokens) | missing |
+| SD-06 | Workload profiles with results per profile: code generation, editing existing text or code, math and reasoning, prose, agent and JSON output, long context. The current repetitive synthetic prompt is likely to overstate acceptance | missing |
+| SD-07 | Warm-up, at least 3 repeats, median and spread; temperature 0 and a fixed seed for speed, plus one run with production sampling; logged application and runtime versions, model file hash, load configuration | partly: no production sampling run, application version or file hash |
+| SD-08 | The requested mode is verified to be active (draft counters, log) and verified to be inactive for the baseline; otherwise the measurement is invalid | partly: the applied load configuration is compared, activity is not |
+| SD-09 | Quality guard: with greedy sampling compare the output with the baseline and report the first difference (a difference alone is not an error) | missing: outputs are not stored |
+| SD-10 | Basic measurement with one parallel prediction; higher concurrency as a separate dimension; compatibility checked separately for vision models | partly: one parallel prediction only |
+| SD-11 | A load error, out of memory or timeout is recorded as a result and the sweep goes on | partly: it does, but two consecutive timeouts abort the run |
+| SD-12 | Recommendation per model and profile with gain and memory cost; "off" if the gain is below an adjustable threshold (start: 1.10x) | partly: the evaluation recommends, without a threshold |
+| SD-13 | Result format independent of the backend (backend and runtime fields) | missing |
+
+Depends on the fixed task set (task 20) for the workload profiles. The 8 GB development GPU leaves little room for a
+draft model; models that fit with headroom come first.

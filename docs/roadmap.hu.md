@@ -5,8 +5,8 @@
 Utolsó frissítés: 2026-11-26. Cél: a letöltött helyi modellek optimalizálása és összehasonlítása a saját hardveren,
 a saját felhasználási esetekre, LM Studióval.
 
-Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesztelés, agent harness, bias-vizsgálat) és
-[mérési megállapítások](findings.hu.md).
+Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesztelés, agent harness, speculative decoding,
+bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 
 ## 1. Feladatok
 
@@ -37,13 +37,14 @@ Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesz
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | ⚪ nyitott |
 | 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | ⚪ nyitott |
 | 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd [követelmények](requirements.hu.md), 4. pont) | ⚪ nyitott (még nem vizsgált) |
+| 24 | Speculative decoding mint optimalizálási dimenzió: draft modell és MTP a kikapcsolt spekulációval összevetve, feladattípusonként (lásd [követelmények](requirements.hu.md), 5. pont) | ⚪ nyitott |
 | K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | ⚪ nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések
 
 - Eredményformátum: sémaverzió és hardver-ujjlenyomat (GPU, driver, LM Studio és runtime verzió).
 - Modellenként ajánlott preset, összevetve a jelenlegi LM Studio-beállításokkal. Alkalmazás csak megerősítés után.
-- Később: speculative decoding és mintavételi paraméterek hangolása.
+- Később: mintavételi paraméterek hangolása.
 
 ## 2. Sorrend
 
@@ -82,6 +83,9 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 Az E–F és a G–J párhuzamosan haladhat. A webes felület **tervezése** (nézetek, drótváz) kód nélkül korábban is
 elkezdhető.
 
+24. feladat (speculative decoding): a rövid próba (0. fázis) az M1 4. lépése előtt, a beépítés az M1 után, a C
+lépéssel együtt.
+
 ## 3. Döntések
 
 ### Mérés és futtató
@@ -92,6 +96,7 @@ elkezdhető.
 | LM Studio elérés | Load a hivatalos TypeScript SDK-val (igazolt); CPU-szálak a llama.cpp argumentum-felülírással; a sweep futtató ezt használja |
 | Hibakezelés | Hibás lépést nem próbál újra magától; két egymást követő timeout után megszakítás; foglalt GPU esetén szünet, 90 s-onként újraellenőrzés és automatikus folytatás (a kézi szünet megmarad) |
 | Statisztika | Medián és szórás, Pareto-front, állítható súlyozott pontszám, bootstrap bizalmi intervallum; páros bírálatnál Elo / Bradley–Terry. ML/DL nem szükséges |
+| Speculative decoding | A kikapcsolt spekuláció marad a baseline, és az is lehet az ajánlás; egyelőre csak LM Studio, második backendről (`llama-server`) később döntünk, ha az eredmények indokolják |
 
 ### Architektúra és felület
 
@@ -130,6 +135,7 @@ elkezdhető.
 | Kitöltött context | A sweepekben nincsenek a contextet ténylegesen kitöltő promptok | ⚪ nyitott |
 | Háttér VRAM-foglalás | A sebességmérés csak szabad GPU-n érvényes. Hiányzik a mód arra, hogy a VRAM határán lévő konfigurációk összehasonlításakor a háttérfoglalás rögzített vagy kontrollált legyen | ⚪ nyitott |
 | CLI `lms load` | A per-modell default config értékekhez való viszonya nem mért | ⚪ nyitott |
+| Speculative decoding | A telepített SDK-ban vannak load beállítások draft modellhez és MTP-hez, valamint draft statisztikák ([követelmények](requirements.hu.md), 5. pont); sem a hatásukat, sem a memóriaigényüket nem próbáltuk | ⚪ nyitott |
 
 ### Stabilitás és tesztelés
 

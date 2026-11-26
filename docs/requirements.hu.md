@@ -124,3 +124,63 @@ tesztelés korrekcióját. A blogbejegyzés nem linkeli a vizsgálat promptjait,
 - A generált kód csak elszigetelt sandboxban futhat; ez a 3. pont sandbox-döntésétől függ.
 - A Hirundo-eredmények egy 30B modellre vonatkoznak; a fejlesztői gép 8 GB-os GPU-jára férő kisebb modellekről nem
   mondanak semmit.
+
+## 5. Speculative decoding
+
+24. feladat. Állapot: nem próbált; mérés még nem történt.
+
+**Cél.** A speculative decoding önálló optimalizálási dimenzió: modellenként és feladattípusonként mérjük a gyorsulást
+és az erőforrásárat ugyanazon konfiguráció kikapcsolt spekulációs változatához képest, majd beállítást ajánlunk, amely
+lehet a "kikapcsolva" is.
+
+### Mit tudunk a telepített verzióról
+
+A `@lmstudio/sdk` 2.1.0 típusdefinícióiból és korábbi megfigyelésekből; spekulatív load futtatásával semmit nem
+igazoltunk.
+
+- Load config (experimental jelöléssel): `speculativeDraftMtp` (beépített multi-token prediction fejek),
+  `speculativeDraftSimple` a `speculativeDraftModel` mezővel (külön draft modell), `speculativeDraftMaxTokens`,
+  `speculativeDraftMinTokens`, `speculativeDraftMinContinueProbability`. A sweep futtató az első kettőt `false`
+  értékkel küldi, és ezek megjelennek a load után visszaolvasott konfigurációban.
+- Az SDK-n át kért predikció elfogadja a `draftModel` mezőt, és közli a `usedDraftModelKey`, `totalDraftTokensCount`,
+  `acceptedDraftTokensCount`, `rejectedDraftTokensCount` és `ignoredDraftTokensCount` értékeket.
+- Az `lms load` listáz `--speculative-draft-*` kapcsolókat, és a REST load hívás elfogad speculative mezőket
+  ([load paraméterek](lmstudio_load_parameters.hu.md)).
+- Nem ismert, hogy a méréshez használt REST chat végpont visszaad-e draft számlálókat.
+- Dokumentáció: [LM Studio](https://lmstudio.ai/docs/app/advanced/speculative-decoding),
+  [llama.cpp](https://github.com/ggml-org/llama.cpp/blob/master/docs/speculative.md). Az upstream llama.cpp több
+  módszert kínál, mint amennyiről tudjuk, hogy LM Studión át elérhető.
+
+### Fázisok
+
+| Fázis | Tartalom | Kilépési feltétel |
+|---|---|---|
+| 0, próba | Load draft modellel és MTP-vel az SDK-ból; a konfiguráció visszaolvasása; draft statisztika SDK-n és a REST chat hívásban; VRAM-többlet; átmegy-e a beállítás a későbbi loadokba | Írásos képességtábla és döntés az MTP kapcsolásának módjáról |
+| 1 | LM Studio: kikapcsolva, draft modell, MTP | Reprodukálható összehasonlítás legalább egy modellen |
+| 2, opcionális | Közvetlen `llama-server` backend további módszerekhez (n-gram, EAGLE-3, DFlash és hasonlók) | Ugyanabba az eredményformátumba mérve; csak külön döntés után |
+
+A draft modellek tanítása nincs a hatókörben. Draft modell letöltéséhez vagy harmadik féltől származó build
+futtatásához minden esetben jóváhagyás kell.
+
+### Követelmények
+
+A "Ma" oszlop a jelenlegi sweep futtatót írja le.
+
+| ID | Követelmény | Ma |
+|---|---|---|
+| SD-01 | Képességfelderítés modellenként: van-e MTP, mely draft modellek kompatibilisek, runtime verzió. A nem támogatott kombináció indokolt "skipped" eredmény, nem hiba | hiányzik |
+| SD-02 | Minden spekulatív konfiguráció egy "kikapcsolt" méréshez kapcsolódik azonos modellel, kvantálással, contexttel, offloaddal és mintavétellel; a sorrend váltakozik | részben: van baseline konfiguráció, kapcsolat nélkül; rögzített sorrend |
+| SD-03 | Konfigurációs tér a rácsból: módszer, draft modell és kvantálása, maximális és minimális draft token, valószínűségi küszöb, draft offload. A maximális draft token előbb durván (1, 3, 6), majd a legjobb körül finomítva | részben: a rács bővíthető, a loader mindig kikapcsolja a spekulációt |
+| SD-04 | Metrikák: decode-sebesség, első token ideje, teljes idő, VRAM- és RAM-csúcs, betöltési idő, draft számlálók, gyorsulás a baseline-hoz. A hiányzó érték "n/a", soha nem becslés | részben: nincs draft számláló, generálásonkénti teljes idő, RAM és gyorsulás |
+| SD-05 | Két külön mező: elfogadási arány (elfogadott / generált draft token) és draft-hányad (elfogadott draft token / kimeneti token) | hiányzik |
+| SD-06 | Terhelésprofilok, profilonkénti eredménnyel: kódgenerálás, meglévő szöveg vagy kód szerkesztése, matek és reasoning, folyószöveg, agent- és JSON-kimenet, hosszú context. A mostani ismétlődő szintetikus prompt valószínűleg túlbecsülné az elfogadást | hiányzik |
+| SD-07 | Warm-up, legalább 3 ismétlés, medián és szórás; sebességhez temperature 0 és rögzített seed, plusz egy futás éles mintavétellel; naplózva az alkalmazás és a runtime verziója, a modellfájl hashe, a load konfiguráció | részben: nincs éles mintavételű futás, alkalmazásverzió és fájlhash |
+| SD-08 | Igazolt, hogy a kért mód aktív (draft számlálók, log), a baseline-nál pedig hogy inaktív; különben a mérés érvénytelen | részben: az alkalmazott load konfigurációt összevetjük, az aktivitást nem |
+| SD-09 | Minőségőr: greedy mintavétellel a kimenet összevetése a baseline-nal, az első eltérés riportálva (az eltérés önmagában nem hiba) | hiányzik: a kimeneteket nem tároljuk |
+| SD-10 | Alapmérés egy párhuzamos predikcióval; magasabb concurrency külön dimenzió; vision modelleknél a kompatibilitás külön ellenőrizve | részben: csak egy párhuzamos predikció |
+| SD-11 | Betöltési hiba, memóriahiány vagy timeout eredményként rögzül, és a sweep megy tovább | részben: így van, de két egymást követő timeout megszakítja a futást |
+| SD-12 | Ajánlás modellenként és profilonként gyorsulással és memóriaárral; "kikapcsolva", ha a nyereség az állítható küszöb alatt van (induló érték: 1,10x) | részben: a kiértékelés ajánl, küszöb nélkül |
+| SD-13 | A backendtől független eredményformátum (backend és runtime mező) | hiányzik |
+
+A terhelésprofilok a rögzített feladatkészlettől (20. feladat) függnek. A fejlesztői gép 8 GB-os GPU-ja kevés helyet
+hagy egy draft modellnek; először a tartalékkal beférő modellek jönnek.

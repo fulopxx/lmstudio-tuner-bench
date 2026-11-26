@@ -116,6 +116,8 @@ core  ->  NiceGUI (low priority)
 | `threads` | CPU threads |
 | `kv_quant` | `null` (f16) or `"q8_0"` for both K and V cache |
 
+Speculative decoding is not a grid setting yet: the loader switches it off explicitly for every load.
+
 Jobs are generated model by model in the order of `configs`; the job id is `<model>|<config id>` and jobs are numbered
 from 1. `configs/*.local.json` files are the user's own grids and are not tracked; `bench run` uses
 `configs/quick.local.json` if it exists, otherwise `configs/quick.json`.
@@ -237,6 +239,7 @@ The runner is Windows specific (`lms.exe` path, process check).
   loader.
 - Test suite results (quality, tool use) next to speed measurements.
 - Flag telling whether the dashboard was open during a measurement.
+- Speculative decoding (task 24): grid settings, draft statistics, workload profile and backend fields.
 - Model registry with capability tags.
 
 ## 9. Open questions
@@ -245,4 +248,5 @@ The runner is Windows specific (`lms.exe` path, process check).
 - Finding the SDK's API port without an internal LM Studio file.
 - Detecting spill into shared GPU memory.
 - Final choice of test layers (pytest, Vitest, Playwright).
+- Whether a second inference backend (`llama-server`) is needed for further speculative decoding methods.
 - Location and format of the machine-specific config file.

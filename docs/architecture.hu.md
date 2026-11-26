@@ -117,6 +117,8 @@ core  ->  NiceGUI (alacsony prioritás)
 | `threads` | CPU-szálak |
 | `kv_quant` | `null` (f16) vagy `"q8_0"` a K és a V cache-re egyaránt |
 
+A speculative decoding még nem rácsbeállítás: a loader minden loadnál explicit kikapcsolja.
+
 A jobok modellenként, a `configs` sorrendjében jönnek létre; a job azonosítója `<modell>|<config id>`, a számozás 1-től
 indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett rácsai; a `bench run` a
 `configs/quick.local.json` fájlt használja, ha létezik, különben a `configs/quick.json` fájlt.
@@ -238,6 +240,7 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 - Teljesebb hardver-ujjlenyomat: a rögzített runtime, driver és loader mellett GPU neve, teljes VRAM és LM Studio verzió.
 - Tesztcsomag-eredmények (minőség, tool-használat) a sebességmérés mellett.
 - Jelző, hogy mérés közben nyitva volt-e a dashboard.
+- Speculative decoding (24. feladat): rácsbeállítások, draft statisztikák, terhelésprofil és backend mező.
 - Modellregiszter képességcímkékkel.
 
 ## 9. Nyitott kérdések
@@ -246,4 +249,5 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 - Az SDK API-portjának megtalálása belső LM Studio fájl nélkül.
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).
+- Kell-e második inferencia-backend (`llama-server`) a további speculative decoding módszerekhez.
 - A gépfüggő beállítások konfigurációs fájljának helye és formátuma.

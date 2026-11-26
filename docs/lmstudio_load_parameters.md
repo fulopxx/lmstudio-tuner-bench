@@ -63,6 +63,12 @@ threads and KV quantization (off and `q8_0`). Parallel predictions, KV cache off
 used with one value each. A matching value shows that the setting was accepted; a measured effect is documented only
 for the settings in the table above.
 
+### Speculative decoding settings
+
+The load config has experimental fields for speculative decoding (`speculativeDraftMtp`, `speculativeDraftSimple`,
+`speculativeDraftModel` and draft length and probability limits). The sweep switches speculation off explicitly, and the
+read-back shows it. Loading with speculation switched on has not been tried; see `docs/requirements.md`, section 5.
+
 ### Model lifetime
 
 A model stays loaded after the loading process is gone, both after closing the SDK client and after an abrupt exit

@@ -224,6 +224,8 @@ def documents():
 def export(name, folder, lang, html_dir, make_pdf):
     """name includes the language suffix, e.g. 'roadmap' or 'roadmap.hu'."""
     source, target = ROOT / folder / f"{name}.md", ROOT / folder / f"{name}.pdf"
+    if not source.is_file():  # e.g. a document without its other language version
+        raise SystemExit(f"skipped {name}: {source} does not exist")
     doc = convert(source.read_text(encoding="utf-8"), source, lang)
     html_path = html_dir / f"lmbench_{name}.html"
     html_path.write_text(doc, encoding="utf-8")
