@@ -30,6 +30,7 @@ LANGS = {"": "en", ".hu": "hu"}  # file suffix -> language; English is primary
 STATES = {"done": "done", "partial": "partial", "in progress": "running", "open": "open",
           "kész": "done", "részben": "partial", "folyamatban": "running", "nyitott": "open"}
 STATUS_HEADERS = ("status", "állapot")
+STATUS_ICONS = "✅🟡🔵⚪ "  # done, partial, in progress, open
 NOWRAP_HEADERS = ("Source", "Forrás")
 FOOTER = {"en": "Generated: {stamp} · source: {path}", "hu": "Generálva: {stamp} · forrás: {path}"}
 
@@ -83,6 +84,7 @@ def inline(text):
 
 def cell(text, header):
     if header.strip().lower() in STATUS_HEADERS:
+        text = text.lstrip(STATUS_ICONS)  # the Markdown shows an icon; the PDF shows a coloured badge instead
         for word, cls in STATES.items():
             m = re.match(rf"{word}\b(.*)", text)
             if m:

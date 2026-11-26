@@ -7,34 +7,34 @@ a saját felhasználási esetekre, LM Studióval.
 
 ## 1. Feladatok
 
-Állapot: **kész** (futtatással igazolt), **részben**, **folyamatban**, **nyitott**.
+Állapot: ✅ **kész** (futtatással igazolt), 🟡 **részben**, 🔵 **folyamatban**, ⚪ **nyitott**.
 
 | # | Feladat | Állapot |
 |---|---|---|
-| 1 | Sebesség- és memóriaoptimalizálás (kontextus, GPU-offload, flash attention, batch, KV-kvantálás, szálak) | részben (a 2026-11-26-i tiszta sweepek kiértékelve, az ajánlott beállítások rögzítve; nyitott: a VRAM határán lévő esetek, kitöltött context, a KV-kvantálás minőségi hatása, presetek; lásd 9. pont) |
-| 2 | Smoke teszt | kész |
-| 3 | Élő státusz, szünet, leállítás, folytatás megadott lépéstől | részben (lásd 6. pont) |
-| 4 | Kijelölhető modellek, új letöltések kezelése (modellregiszter, automatikus felvétel) | részben (kézi lista a rácsfájlban) |
-| 5 | Tesztcsomag-szűrés modellképesség szerint (pl. képleírás csak vision modellen) | nyitott |
-| 6 | Minőségcsomagok: kódolás; git-kezelés; magyar nyelv; képfelismerés, képleírás; alkalmazás-screenshot alapú döntés és magyarázat; játék- és 3D-tervezés (Unreal, Blender); kiberbiztonság | nyitott |
-| 7 | MCP / tool-használat: formátum, tool-választás, paraméterek, eredmény feldolgozása, többlépéses lánc, párhuzamos hívás; utasításkövetés három részletességi szinten (cél, számozott lépések, egy lépés egyszerre) | részben (egyetlen tool-próba a smoke-ban) |
-| 8 | Tool-timeout viselkedés mint **modellképesség**: nem próbálkozik végtelenül, idő után leáll és jelez a felhasználónak | nyitott (eddig csak a mérőrendszer saját timeoutjai vannak kész) |
-| 9 | Skill-használat: megfelelő skill kiválasztása, lépések és tiltások betartása | nyitott |
-| 10 | Szűk körű frontier pontozás a döntő körben | nyitott (döntés függőben) |
-| 11 | Webes felület és dashboard; egyszerű Excel-értékelő táblázat Excel-grafikonokkal | nyitott |
-| 12 | Böngésző GPU-használatának jelzése és mérése | nyitott |
-| 13 | Gitre megosztható projekt | részben (még nincs kiadva) |
-| 14 | Másodlagos NiceGUI irányítófelület | nyitott, alacsony prioritás |
-| 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | részben (dokumentumok kész, felület nincs) |
-| 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd 7. pont) | nyitott |
-| 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd 7. pont) | nyitott |
-| 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | kész |
-| 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | nyitott |
-| 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | nyitott |
-| 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | nyitott |
-| 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | nyitott |
-| 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd 8. pont) | nyitott (még nem vizsgált) |
-| K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | nyitott (még nem vizsgált) |
+| 1 | Sebesség- és memóriaoptimalizálás (kontextus, GPU-offload, flash attention, batch, KV-kvantálás, szálak) | 🟡 részben (a 2026-11-26-i tiszta sweepek kiértékelve, az ajánlott beállítások rögzítve; nyitott: a VRAM határán lévő esetek, kitöltött context, a KV-kvantálás minőségi hatása, presetek; lásd 9. pont) |
+| 2 | Smoke teszt | ✅ kész |
+| 3 | Élő státusz, szünet, leállítás, folytatás megadott lépéstől | 🟡 részben (lásd 6. pont) |
+| 4 | Kijelölhető modellek, új letöltések kezelése (modellregiszter, automatikus felvétel) | 🟡 részben (kézi lista a rácsfájlban) |
+| 5 | Tesztcsomag-szűrés modellképesség szerint (pl. képleírás csak vision modellen) | ⚪ nyitott |
+| 6 | Minőségcsomagok: kódolás; git-kezelés; magyar nyelv; képfelismerés, képleírás; alkalmazás-screenshot alapú döntés és magyarázat; játék- és 3D-tervezés (Unreal, Blender); kiberbiztonság | ⚪ nyitott |
+| 7 | MCP / tool-használat: formátum, tool-választás, paraméterek, eredmény feldolgozása, többlépéses lánc, párhuzamos hívás; utasításkövetés három részletességi szinten (cél, számozott lépések, egy lépés egyszerre) | 🟡 részben (egyetlen tool-próba a smoke-ban) |
+| 8 | Tool-timeout viselkedés mint **modellképesség**: nem próbálkozik végtelenül, idő után leáll és jelez a felhasználónak | ⚪ nyitott (eddig csak a mérőrendszer saját timeoutjai vannak kész) |
+| 9 | Skill-használat: megfelelő skill kiválasztása, lépések és tiltások betartása | ⚪ nyitott |
+| 10 | Szűk körű frontier pontozás a döntő körben | ⚪ nyitott (döntés függőben) |
+| 11 | Webes felület és dashboard; egyszerű Excel-értékelő táblázat Excel-grafikonokkal | ⚪ nyitott |
+| 12 | Böngésző GPU-használatának jelzése és mérése | ⚪ nyitott |
+| 13 | Gitre megosztható projekt | 🟡 részben (még nincs kiadva) |
+| 14 | Másodlagos NiceGUI irányítófelület | ⚪ nyitott, alacsony prioritás |
+| 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | 🟡 részben (dokumentumok kész, felület nincs) |
+| 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd 7. pont) | ⚪ nyitott |
+| 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd 7. pont) | ⚪ nyitott |
+| 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | ✅ kész |
+| 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | ⚪ nyitott |
+| 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | ⚪ nyitott |
+| 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | ⚪ nyitott |
+| 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | ⚪ nyitott |
+| 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd 8. pont) | ⚪ nyitott (még nem vizsgált) |
+| K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | ⚪ nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések
 
@@ -50,12 +50,12 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 
 | M1 lépés | Tartalom | Állapot |
 |---|---|---|
-| 1 | SDK-próba a telepített LM Studión (18. feladat) | kész |
-| 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | kész |
-| 3 | Repó előkészítése, licenc, publikus kiadás | folyamatban |
-| 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | nyitott |
-| 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | nyitott |
-| 6 | Eredménytábla a README-ben | nyitott |
+| 1 | SDK-próba a telepített LM Studión (18. feladat) | ✅ kész |
+| 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | ✅ kész |
+| 3 | Repó előkészítése, licenc, publikus kiadás | 🔵 folyamatban |
+| 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | ⚪ nyitott |
+| 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | ⚪ nyitott |
+| 6 | Eredménytábla a README-ben | ⚪ nyitott |
 
 M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGUI.
 
@@ -63,18 +63,18 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 
 | Lépés | Tartalom | Állapot |
 |---|---|---|
-| A | Próbasweep kiértékelése, döntő kör | kész (a próbasweep és a tiszta sweepek kiértékelve) |
-| B | Repó előkészítése, dokumentumok angol és magyar változata | részben (kétnyelvű dokumentumok készek; a publikus kiadás hátravan) |
-| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | nyitott |
-| D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | részben (vázlat kész) |
-| E | HTML dashboard és Excel-export (D után) | nyitott |
-| F | Webes vezérlőfelület | nyitott |
-| G | Agent harness: tool loop, sandbox, trace log, CLI | nyitott |
-| H | Tool-calling, timeout- és utasításkövetés-csomag a harnessen futtatva | nyitott |
-| I | Hibaelemzés: kategóriák és modellenkénti riport | nyitott |
-| J | Minőségcsomagok | nyitott |
-| L | NiceGUI másodlagos felület (alacsony prioritás) | nyitott (alacsony prioritás) |
-| K | Skill-átvitel (külön feladat) | nyitott (külön feladat) |
+| A | Próbasweep kiértékelése, döntő kör | ✅ kész (a próbasweep és a tiszta sweepek kiértékelve) |
+| B | Repó előkészítése, dokumentumok angol és magyar változata | 🟡 részben (kétnyelvű dokumentumok készek; a publikus kiadás hátravan) |
+| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | ⚪ nyitott |
+| D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | 🟡 részben (vázlat kész) |
+| E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
+| F | Webes vezérlőfelület | ⚪ nyitott |
+| G | Agent harness: tool loop, sandbox, trace log, CLI | ⚪ nyitott |
+| H | Tool-calling, timeout- és utasításkövetés-csomag a harnessen futtatva | ⚪ nyitott |
+| I | Hibaelemzés: kategóriák és modellenkénti riport | ⚪ nyitott |
+| J | Minőségcsomagok | ⚪ nyitott |
+| L | NiceGUI másodlagos felület (alacsony prioritás) | ⚪ nyitott (alacsony prioritás) |
+| K | Skill-átvitel (külön feladat) | ⚪ nyitott (külön feladat) |
 
 Az E–F és a G–J párhuzamosan haladhat. A webes felület **tervezése** (nézetek, drótváz) kód nélkül korábban is
 elkezdhető.
