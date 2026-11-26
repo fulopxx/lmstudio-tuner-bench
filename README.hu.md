@@ -20,12 +20,14 @@ beállítást a saját feladataimon, módszeresen mérjek és hasonlítsak össz
 - Windows, NVIDIA GPU (`nvidia-smi`)
 - LM Studio az `lms` CLI-vel (1.2.0-val tesztelve)
 - Python (3.15.2-vel tesztelve), külső csomag nélkül
+- Node.js 24 vagy újabb (26.13.0-val tesztelve) és a LM Studio SDK: futtasd a `harness\` mappában az
+  `npm.cmd install --ignore-scripts` parancsot
 - Microsoft Edge, csak a dokumentumok PDF-exportjához
 
-**Ismert korlát:** a KV-kvantálás, a szálszám és a GPU-offload a LM Studio nem dokumentált, per-modell config
-fájljain keresztül állítható. A mappa útvonala a `runner\config_store.py`-ban rögzített, és más telepítésen eltérhet.
-Részletek: [load paraméterek](docs/lmstudio_load_parameters.hu.md). A hivatalos TypeScript SDK ezeket a fájlok módosítása
-nélkül is beállítja (próbával igazolt); a sweep futtató az átállásig még a fájlokat használja.
+**Ismert korlát:** a modellek a hivatalos LM Studio SDK-val töltődnek be, az SDK API-portját pedig egy belső LM Studio
+fájlból olvassuk (`~\.lmstudio\apps\bionic\.internal\http-server.json`), ami más telepítésen eltérhet (a
+`LMS_API_FILE` környezeti változóval felülírható). Az alkalmazásnak futnia kell. Részletek:
+[load paraméterek](docs/lmstudio_load_parameters.hu.md).
 
 ## Futtatás
 
@@ -49,14 +51,14 @@ PowerShellben, a projekt mappájából. Egyik terminálban a futtatás (élő na
 
 ## Viselkedés
 
-- Szünetben és leállításkor a modell kikerül a GPU-ról, a saját indítású szerver leáll, a config fájlok visszaállnak.
+- Szünetben és leállításkor a modell kikerül a GPU-ról, a saját indítású szerver leáll.
 - A `--now` a következő ellenőrzési ponton hat. A folyamatban lévő modellbetöltést nem szakítja meg, megvárja
   (legfeljebb 240 s).
 - Foglalt GPU vagy más által betöltött modell esetén a futás magától szünetel, és csak `resume` parancsra folytatódik.
 - Hibás lépést nem próbál újra magától. Két egymást követő timeout után a futás megszakad.
 - Ha a runtime vagy a driver verziója megváltozik, nem folytatja (`--allow-env-change` kell).
-- A per-modell config fájlokat csak a load idejére módosítja. Megszakadt futás után a következő indítás először
-  visszaállít. Mérés közben ne módosítsd a modellbeállításokat a LM Studio felületén.
+- A LM Studio per-modell beállításfájljai nem módosulnak. A futtató a saját modelljét `bench-sweep` néven tölti be; ha
+  egy megszakadt futás után bent maradt, a következő indítás eltávolítja.
 
 ## A modellek kiválasztása
 
@@ -67,12 +69,13 @@ szerkeszd a `models` listát; ezt a fájlt a program automatikusan használja, �
 ## Mappák
 
 `configs\` rácsok · `runner\` scriptek · `results\` nyers eredmények · `report\` táblázatok · `state\` futásállapot ·
-`backups\` config-mentések · `docs\` dokumentáció · `tools\` segédeszközök · `tests\` tesztek
+`harness\` SDK loader és próbák · `docs\` dokumentáció · `tools\` segédeszközök · `tests\` tesztek
 
 ## Tesztek
 
 ```
 python tests\test_config_store.py     # offline
+node --test harness\load-config.test.ts   # offline
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline
 python tests\live_control_test.py     # GPU-t használ (kis modell, pár perc): pause / stop / resume

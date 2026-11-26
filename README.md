@@ -20,12 +20,13 @@ systematically on my own tasks, so I started building it.
 - Windows, NVIDIA GPU (`nvidia-smi`)
 - LM Studio with the `lms` CLI (tested with 1.2.0)
 - Python (tested with 3.15.2), no external packages
+- Node.js 24 or newer (tested with 26.13.0) and the LM Studio SDK: run `npm.cmd install --ignore-scripts` in `harness\`
 - Microsoft Edge, only for the PDF export of the documents
 
-**Known limitation:** KV quantization, CPU threads and GPU offload are set through LM Studio's undocumented per-model
-config files. The folder path is fixed in `runner\config_store.py` and may differ on other installations. Details:
-[load parameters](docs/lmstudio_load_parameters.md). The official TypeScript SDK sets them without touching those files (verified with a probe);
-the sweep runner still uses the files until it is switched over.
+**Known limitation:** models are loaded through the official LM Studio SDK, and the SDK's API port is read from an
+internal LM Studio file (`~\.lmstudio\apps\bionic\.internal\http-server.json`), which may differ on other
+installations (override with the `LMS_API_FILE` environment variable). The application has to be running. Details:
+[load parameters](docs/lmstudio_load_parameters.md).
 
 ## Usage
 
@@ -49,13 +50,13 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
 
 ## Behaviour
 
-- On pause and stop the model is unloaded, a server started by the tool is stopped and config files are restored.
+- On pause and stop the model is unloaded, and a server started by the tool is stopped.
 - `--now` takes effect at the next checkpoint. A model load in progress is not interrupted but awaited (240 s at most).
 - If the GPU is busy or someone else loaded a model, the run pauses by itself and continues only on `resume`.
 - Failed steps are never retried automatically. Two consecutive timeouts abort the run.
 - If the runtime or driver version changes, the run does not continue without `--allow-env-change`.
-- Per-model config files are modified only while a model is loading. After a killed run the next start restores them
-  first. Do not change model settings in the LM Studio UI during a measurement.
+- LM Studio's per-model settings files are not modified. The runner loads its model as `bench-sweep`; if a killed run
+  left it loaded, the next start unloads it.
 
 ## Choosing models
 
@@ -65,12 +66,13 @@ In PowerShell, from the project folder. Run the sweep in one terminal (live log)
 ## Folders
 
 `configs\` grids · `runner\` scripts · `results\` raw results · `report\` tables · `state\` run state ·
-`backups\` config backups · `docs\` documentation · `tools\` utilities · `tests\` tests
+`harness\` SDK loader and probes · `docs\` documentation · `tools\` utilities · `tests\` tests
 
 ## Tests
 
 ```
 python tests\test_config_store.py     # offline
+node --test harness\load-config.test.ts   # offline
 python tests\test_sweep_logic.py      # offline
 python tests\test_evaluate.py         # offline
 python tests\live_control_test.py     # uses the GPU (small model, a few minutes): pause / stop / resume

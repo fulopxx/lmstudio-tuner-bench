@@ -13,7 +13,7 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 - **Kevés függőség:** a core csak a Python standard könyvtárát használja; külső csomag a felületekhez, az exporthoz és
   a TypeScript harnesshez (hivatalos LM Studio SDK) kerülhet be.
 - **Biztonságos futás:** minden külső lépésnek időkorlátja van; nincs automatikus újrapróbálás; foglalt GPU esetén
-  szünet; csak a futás által betöltött modell kerül eltávolításra; a LM Studio config-fájlok visszaállnak.
+  szünet; csak a futás által betöltött modell kerül eltávolításra; a LM Studio beállításfájljai nem módosulnak.
 - **Helyi:** a webes szerver csak `127.0.0.1`-en figyel.
 - **Kétnyelvűség (tervezett):** az angol az elsődleges, a magyar teljes értékű második nyelv. A felületek szövegei
   nyelvi fájlokból jönnek (nincs beégetett szöveg), a nyelv váltható. A kód, a kommentek, az azonosítók és az
@@ -27,7 +27,9 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `runner/sweep.py` | CLI, futtató, állapot- és vezérléskezelés, riport (egy fájlban) |
 | `runner/smoke.py` | Smoke teszt és közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) |
 | `runner/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
-| `runner/config_store.py` | Per-modell config-fájlok mentése, ideiglenes írása, visszaállítása |
+| `runner/config_store.py` | Korábbi load módszer (ideiglenes config-módosítás); a futtató már nem használja |
+| `harness/load-model.ts` | Egy modellt tölt be az SDK-val, majd kilép; a futtató hívja |
+| `harness/load-config.ts` | A sweep beállításainak leképezése az SDK load configra, az alkalmazott értékek ellenőrzésével |
 | `runner/probe_*.py` | Egyszeri felderítő scriptek (REST-kulcsok, KV-kvantálás) |
 | `configs/*.json` | Mérési rácsok: modellista, alapértékek, konfigurációk |
 | `harness/sdk-probe.ts` | A hivatalos SDK próbája: alkalmazott beállítások, VRAM és sebesség |
@@ -65,13 +67,12 @@ A futtató és a vezérlő parancsok külön folyamatok, fájlokon át kommunik�
 | `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat`, `pid` |
 | `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
 | `state/latest.txt` | A legutóbbi futás azonosítója |
-| `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (runtime, driver) |
+| `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (runtime, driver, loader) |
 | `results/sweep_<run>.jsonl` | Soronként egy feladat eredménye; azonos `job_id` esetén az utolsó sor érvényes |
 | `report/sweep_<run>.md` | Táblázatos riport |
-| `backups/active.json` | A még vissza nem állított config-fájlok naplója |
 
 Eredménysor mezői sikeres feladatnál: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`,
-`driver`, `status`, `load_s`, `echo`, `loaded_quant`, `loaded_publisher`, `vram_before_mib`, `vram_delta_mib`,
+`driver`, `loader`, `status`, `load_s`, `applied`, `loaded_path`, `vram_before_mib`, `vram_delta_mib`,
 `runs`, `ttft_s`, `decode_tok_s`, `prompt_tok_s`, `vram_peak_mib`, `near_vram_limit`, `job_s`, `finished`.
 Hibás sorban `error` szerepel, és a mérési mezők hiányozhatnak. A `status` értéke `ok`, `fail`, `timeout` vagy
 `invalidated`.
@@ -84,14 +85,14 @@ Hibás sorban `error` szerepel, és a mérési mezők hiányozhatnak. A `status`
 |---|---|---|
 | `starting` | Előkészítés | `running`, `aborted` |
 | `running` | Mérés folyik | `paused`, `stopped`, `done`, `aborted` |
-| `paused` | Modell eltávolítva, configok visszaállítva | `running`, `stopped` |
+| `paused` | Modell eltávolítva | `running`, `stopped` |
 | `stopped` | A felhasználó leállította | `resume` új folyamatot indít |
 | `done` | Minden feladat lefutott | `resume --from` / `--redo-failed` új folyamatot indít |
 | `aborted` | Hiba vagy két egymást követő timeout | `resume` új folyamatot indít |
 
 A futtató akkor számít élőnek, ha a `heartbeat` 20 másodpercnél frissebb. Egyszerre egy futás lehet aktív. Ha a
 process végállapot nélkül hal meg (kill, újraindítás), ezt az elavult heartbeat mutatja, és a `resume` új processt
-indít, amely először visszaállítja a módosítva maradt config fájlokat. A gráfot a `tools/make_diagrams.py` generálja.
+indít, amely először eltávolítja a megszakadt futás után bent maradt modellt. A gráfot a `tools/make_diagrams.py` generálja.
 
 ## 6. Parancsok és tervezett API
 
@@ -112,12 +113,10 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | Függés | Mire |
 |---|---|
 | `lms.exe` | modellista, runtime-lista, szerver indítása és leállítása, modell eltávolítása |
-| REST `POST /api/v1/models/load` | betöltés explicit paraméterekkel |
-| REST `GET /api/v0/models/{id}` | a betöltött modell ellenőrzése |
+| `@lmstudio/sdk` (Node) | load explicit paraméterekkel (`harness/load-model.ts`) |
 | REST `POST /v1/chat/completions` | generálás és mérés |
-| `@lmstudio/sdk` (Node) | tervezett load-útvonal, a `harness/sdk-probe.ts` igazolta |
 | `nvidia-smi` | VRAM, GPU-kihasználtság, driver |
-| LM Studio per-modell config mappa (`apps/bionic/...`) | KV-kvantálás, szálszám, GPU-offload; részletek: `docs/lmstudio_load_parameters.hu.md` |
+| A LM Studio `http-server.json` fájlja (belső) | API-port az SDK-hoz; részletek: `docs/lmstudio_load_parameters.hu.md` |
 
 ## 8. Tervezett formátumváltozások
 
@@ -129,8 +128,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 
 ## 9. Nyitott kérdések
 
-- A Python core hogyan töltsön be a hivatalos SDK-n át. Elég egy rövid életű Node loader process (igazolt: a modell a
-  kilépése után is betöltve marad); az API-port belső fájl nélküli megtalálása még nyitott.
+- Az SDK API-portjának megtalálása belső LM Studio fájl nélkül.
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).
 - A gépfüggő beállítások konfigurációs fájljának helye és formátuma.

@@ -12,7 +12,7 @@ Futtatással igazolt, kivéve ahol jelölve van. Más verziók eltérően viselk
 |---|---|---|
 | `lms load` (CLI) | `--gpu` (off / max / 0..1), `-c` kontextus, `--parallel`, speculative decoding (`--speculative-draft-*`), `--estimate-only`, `--identifier` | Nincs flash attention, batch, szál vagy KV-kvantálás kapcsoló (a help szövege alapján) |
 | REST `POST /api/v1/models/load` | `context_length`, `eval_batch_size`, `physical_batch_size`, `parallel`, `flash_attention`, `offload_kv_cache_to_gpu`, `num_experts`, `context_checkpoints`, `lazy_mode`, speculative mezők, `echo_load_config` | Szigorú séma: ismeretlen kulcsot HTTP 400-zal elutasít. GPU-offload arányra, KV-kvantálásra, CPU-szálakra, mmap-re és keep-in-memory-ra nem találtunk kulcsot (kb. 50 névvariáns) |
-| Per-modell default config fájl: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<modell>.gguf.json` | GPU-offload arány, KV-kvantálás, szálak és a lent felsorolt többi kulcs | Belső, nem dokumentált formátum. A benchmark csak ideiglenesen módosítja, mentéssel és bájtpontos visszaállítással (`runner/config_store.py`) |
+| Per-modell default config fájl: `~\.lmstudio\apps\bionic\.internal\user-concrete-model-default-config\<publisher>\<repo>\<modell>.gguf.json` | GPU-offload arány, KV-kvantálás, szálak és a lent felsorolt többi kulcs | Belső, nem dokumentált formátum. A sweep futtató már nem módosítja (SDK-val tölt be); a korábbi módszert a `runner/config_store.py` valósítja meg |
 
 ## Negyedik út: a hivatalos TypeScript SDK (igazolt)
 

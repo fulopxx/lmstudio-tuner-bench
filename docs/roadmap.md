@@ -28,7 +28,7 @@ Status: **done** (verified by running), **partial**, **in progress**, **open**.
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | partial (documents done, no UI yet) |
 | 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see section 7) | open |
 | 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see section 7) | open |
-| 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | partial (SDK verified; the sweep runner still edits config files) |
+| 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | done |
 | 19 | Model-specific tool-call differences and repair methods (retry, schema constraint, grammar) | open |
 | 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | open |
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | open |
@@ -82,7 +82,7 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 
 | Topic | Decision |
 |---|---|
-| Per-model LM Studio config files | The benchmark may edit them temporarily, with backup and restore |
+| Per-model LM Studio config files | Not edited; the runner loads through the SDK |
 | Error handling | No automatic retries; abort after two consecutive timeouts; pause when the GPU is busy |
 | Frontend | React + Vite + TypeScript, Mantine, Apache ECharts |
 | Backend | FastAPI, `127.0.0.1` only |
@@ -92,7 +92,7 @@ E–F and G–J can proceed in parallel. **Designing** the web UI (views, wirefr
 | Hungarian wording | Technical terms that are commonly used in English, or lack a good Hungarian equivalent, stay in English, especially in the UI |
 | Code | Code and comments in English |
 | Agent harness | Own module with failure analysis, written in TypeScript from the start. The first version has no shell tool |
-| LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; config file edits to be removed when the sweep runner is switched over |
+| LM Studio access | Official TypeScript SDK for loading (verified); CPU threads through the llama.cpp argument override; used by the sweep runner |
 | Focus | Failure taxonomy and trace-based diagnostics are what sets the project apart; speed benchmarking is the base |
 | License | MIT |
 | CLI parity | The terminal version comes first: it must be able to do everything, graphical interfaces cannot do more. New features appear in the core and CLI first |
@@ -174,5 +174,4 @@ Draft, to be detailed before step G.
 
 - Interface between the Python core and the TypeScript harness (process boundary, trace format).
 - How the sandbox restricts model-generated shell commands. This must be decided before any such command is executed.
-- Loading from the Python core through the SDK: a short-lived Node loader is enough (verified: the model stays
-  loaded). Still open: finding LM Studio's API port without an internal file.
+- Finding LM Studio's API port for the SDK without an internal file.

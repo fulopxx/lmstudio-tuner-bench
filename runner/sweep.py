@@ -13,14 +13,17 @@ Without --now, pause/stop take effect after the current job. With --now the curr
 (it will be measured again) at the next checkpoint; a running model load is first allowed to return.
 
 Rules: failed steps are never retried automatically; two consecutive timeouts abort the run; a busy
-GPU or a model loaded by someone else pauses the run; only models loaded by this run are unloaded;
-LM Studio per-model config files are restored immediately after each load.
+GPU or a model loaded by someone else pauses the run; only the runner's own model instance is
+unloaded. Models are loaded through the LM Studio SDK (harness/load-model.ts), so LM Studio's
+per-model config files are not touched; generation and measurement use the HTTP server.
 """
 import argparse
 import json
 import os
 import re
+import shutil
 import statistics
+import subprocess
 import sys
 import threading
 import time
@@ -31,15 +34,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import evaluate  # noqa: E402
 import smoke  # noqa: E402
 from smoke import LMS, StepError, sh  # noqa: E402
-from config_store import ConfigStore  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+HARNESS = ROOT / "harness"
+IDENTIFIER = "bench-sweep"  # the only model instance this runner loads and removes
 STATE = ROOT / "state"
 CONTROL = STATE / "control.json"
 STATUS = STATE / "status.json"
 LATEST = STATE / "latest.txt"
-REST_KEYS = ("context_length", "eval_batch_size", "physical_batch_size", "parallel",
-             "flash_attention", "offload_kv_cache_to_gpu")
 ACTIVE = ("starting", "running", "paused")
 
 
@@ -151,7 +153,25 @@ def environment():
     rc, rt = sh([LMS, "runtime", "ls"], 30)
     runtime = next((ln.split()[0] for ln in rt.splitlines() if "✓" in ln and "llama.cpp" in ln), "?")
     rc, drv = sh(["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"], 15)
-    return {"runtime": runtime, "driver": drv.strip()}
+    sdk = HARNESS / "node_modules" / "@lmstudio" / "sdk" / "package.json"
+    loader = f"@lmstudio/sdk {json.loads(sdk.read_text(encoding='utf-8'))['version']}" if sdk.is_file() else None
+    return {"runtime": runtime, "driver": drv.strip(), "loader": loader}
+
+
+def sdk_load(model_path, settings, timeout):
+    """Load through the Node helper (harness/load-model.ts). The model stays loaded after it exits."""
+    request = {"model": model_path, "identifier": IDENTIFIER, "settings": settings, "timeoutMs": timeout * 1000}
+    try:
+        p = subprocess.run([shutil.which("node") or "node", "load-model.ts"], cwd=HARNESS, input=json.dumps(request),
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout + 30)
+    except subprocess.TimeoutExpired:
+        raise StepError("timeout", f"model load did not finish within {timeout + 30}s")
+    line = next((ln for ln in reversed(p.stdout.splitlines()) if ln.startswith("RESULT:")), None)
+    if p.returncode != 0 or not line:
+        message = (p.stderr or p.stdout).strip()[-600:]
+        kind = "timeout" if re.search(r"(?i)abort|timeout|timed out", message) else "fail"
+        raise StepError(kind, "model load failed: " + message)
+    return json.loads(line[len("RESULT:"):])
 
 
 def model_catalog():
@@ -226,6 +246,11 @@ class Runner:
 
     def ensure_ready(self):
         rc, ps = sh([LMS, "ps"], 30)
+        if IDENTIFIER in ps:  # left over from a killed run: it is ours, so it may be removed
+            log(f"unloading '{IDENTIFIER}' left over from an earlier run")
+            sh([LMS, "unload", IDENTIFIER], 60)
+            time.sleep(2)
+            rc, ps = sh([LMS, "ps"], 30)
         if "No models are currently loaded" not in ps:
             raise Blocked("a model is loaded that this run did not load; unload it in LM Studio")
         samples = []
@@ -259,17 +284,12 @@ class Runner:
             time.sleep(2)
 
     def release(self):
-        """Give the machine back: unload our model, restore config files, stop our server."""
-        for step in (self.unload_ours, self._restore, self._stop_server):
+        """Give the machine back: unload our model, stop our server."""
+        for step in (self.unload_ours, self._stop_server):
             try:
                 step()
             except Exception as e:
                 log(f"[cleanup] {step.__name__}: {e!r}")
-
-    def _restore(self):
-        done, problems = ConfigStore.restore_all()
-        if problems:
-            raise Fatal(f"config restore failed (see backups/): {problems}")
 
     def _stop_server(self):
         if self.started_server:
@@ -306,26 +326,15 @@ class Runner:
         self.checkpoint()
         self.phase("loading model")
         try:
-            body = {k: s[k] for k in REST_KEYS}
-            body.update({"model": job["model"], "echo_load_config": True})
-            try:
-                ConfigStore(self.run_id).apply(info["path"], s)
-                self.instance = job["model"]  # so a half-finished load is cleaned up too
-                t = time.perf_counter()
-                resp = smoke.http_json("POST", "/api/v1/models/load", body, timeout=self.o["load_timeout"])
-                row["load_s"] = round(time.perf_counter() - t, 2)
-            finally:
-                self._restore()  # LM Studio has read the file; give it back immediately
-            self.instance = resp.get("instance_id", job["model"])
-            row["echo"] = {k: v for k, v in resp.get("load_config", {}).items() if k != "prompt_template"}
+            self.instance = IDENTIFIER  # so a half-finished load is cleaned up too
+            loaded = sdk_load(info["path"], s, self.o["load_timeout"])
+            row["load_s"] = round(loaded["loadSeconds"], 2)
+            row["applied"], row["loaded_path"] = loaded["applied"], loaded["path"]
+            if loaded["path"] != info["path"]:
+                raise StepError("fail", f"wrong file loaded? got {loaded['path']}, expected {info['path']}")
+            if loaded["mismatches"]:
+                raise StepError("fail", "settings not applied: " + "; ".join(loaded["mismatches"]))
             self.checkpoint()
-            v0 = smoke.http_json("GET", f"/api/v0/models/{self.instance}", timeout=15)
-            want_q = (info.get("quantization") or {}).get("name")
-            want_pub = info["path"].split("/")[0]
-            row["loaded_quant"], row["loaded_publisher"] = v0.get("quantization"), v0.get("publisher")
-            if (want_q and v0.get("quantization") != want_q) or v0.get("publisher") != want_pub:
-                raise StepError("fail", f"wrong file loaded? got {v0.get('publisher')}/{v0.get('quantization')}, "
-                                        f"expected {want_pub}/{want_q}")
             time.sleep(2)
             row.update({"vram_before_mib": before, "vram_delta_mib": gpu_state()[0] - before})
             self.phase("warm-up generation")
@@ -388,8 +397,9 @@ def execute(run_id, redo_failed=False):
     runner = Runner(run_id, plan, status)
     final, reason, code, consecutive_timeouts = "aborted", "", 3, 0
     try:
-        runner._restore()  # leftovers of a killed run
         env = environment()
+        if not shutil.which("node") or not env["loader"]:
+            raise Fatal("Node.js or the SDK is missing: run `npm install --ignore-scripts` in harness/")
         if env != plan["env"]:
             if not plan["options"].get("allow_env_change"):
                 raise Fatal(f"runtime/driver changed: plan {plan['env']} vs now {env}; "

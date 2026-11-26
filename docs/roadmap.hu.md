@@ -28,7 +28,7 @@ a saját felhasználási esetekre, LM Studióval.
 | 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | részben (dokumentumok kész, felület nincs) |
 | 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd 7. pont) | nyitott |
 | 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd 7. pont) | nyitott |
-| 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | részben (az SDK igazolt; a sweep futtató még a config fájlokat módosítja) |
+| 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | kész |
 | 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | nyitott |
 | 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | nyitott |
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | nyitott |
@@ -83,7 +83,7 @@ elkezdhető.
 
 | Téma | Döntés |
 |---|---|
-| Per-modell LM Studio config-fájlok | A mérés ideiglenesen írhatja, mentéssel és visszaállítással |
+| Per-modell LM Studio config-fájlok | Nem módosulnak; a futtató az SDK-val tölt be |
 | Hibakezelés | Nincs automatikus újrapróbálás; két egymást követő timeout után megszakítás; foglalt GPU esetén szünet |
 | Frontend | React + Vite + TypeScript, Mantine, Apache ECharts |
 | Backend | FastAPI, csak `127.0.0.1` |
@@ -93,7 +93,7 @@ elkezdhető.
 | Magyar szóhasználat | Az angolul elterjedt vagy jó magyar megfelelő nélküli szakkifejezés angolul marad, főleg a felületen |
 | Kód | Angol kód, angol kommentek |
 | Agent harness | Saját modul hibaelemzéssel, kezdettől TypeScriptben. Az első változatban nincs shell tool |
-| LM Studio elérés | Load a hivatalos TypeScript SDK-val (igazolt); CPU-szálak a llama.cpp argumentum-felülírással; a config fájlok módosítása a sweep futtató átállásakor megszűnik |
+| LM Studio elérés | Load a hivatalos TypeScript SDK-val (igazolt); CPU-szálak a llama.cpp argumentum-felülírással; a sweep futtató ezt használja |
 | Fókusz | A projekt megkülönböztetője a hibataxonómia és a trace-alapú diagnosztika; a sebességmérés az alap |
 | Licenc | MIT |
 | CLI-paritás | A terminálos változat elsőbbséget élvez: mindent tudnia kell, a grafikus felületek nem tudhatnak többet. Új funkció először a core-ban és a CLI-ben jelenik meg |
@@ -180,5 +180,4 @@ Vázlat, a G lépés előtt részletezendő.
 - A Python core és a TypeScript harness közötti interfész (processhatár, trace-formátum).
 - Hogyan korlátozza a sandbox a modell által generált shell-parancsokat. Ezt az első ilyen parancs futtatása előtt el
   kell dönteni.
-- Load a Python core-ból az SDK-n át: elég egy rövid életű Node loader (igazolt: a modell betöltve marad). Még
-  nyitott: a LM Studio API-portjának megtalálása belső fájl nélkül.
+- A LM Studio API-portjának megtalálása az SDK-hoz belső fájl nélkül.
