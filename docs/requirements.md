@@ -116,7 +116,7 @@ The first requirements, written before the harness existed; FA-01 to FA-47 below
   abort during reasoning, an internal LM Studio separator string appeared in `content`.
 - No `onToolCallRequestFailure` callback was seen.
 
-**M1 implementation (2026-11-26):** `bench agent run` (`runner/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
+**M1 implementation (2026-11-26):** `bench agent run` (now `bench/core/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
 implements H1–H7. Further details fixed by the implementation (task format and pass rule as updated in step 5):
 
 - Task files (`tasks/*.json`, `schema_version` 2) declare mock tools (FA-01, FA-02) and hold per task: prompt,
@@ -464,10 +464,10 @@ the agent rows that carry the task file version as their `schema_version`.
 
 | ID | Requirement | Reason | Verification | State |
 |---|---|---|---|---|
-| CR-01 | The Python code must live in one package with a `core` part and a `cli` part | An API or dashboard must import the core without the command line code (architecture, section 3) | review | ⚪ |
+| CR-01 | The Python code must live in one package with a `core` part and a `cli` part | An API or dashboard must import the core without the command line code (architecture, section 3) | review | ✅ |
 | CR-02 | The `cli` part must contain no measurement, evaluation or state logic, only argument parsing and output formatting | Interfaces stay thin; CLI parity is checkable | review | ⚪ |
 | CR-03 | Every CLI command must get its result from one core function that returns data (dict or list) and prints nothing | The same data serves the CLI, a later API and the dashboard | test | ⚪ |
-| CR-04 | When the package layout changes (C1), the output of every command and every written result file must stay the same, apart from file paths in messages | Moving code must not change behaviour; refactoring is kept apart from feature work | test | ⚪ |
+| CR-04 | When the package layout changes (C1), the output of every command and every written result file must stay the same, apart from file paths in messages | Moving code must not change behaviour; refactoring is kept apart from feature work | test | ✅ C1: outputs of every command compared before and after the move |
 
 **Result format and machine settings (C3)**
 

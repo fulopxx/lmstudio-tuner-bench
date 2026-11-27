@@ -12,7 +12,7 @@ kivéve ahol jelölve van. Más verziók eltérően viselkedhetnek.
 | Út | GPU-offload arány, KV-kvantálás, CPU-szálak | Használja-e az eszköz |
 |---|---|---|
 | Hivatalos TypeScript SDK | igen (a szálak llama.cpp argumentum-felülírással) | **igen**, a sweep futtató minden loadja |
-| `lms load` (CLI) | csak GPU-offload | csak a smoke teszt (`runner/smoke.py`) |
+| `lms load` (CLI) | csak GPU-offload | csak a smoke teszt (`bench/core/smoke.py`) |
 | REST `POST /api/v1/models/load` | nem találtunk kulcsot | nem (a sweep a REST-et csak generálásra használja) |
 | Per-modell default config fájl | igen | nem (korábbi módszer) |
 

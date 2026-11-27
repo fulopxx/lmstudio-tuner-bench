@@ -1,6 +1,6 @@
 """LIVE test of pause / resume / stop / resume on the tiny 1B model (uses the GPU for a few minutes).
 
-Drives `runner/sweep.py` exactly as a user would and checks after every transition that the machine
+Drives the `bench` command line (`python -m bench.cli`) exactly as a user would and checks after every transition that the machine
 is clean: no model loaded, LM Studio config folder byte-identical to the state before the test.
 """
 import hashlib
@@ -11,11 +11,11 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "runner"))
-import sweep  # noqa: E402
-from smoke import LMS, sh  # noqa: E402
+sys.path.insert(0, str(ROOT))
+from bench.core import sweep  # noqa: E402
+from bench.core.smoke import LMS, sh  # noqa: E402
 
-SWEEP = str(ROOT / "runner" / "sweep.py")
+BENCH = ["-m", "bench.cli"]  # run with ROOT as the working directory
 # LM Studio's per-model default-config files (internal location); the test checks that a run leaves them alone
 CFG_ROOT = (Path(os.environ.get("USERPROFILE", "")) / ".lmstudio" / "apps" / "bionic" / ".internal"
             / "user-concrete-model-default-config")
@@ -35,7 +35,7 @@ def check(name, cond):
 
 
 def cli(*args):
-    p = subprocess.run([sys.executable, SWEEP, *args], capture_output=True, text=True, timeout=60)
+    p = subprocess.run([sys.executable, *BENCH, *args], capture_output=True, text=True, timeout=60, cwd=ROOT)
     return p.stdout + p.stderr
 
 
@@ -63,7 +63,7 @@ def clean(label, before):
 
 def start(*args, logname):
     f = open(ROOT / "results" / logname, "w", encoding="utf-8")
-    return subprocess.Popen([sys.executable, SWEEP, *args], stdout=f, stderr=subprocess.STDOUT)
+    return subprocess.Popen([sys.executable, *BENCH, *args], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT)
 
 
 proc = None

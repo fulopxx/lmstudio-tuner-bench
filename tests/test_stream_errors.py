@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runner"))
-import smoke  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bench.core import smoke  # noqa: E402
 
 TOKEN = b'data: {"choices": [{"delta": {"content": "a"}}]}\n'
 END = b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n'

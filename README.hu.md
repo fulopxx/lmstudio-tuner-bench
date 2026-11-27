@@ -205,7 +205,7 @@ kapja (`--model`).
 | Mappa | Tartalom |
 |---|---|
 | `configs\` | Sweep rácsok (modellista, alapértelmezett load beállítások, az összehasonlítandó konfigurációk), az agent-futások mintavételi profiljai és a speculative decoding próba mintaterve |
-| `runner\` | Python kód: a `bench` CLI, a sweep futtató az állapot- és vezérlőfájljaival, a kiértékelés, az agent-futás (betöltés, a harness indítása, a válaszok ellenőrzése) és a közös segédfüggvények |
+| `bench\` | Python csomag: a `cli\` a `bench` parancs belépési pontja, a `core\` tartalmazza a sweep futtatót az állapot- és vezérlőfájljaival, a kiértékelést, az agent-futást (betöltés, a harness indítása, a válaszok ellenőrzése), a hibataxonómiát, a riportokat és a közös segédfüggvényeket |
 | `harness\` | TypeScript kód a LM Studio SDK-ra építve: a két futás közös modellbetöltője, az agent harness (`run-tasks.ts` és `agent\`: tool loop, toolok, sandbox, trace) és a próbák. Ide kerülnek majd a keresés, git és shell toolok, sandbox-korlátozással |
 | `tasks\` | Agent-feladatok az ellenőrzéseikkel, és a feladatonkénti sandboxba másolt fixture-fájlok |
 | `tests\` | Offline tesztek (GPU nélkül) és egy GPU-t használó live vezérlési teszt |

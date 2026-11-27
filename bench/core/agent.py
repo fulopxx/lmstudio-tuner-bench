@@ -25,12 +25,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import failures  # noqa: E402
-import sweep  # noqa: E402
-from smoke import LMS, StepError, sh  # noqa: E402
+from . import failures, sweep
+from .smoke import LMS, StepError, sh
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 HARNESS = ROOT / "harness"
 IDENTIFIER = "bench-agent"
 TASKS_SCHEMA_VERSION = 2  # the task file (FA-12)
@@ -422,7 +420,7 @@ def print_summary(model, rows, stopped):
 # ---------------------------------------------------------------- report and show
 
 def cmd_report(a):
-    import agent_report
+    from . import agent_report
     run_ids = a.run or [agent_report.latest_run()]
     rows, tasks, meta = [], {}, {}
     for rid in run_ids:
@@ -475,7 +473,7 @@ def describe(e):
 
 def cmd_show(a):
     """FA-47: an attempt's steps with sequence numbers; the evidence event of its category is marked with >>."""
-    import agent_report
+    from . import agent_report
     rows, tasks = agent_report.load_rows(a.run)
     task_id, _, attempt = a.attempt.rpartition("-")
     if not task_id or not attempt.isdigit():
@@ -539,6 +537,3 @@ def main(argv=None):
         log(f"agent {a.cmd} failed: {e}")
         return 3
 
-
-if __name__ == "__main__":
-    sys.exit(main())

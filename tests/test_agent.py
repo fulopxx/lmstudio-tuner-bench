@@ -10,9 +10,8 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runner"))
-import agent  # noqa: E402
-import failures  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bench.core import agent, failures  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures" / "traces"

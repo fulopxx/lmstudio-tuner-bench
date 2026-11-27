@@ -3,8 +3,8 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runner"))
-import evaluate  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bench.core import evaluate  # noqa: E402
 
 
 def row(config, prompt, decode, offload=1, ctx=4096, runs=None, status="ok"):

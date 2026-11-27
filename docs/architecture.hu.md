@@ -2,7 +2,7 @@
 
 [English](architecture.md)
 
-Utolsó frissítés: 2026-11-26. **Állapot: vázlat** (a véglegesítés a roadmap D lépése). A "Jelenlegi" részek a meglévő
+Utolsó frissítés: 2026-11-27. **Állapot: vázlat** (a véglegesítés a roadmap D lépése). A "Jelenlegi" részek a meglévő
 kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítva. A feladatlista: `docs/roadmap.hu.md`.
 
 ## 1. Alapelvek
@@ -23,12 +23,18 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 
 ## 2. Jelenlegi felépítés
 
+![A program felépítése](img/structure.hu.svg)
+
+Az ábrát a `tools/make_diagrams.py` generálja, és minden modul-, belépésipont- vagy külsőprocess-változáskor
+frissül.
+
 | Fájl | Szerep |
 |---|---|
-| `bench.cmd` | Rövid parancs a sweep futtatóhoz |
-| `runner/sweep.py` | CLI, futtató, állapot- és vezérléskezelés, táblázatos riport (egy fájlban) |
-| `runner/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
-| `runner/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
+| `bench.cmd` | Rövid parancs: a projektmappát a Python útvonalára teszi, és a `python -m bench.cli` parancsot futtatja |
+| `bench/cli/__main__.py` | A `bench` parancs belépési pontja; egyelőre a `bench/core/sweep.py`-nak adja tovább az argumentumokat (a parancssor feldolgozása a C2 lépésben kerül ide) |
+| `bench/core/sweep.py` | Parancsfeldolgozás, futtató, állapot- és vezérléskezelés, táblázatos riport |
+| `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
+| `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
 | `harness/load-model.ts` | Egy modellt tölt be az SDK-val, majd kilép; a futtató hívja |
 | `harness/load-config.ts` | A sweep beállításainak leképezése az SDK load configra, az alkalmazott értékek ellenőrzésével |
 | `harness/load-config.test.ts` | A leképezés offline tesztje |
@@ -37,9 +43,9 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `harness/spec-probe.ts` | Speculative decoding próba (24. feladat, 0. fázis): load draft modellel és MTP-vel, visszaolvasás, draft számlálók, REST-mezők, beragadás; a terv mintája a `configs/spec-probe.example.json` (saját példány: `spec-probe.local.json`) |
 | `harness/tools-probe.ts` | Az egykörös tool-hívás próbája `respond()` és `rawTools` használatával: callbackek, a tool eredményének visszaküldése, tool nélküli eset, megszakítás |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | A próba tiszta részei (tervellenőrzés, módonkénti load config, draft arányok) és offline tesztjük |
-| `runner/agent.py` | `bench agent run`: betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel értékel |
-| `runner/failures.py` | Hibataxonómia (az egyetlen gépileg olvasható forrás) és az agent-próbálkozások szabályalapú kategorizálója; tiszta függvények |
-| `runner/agent_report.py` | Az agent-futások riportja: a trace-ekből újraszámolja az eredményt és a kategóriákat, modellenként és feladatonként összesít (Wilson-intervallum, pass^k, lánchosszak, csendes arány), Markdownt és JSON-t ír |
+| `bench/core/agent.py` | `bench agent run`: betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel értékel |
+| `bench/core/failures.py` | Hibataxonómia (az egyetlen gépileg olvasható forrás) és az agent-próbálkozások szabályalapú kategorizálója; tiszta függvények |
+| `bench/core/agent_report.py` | Az agent-futások riportja: a trace-ekből újraszámolja az eredményt és a kategóriákat, modellenként és feladatonként összesít (Wilson-intervallum, pass^k, lánchosszak, csendes arány), Markdownt és JSON-t ír |
 | `configs/sampling.json` | Modellcsaládonkénti mintavételi profilok az agent-futásokhoz, forrással |
 | `harness/run-tasks.ts` | Az agent harness belépési pontja: spec a stdinen, tool loop feladat-próbálkozásonként, `RESULT:` összegzés |
 | `harness/agent/` | A harness moduljai: spec, modell-backendek (SDK-s és scriptelt), tool loop, toolok, sandbox, trace; offline tesztek az `agent.test.ts`-ben |
@@ -244,7 +250,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.
 
-Egyéb belépési pontok: `python runner/smoke.py` (egy modell smoke tesztje: leltár, GPU-ellenőrzés, load a CLI-vel,
+Egyéb belépési pontok: `python bench/core/smoke.py` (egy modell smoke tesztje: leltár, GPU-ellenőrzés, load a CLI-vel,
 generálás, tool-hívás próba; a `results/smoke_*.json` fájlt és egy modellistát ír az `inventory/` mappába),
 `python tools/export_docs.py`, `python tools/make_diagrams.py` és a `harness/` próbái.
 

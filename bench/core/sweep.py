@@ -33,12 +33,10 @@ from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import evaluate  # noqa: E402
-import smoke  # noqa: E402
-from smoke import LMS, StepError, sh  # noqa: E402
+from . import evaluate, smoke
+from .smoke import LMS, StepError, sh
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 HARNESS = ROOT / "harness"
 IDENTIFIER = "bench-sweep"  # the only model instance this runner loads and removes
 STATE = ROOT / "state"
@@ -668,7 +666,7 @@ def cmd_evaluate(a):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["agent"]:  # agent task runs live in their own module
-        import agent
+        from . import agent
         return agent.main(argv[1:])
     ap = argparse.ArgumentParser(prog="bench")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -730,6 +728,3 @@ def main(argv=None):
     print(f"{a.cmd} requested ({'now' if a.now else 'after the current job'})")
     return 0
 
-
-if __name__ == "__main__":
-    sys.exit(main())

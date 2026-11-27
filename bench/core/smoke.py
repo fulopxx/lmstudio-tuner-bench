@@ -26,7 +26,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 LMS = os.path.join(os.environ.get("USERPROFILE", ""), ".lmstudio", "bin", "lms.exe")
 BASE = "http://127.0.0.1:1234"
 IDENT = "bench-smoke"

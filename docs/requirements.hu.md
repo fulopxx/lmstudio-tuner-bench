@@ -121,7 +121,7 @@ Az első követelmények, a harness elkészülte előtt írva; az alábbi FA-01�
   használnia. Gondolatmenet közbeni megszakítás után egy belső LM Studio elválasztó szöveg jelent meg a `content`-ben.
 - `onToolCallRequestFailure` callbacket nem láttunk.
 
-**M1 megvalósítás (2026-11-26):** a `bench agent run` (`runner/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
+**M1 megvalósítás (2026-11-26):** a `bench agent run` (ma `bench/core/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
 megvalósítja a H1–H7 döntéseket. A megvalósítás által rögzített további részletek (a feladatformátum és a sikerszabály
 az 5. lépés szerinti frissítéssel):
 
@@ -483,10 +483,10 @@ C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl 
 
 | Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
 |---|---|---|---|---|
-| CR-01 | A Python-kódnak egy csomagban kell lennie, `core` és `cli` résszel | Egy API-nak vagy dashboardnak a parancssori kód nélkül kell importálnia a core-t (architektúra, 3. pont) | átnézés | ⚪ |
+| CR-01 | A Python-kódnak egy csomagban kell lennie, `core` és `cli` résszel | Egy API-nak vagy dashboardnak a parancssori kód nélkül kell importálnia a core-t (architektúra, 3. pont) | átnézés | ✅ |
 | CR-02 | A `cli` rész nem tartalmazhat mérési, kiértékelési vagy állapotkezelési logikát, csak argumentumfeldolgozást és kimenetformázást | A felületek vékonyak maradnak; a CLI-paritás ellenőrizhető | átnézés | ⚪ |
 | CR-03 | Minden CLI-parancsnak egy olyan core függvénytől kell kapnia az eredményét, amely adatot ad vissza (dict vagy lista), és semmit nem nyomtat | Ugyanaz az adat szolgálja ki a CLI-t, egy későbbi API-t és a dashboardot | teszt | ⚪ |
-| CR-04 | A csomagszerkezet változásakor (C1) minden parancs kimenetének és minden írt eredményfájlnak változatlannak kell maradnia, az üzenetekben szereplő fájlútvonalak kivételével | A kód mozgatása nem változtathat a viselkedésen; a refaktorálás elkülönül a funkcióbővítéstől | teszt | ⚪ |
+| CR-04 | A csomagszerkezet változásakor (C1) minden parancs kimenetének és minden írt eredményfájlnak változatlannak kell maradnia, az üzenetekben szereplő fájlútvonalak kivételével | A kód mozgatása nem változtathat a viselkedésen; a refaktorálás elkülönül a funkcióbővítéstől | teszt | ✅ C1: minden parancs kimenete összevetve az áthelyezés előtt és után |
 
 **Eredményformátum és gépfüggő beállítások (C3)**
 

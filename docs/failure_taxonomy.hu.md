@@ -3,7 +3,7 @@
 [English](failure_taxonomy.md)
 
 Taxonómia 2. verzió (2026-11-27; az 1. verzió: 2026-11-26; a 2. verzió az M1 feladatkészlet első élő futása után a `wrong_result/gave_up` alkóddal bővült). Követelmények és indokok: [követelmények](requirements.hu.md), 3. pont (FA-30–FA-39).
-A gépileg olvasható forrás a `runner/failures.py` `CATEGORIES` szótára; teszt ellenőrzi, hogy minden alábbi azonosító
+A gépileg olvasható forrás a `bench/core/failures.py` `CATEGORIES` szótára; teszt ellenőrzi, hogy minden alábbi azonosító
 egyezik vele. Állapot: megvalósítva, szintetikus és két rögzített élő trace-en tesztelve; teljes feladatkészleten még
 nem használtuk, és a heurisztikus szabályokat csak egy élő futás bukásainak kézi átnézésével ellenőriztük (FA-37, 2026-11-27: egy feladat kulcsszólistájában rést talált, és ebből lett a `gave_up` alkód).
 

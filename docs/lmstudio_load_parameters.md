@@ -12,7 +12,7 @@ otherwise. Other versions may behave differently.
 | Path | GPU offload ratio, KV quantization, CPU threads | Used by this tool |
 |---|---|---|
 | Official TypeScript SDK | yes (threads through a llama.cpp argument override) | **yes**, every load of the sweep runner |
-| `lms load` (CLI) | GPU offload only | only by the smoke test (`runner/smoke.py`) |
+| `lms load` (CLI) | GPU offload only | only by the smoke test (`bench/core/smoke.py`) |
 | REST `POST /api/v1/models/load` | no key found | no (the sweep uses REST for generation only) |
 | Per-model default config file | yes | no (earlier method) |
 

@@ -197,7 +197,7 @@ of the grid (`.\bench run --help`). Agent runs take the model key directly (`--m
 | Folder | Contents |
 |---|---|
 | `configs\` | Sweep grids (model list, default load settings, the configurations to compare), sampling profiles for agent runs and the sample plan of the speculative decoding probe |
-| `runner\` | Python code: the `bench` CLI, the sweep runner with its status and control files, the evaluation, the agent run (loading, starting the harness, checking the answers) and shared helpers |
+| `bench\` | Python package: `cli\` is the entry point of the `bench` command, `core\` holds the sweep runner with its status and control files, the evaluation, the agent run (loading, starting the harness, checking the answers), the failure taxonomy, the reports and shared helpers |
 | `harness\` | TypeScript code on the LM Studio SDK: the model loader used by both runs, the agent harness (`run-tasks.ts` and `agent\`: tool loop, tools, sandbox, trace) and the probes. Search, git and shell tools are planned here, behind a sandbox restriction |
 | `tasks\` | Agent tasks with their checks, and the fixture files copied into each task's sandbox |
 | `tests\` | Offline tests (no GPU) and one live control test that uses the GPU |

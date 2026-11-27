@@ -3,7 +3,7 @@
 [Magyar](failure_taxonomy.hu.md)
 
 Taxonomy version 2 (2026-11-27; version 1: 2026-11-26; version 2 adds `wrong_result/gave_up` after the first live run of the M1 task set). Requirements and reasons: [requirements](requirements.md), section 3 (FA-30 to
-FA-39). The machine-readable source is `CATEGORIES` in `runner/failures.py`; a test checks that every id below matches
+FA-39). The machine-readable source is `CATEGORIES` in `bench/core/failures.py`; a test checks that every id below matches
 it. Status: implemented and tested on synthetic traces and two recorded live traces; not yet used on a full task set,
 and the heuristic rules have been checked by a manual review of the failures of one live run only (FA-37, 2026-11-27: it found a gap in a task's keyword list and led to the `gave_up` subcode).
 

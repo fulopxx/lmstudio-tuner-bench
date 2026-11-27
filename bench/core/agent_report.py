@@ -9,9 +9,9 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-import failures
+from . import failures
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
 REPORTS = ROOT / "report"
 FORMAT_STUCK_SHARE = 0.8  # FA-39: this share of failures being format_invalid means the rest was not measurable
