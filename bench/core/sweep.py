@@ -32,7 +32,7 @@ from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
-from . import evaluate, progress, smoke
+from . import evaluate, machine, progress, results, smoke
 from .progress import CoreError
 from .smoke import LMS, StepError, sh
 
@@ -145,10 +145,8 @@ def latest_results(path):
     """job id -> last recorded row"""
     res = {}
     if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                r = json.loads(line)
-                res[r["job_id"]] = r
+        for r in results.read_rows(path):
+            res[r["job_id"]] = r
     return res
 
 
@@ -212,7 +210,7 @@ def sdk_load(model_path, settings, timeout, identifier=IDENTIFIER):
     request = {"model": model_path, "identifier": identifier, "settings": settings, "timeoutMs": timeout * 1000}
     try:
         p = subprocess.run([shutil.which("node") or "node", "load-model.ts"], cwd=HARNESS, input=json.dumps(request),
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout + 30)
+                           env=machine.node_env(), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout + 30)
     except subprocess.TimeoutExpired:
         raise StepError("timeout", f"model load did not finish within {timeout + 30}s")
     line = next((ln for ln in reversed(p.stdout.splitlines()) if ln.startswith("RESULT:")), None)
@@ -467,6 +465,7 @@ def execute(run_id, redo_failed=False):
     final, reason, code, consecutive_timeouts = "aborted", "", 3, 0
     try:
         env = environment()
+        fingerprint = machine.fingerprint()
         if not shutil.which("node") or not env["loader"]:
             raise Fatal("Node.js or the SDK is missing: run `npm install --ignore-scripts` in harness/")
         if env != plan["env"]:
@@ -504,7 +503,7 @@ def execute(run_id, redo_failed=False):
                     send("pause")
                     if runner.wait_paused(str(e), auto=True) == "stop":
                         raise Interrupted("stop")
-            append_row(results_path, row)
+            append_row(results_path, results.envelope("sweep", run_id, row, fingerprint))
             write_report(jobs, latest_results(results_path), report_path, run_id)
             if row["status"] == "ok":
                 log(f"      ok: vram +{row['vram_delta_mib']} MiB | prompt {row['prompt_tok_s']} t/s | "
@@ -625,7 +624,8 @@ def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=Fals
         have = latest_results(path)
         for j in plan["jobs"]:
             if j["n"] >= from_job and j["id"] in have:
-                append_row(path, {"job_id": j["id"], "status": "invalidated"})
+                append_row(path, results.envelope("sweep", run_id, {"job_id": j["id"], "status": "invalidated"},
+                                                  machine.fingerprint()))
     LATEST.write_text(run_id)
     return {"run": run_id, "exit_code": execute(run_id, redo_failed=redo_failed), "message": None}
 

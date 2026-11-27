@@ -1,0 +1,4 @@
+{
+  "comment": "Machine-specific paths. Copy to machine.local.json (not tracked by git) and keep only the keys you need; without that file the defaults of a standard Windows installation are used. lmstudio_dir: the LM Studio folder (default: .lmstudio in the user profile); lms: the lms executable (default: bin/lms.exe in lmstudio_dir); api_file: the internal file with the SDK port (default: apps/bionic/.internal/http-server.json in lmstudio_dir).",
+  "lmstudio_dir": "C:/Users/<you>/.lmstudio"
+}

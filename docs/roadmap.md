@@ -75,7 +75,7 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 |---|---|---|
 | A | Evaluate the trial sweep, final round | ✅ done (trial and clean sweeps evaluated) |
 | B | Repository preparation, English and Hungarian documents | ✅ done (bilingual documents; public since 2026-11-27) |
-| C | Split core and CLI, versioned result format, model registry | 🔵 in progress (plan agreed 2026-11-27: [requirements](requirements.md), section 7, CR-01 to CR-24; C1 package layout and C2 core functions done 2026-11-27; C3 and C4 open) |
+| C | Split core and CLI, versioned result format, model registry | 🔵 in progress (plan agreed 2026-11-27: [requirements](requirements.md), section 7, CR-01 to CR-24; C1 package layout, C2 core functions and C3 result format and machine settings done 2026-11-27; C4 model registry open) |
 | D | Finalize `docs/architecture.md`: data formats, control interface | 🟡 partial (draft exists) |
 | E | HTML dashboard and Excel export (after D) | ⚪ open |
 | F | Web control UI | ⚪ open |
@@ -151,12 +151,12 @@ with step C.
 
 | Item | Current knowledge | Status |
 |---|---|---|
-| Not tried live (sweep) | `stop --now`; automatic pause on a busy GPU and the automatic resume after it (offline tests only); a connection breaking during generation (offline tests only); Ctrl+C; load timeout; `--redo-failed`; the warning for a runtime without GPU support. Resume after a reboot was used once on 2026-11-26 | ⚪ open |
+| Not tried live (sweep) | `stop --now`; automatic pause on a busy GPU and the automatic resume after it (offline tests only); a connection breaking during generation (offline tests only); Ctrl+C; load timeout; `--redo-failed`; the warning for a runtime without GPU support. Resume after a reboot was used once on 2026-11-26; a `configs/machine.local.json` with LM Studio in another folder (offline tests only) | ⚪ open |
 | Not tried live (agent harness) | Stop of a real run: Ctrl+C or the stop command, the second Ctrl+C that kills the harness and the trace it leaves; `--run-timeout`; attempt time limit with a real model; a tool call the SDK reports as unparsable (`onToolCallRequestFailure`, never seen); removal of a `bench-agent` instance left over from a killed run; a context other than 8192; a real model trying to read outside the sandbox. All but the last three are covered by offline tests. New in step 5a, offline only: mock answers by call count (`sequence`); the rebuild of attempts from traces after a killed harness; a real context overflow stopped by `stopAtLimit`. Tried live on 2026-11-27: the sampling profile and `stopAtLimit` are applied (LM Studio reports them back, recorded in the trace), and the categorizer on real runs; tried live on 2026-11-27: `--models` with four models, the M1 task set, `report` and `show` on a real run; `--repeats` 5 and 10 with the profile temperatures, and the round limit with the final round without tools | ⚪ open |
 | Late heartbeat | During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced) | 🟡 partial |
 | Display freeze | Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display driver reset or hardware error was logged; the cause is unknown | ⚪ open |
 | Tests without the harness dependencies | In a fresh clone without the harness packages, three Python tests that start the harness failed with a broken pipe. Fixed on 2026-11-27: they are skipped with a message, `bench agent run` stops with the install command, and the README has an install section for a fresh clone (checked in a fresh clone with and without the packages) | ✅ done |
-| LM Studio internal path repeated | The path of the internal LM Studio files (`~\.lmstudio\...`, `lms.exe`) is built separately in six TypeScript and two Python files; one shared setting would make other installations easier. After the public release | ⚪ open |
+| LM Studio internal path repeated | The path of the internal LM Studio files (`~\.lmstudio\...`, `lms.exe`) is built separately in six TypeScript files; the Python code reads it from one module since step C3 (CR-15). A shared setting for the TypeScript probes would make other installations easier. After the public release | ⚪ open |
 
 ### Dependencies
 

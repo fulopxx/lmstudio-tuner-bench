@@ -92,7 +92,8 @@ STRUCT_TEXT = {
            "modules": [("sweep.py", "runner, status, control"), ("evaluate.py", "sweep evaluation"),
                        ("smoke.py", "helpers, smoke test"), ("progress.py", "progress sink, errors"),
                        ("agent.py", "agent runs, checks"), ("agent_report.py", "agent report"),
-                       ("failures.py", "taxonomy, categorizer")],
+                       ("failures.py", "taxonomy, categorizer"),
+                       ("results.py", "result format, migration"), ("machine.py", "paths, env fingerprint")],
            "ext": [("harness (Node)", "load-model, run-tasks"), ("lms.exe", "list, ps, unload, server"),
                    ("REST server", "generation, measurement"), ("nvidia-smi", "VRAM, GPU load")],
            "lms": "LM Studio (application, SDK, models)", "gpu": "GPU",
@@ -103,7 +104,8 @@ STRUCT_TEXT = {
            "modules": [("sweep.py", "futtató, állapot, vezérlés"), ("evaluate.py", "sweep kiértékelése"),
                        ("smoke.py", "segédek, smoke teszt"), ("progress.py", "előrehaladás, hibák"),
                        ("agent.py", "agent-futás, ellenőrzés"), ("agent_report.py", "agent riport"),
-                       ("failures.py", "taxonómia, kategorizáló")],
+                       ("failures.py", "taxonómia, kategorizáló"),
+                       ("results.py", "eredményformátum, migráció"), ("machine.py", "útvonalak, ujjlenyomat")],
            "ext": [("harness (Node)", "load-model, run-tasks"), ("lms.exe", "lista, ps, unload, szerver"),
                    ("REST szerver", "generálás, mérés"), ("nvidia-smi", "VRAM, GPU-terhelés")],
            "lms": "LM Studio (alkalmazás, SDK, modellek)", "gpu": "GPU",
@@ -128,11 +130,14 @@ def _box(x, y, w, h, title, sub=None, fill="#ffffff", stroke="#495057", dashed=F
 
 def structure(lang):
     t = STRUCT_TEXT[lang]
+    rows = -(-len(t["modules"]) // 4)
+    dy = (rows - 2) * 70  # everything below the core box moves down by this much
+    h = 550 + dy
     line = 'fill="none" stroke="#495057" stroke-width="1.5"'
     out = [
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 550" width="800" height="550" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 {h}" width="800" height="{h}" '
         f'role="img" aria-label="{escape(t["title"])}" font-family="Segoe UI, Arial, sans-serif">',
-        '<rect width="800" height="550" fill="#ffffff"/>',
+        f'<rect width="800" height="{h}" fill="#ffffff"/>',
         '<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" '
         'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>',
     ]
@@ -143,34 +148,33 @@ def structure(lang):
     out.append(f'<path d="M220,42 H276" {line} marker-end="url(#a)"/>')
     out.append(f'<path d="M390,64 V96" {line} marker-end="url(#a)"/>')
     out.append(f'<path d="M660,64 V96" {line} stroke-dasharray="5 4" marker-end="url(#a)"/>')
-    out.append('<rect x="40" y="100" width="720" height="170" rx="12" fill="#f1f8ff" stroke="#1c7ed6" '
+    out.append(f'<rect x="40" y="100" width="720" height="{170 + dy}" rx="12" fill="#f1f8ff" stroke="#1c7ed6" '
                'stroke-width="1.5"/>')
     out.append(f'<text x="56" y="122" font-size="14" font-weight="600" font-family="Consolas, monospace" '
                f'fill="#1c7ed6">{escape(t["core"])}</text>')
     for i, (name, sub) in enumerate(t["modules"]):
-        x, y = (56, 228, 400, 572)[i % 4], (136, 206)[i // 4]
+        x, y = (56, 228, 400, 572)[i % 4], 136 + 70 * (i // 4)
         out += _box(x, y, 160, 48, name, sub, fill="#ffffff", stroke="#4dabf7")
     for i, (name, sub) in enumerate(t["ext"]):
         x = 40 + i * 185
-        out += _box(x, 300, 165, 48, name, sub, fill="#fff3bf", stroke="#f08c00", mono=False)
-        out.append(f'<path d="M{x + 82},270 V296" {line} marker-end="url(#a)"/>')
+        out += _box(x, 300 + dy, 165, 48, name, sub, fill="#fff3bf", stroke="#f08c00", mono=False)
+        out.append(f'<path d="M{x + 82},{270 + dy} V{296 + dy}" {line} marker-end="url(#a)"/>')
         if i < 3:
-            out.append(f'<path d="M{x + 82},348 V376" {line} marker-end="url(#a)"/>')
-    out.append(f'<path d="M677,348 V376" {line} marker-end="url(#a)"/>')
-    out += _box(40, 380, 535, 44, t["lms"], fill="#e9ecef", stroke="#868e96", mono=False)
-    out += _box(595, 380, 165, 44, t["gpu"], fill="#e9ecef", stroke="#868e96", mono=False)
-    out += _box(40, 460, 350, 44, t["in"], fill="#d3f9d8", stroke="#2f9e44")
-    out += _box(410, 460, 350, 44, t["outp"], fill="#d3f9d8", stroke="#2f9e44")
-    out.append(f'<path d="M40,482 H24 V185 H36" {line} marker-end="url(#a)"/>')
-    out.append(f'<path d="M760,185 H780 V482 H764" {line} marker-end="url(#a)"/>')
+            out.append(f'<path d="M{x + 82},{348 + dy} V{376 + dy}" {line} marker-end="url(#a)"/>')
+    out.append(f'<path d="M677,{348 + dy} V{376 + dy}" {line} marker-end="url(#a)"/>')
+    out += _box(40, 380 + dy, 535, 44, t["lms"], fill="#e9ecef", stroke="#868e96", mono=False)
+    out += _box(595, 380 + dy, 165, 44, t["gpu"], fill="#e9ecef", stroke="#868e96", mono=False)
+    out += _box(40, 460 + dy, 350, 44, t["in"], fill="#d3f9d8", stroke="#2f9e44")
+    out += _box(410, 460 + dy, 350, 44, t["outp"], fill="#d3f9d8", stroke="#2f9e44")
+    out.append(f'<path d="M40,{482 + dy} H24 V185 H36" {line} marker-end="url(#a)"/>')
+    out.append(f'<path d="M760,185 H780 V{482 + dy} H764" {line} marker-end="url(#a)"/>')
     out += [
-        '<rect x="40" y="522" width="30" height="16" rx="4" fill="#ffffff" stroke="#868e96" stroke-width="1.5" '
-        'stroke-dasharray="5 4"/>',
-        f'<text x="78" y="534" font-size="12" fill="#495057">{escape(t["legend"])}</text>',
+        f'<rect x="40" y="{522 + dy}" width="30" height="16" rx="4" fill="#ffffff" stroke="#868e96" '
+        'stroke-width="1.5" stroke-dasharray="5 4"/>',
+        f'<text x="78" y="{534 + dy}" font-size="12" fill="#495057">{escape(t["legend"])}</text>',
         "</svg>",
     ]
     return "\n".join(out) + "\n"
-
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)

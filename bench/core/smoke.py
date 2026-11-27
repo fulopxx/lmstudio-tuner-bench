@@ -27,7 +27,12 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LMS = os.path.join(os.environ.get("USERPROFILE", ""), ".lmstudio", "bin", "lms.exe")
+try:
+    from . import machine
+except ImportError:  # run as a stand-alone script
+    import machine
+
+LMS = machine.lms_path()
 BASE = "http://127.0.0.1:1234"
 IDENT = "bench-smoke"
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")

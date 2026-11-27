@@ -52,7 +52,8 @@ sweep-dimenzió és webes dashboard.
 
 **Ismert korlát:** a modellek a hivatalos LM Studio SDK-val töltődnek be, az SDK API-portját pedig egy belső LM Studio
 fájlból olvassuk (`~\.lmstudio\apps\bionic\.internal\http-server.json`), ami más telepítésen eltérhet (a
-`LMS_API_FILE` környezeti változóval felülírható). Az alkalmazásnak futnia kell. Részletek:
+LM Studio mappája, az `lms` futtatható fájl vagy ez a fájl a `configs\machine.local.json` fájlban adható meg, lásd
+a `configs\machine.example.json`). Az alkalmazásnak futnia kell. Részletek:
 [load paraméterek](docs/lmstudio_load_parameters.hu.md).
 
 ## Használat

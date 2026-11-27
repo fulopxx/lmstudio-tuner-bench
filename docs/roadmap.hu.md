@@ -75,7 +75,7 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 |---|---|---|
 | A | Próbasweep kiértékelése, döntő kör | ✅ kész (a próbasweep és a tiszta sweepek kiértékelve) |
 | B | Repó előkészítése, dokumentumok angol és magyar változata | ✅ kész (kétnyelvű dokumentumok; 2026-11-27 óta publikus) |
-| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | 🔵 folyamatban (a terv 2026-11-27-én elfogadva: [követelmények](requirements.hu.md), 7. pont, CR-01–CR-24; a C1 csomagszerkezet és a C2 core függvények 2026-11-27-én kész; a C3 és a C4 nyitott) |
+| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | 🔵 folyamatban (a terv 2026-11-27-én elfogadva: [követelmények](requirements.hu.md), 7. pont, CR-01–CR-24; a C1 csomagszerkezet, a C2 core függvények és a C3 eredményformátum és gépfüggő beállítások 2026-11-27-én kész; a C4 modellregiszter nyitott) |
 | D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | 🟡 részben (vázlat kész) |
 | E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
 | F | Webes vezérlőfelület | ⚪ nyitott |
@@ -152,12 +152,12 @@ lépéssel együtt.
 
 | Pont | Jelenlegi ismeret | Állapot |
 |---|---|---|
-| Élőben nem próbált (sweep) | `stop --now`; automatikus szünet foglalt GPU-nál és az utána következő automatikus folytatás (csak offline tesztek); generálás közben megszakadt kapcsolat (csak offline tesztek); Ctrl+C; betöltési timeout; `--redo-failed`; a GPU-támogatás nélküli runtime figyelmeztetése. A gépújraindítás utáni folytatást 2026-11-26-án egyszer használtuk | ⚪ nyitott |
+| Élőben nem próbált (sweep) | `stop --now`; automatikus szünet foglalt GPU-nál és az utána következő automatikus folytatás (csak offline tesztek); generálás közben megszakadt kapcsolat (csak offline tesztek); Ctrl+C; betöltési timeout; `--redo-failed`; a GPU-támogatás nélküli runtime figyelmeztetése. A gépújraindítás utáni folytatást 2026-11-26-án egyszer használtuk; `configs/machine.local.json` más mappában lévő LM Studióval (csak offline tesztek) | ⚪ nyitott |
 | Élőben nem próbált (agent harness) | Valódi futás leállítása: Ctrl+C vagy a stop parancs, a harnesst leállító második Ctrl+C és az utána maradó trace; `--run-timeout`; próbálkozási időkorlát valódi modellel; az SDK által értelmezhetetlennek jelzett tool-hívás (`onToolCallRequestFailure`, még nem láttuk); egy megszakadt futás után bent maradt `bench-agent` eltávolítása; 8192-től eltérő context; valódi modell próbálkozása a sandboxon kívüli olvasással. Az utolsó három kivételével offline tesztek lefedik. Az 5a lépésben új, csak offline: hívásszám szerinti mock-válasz (`sequence`); a próbálkozások felépítése a trace-ekből leállított harness után; a `stopAtLimit` által megállított valódi kontextus-túlcsordulás. Élőben kipróbálva 2026-11-27-én: a mintavételi profil és a `stopAtLimit` érvényesül (a LM Studio visszaadja őket, a trace rögzíti), és a kategorizáló valódi futásokon; élőben kipróbálva 2026-11-27-én: `--models` négy modellel, az M1 feladatkészlet, a `report` és a `show` valódi futáson; `--repeats` 5 és 10 a profilok temperature-értékeivel, és a körkorlát a tool nélküli záró körrel | ⚪ nyitott |
 | Késő heartbeat | A 2026-11-26-i sweepek közben a `status --watch` többször „process gone” üzenetet adott, pedig a futás ment tovább. A nézet egy élő process késő heartbeatjénél már nem lép ki; hogy a heartbeat miért késett, ismeretlen (nem reprodukáltuk) | 🟡 részben |
 | Kijelző lefagyása | Ugyanezen sweepek alatt egyszer a kijelző nem reagált tovább (a Windows szerint az `explorer.exe` a `dwm.exe`-re várt), miközben a futtató még írta a heartbeatjét; a gépet újra kellett indítani, és a `resume` folytatta a futást. Videódriver-reset vagy hardverhiba nem került a naplóba; az ok ismeretlen | ⚪ nyitott |
 | Tesztek a harness függőségei nélkül | Friss klónban, a harness csomagjai nélkül a harnesst indító három Python-teszt broken pipe hibával bukott. Javítva 2026-11-27-én: üzenettel kimaradnak, a `bench agent run` a telepítő paranccsal áll le, és a README-ben van telepítési szakasz friss klónhoz (friss klónban ellenőrizve, a csomagokkal és nélkülük) | ✅ kész |
-| Ismétlődő LM Studio belső útvonal | A LM Studio belső fájljainak útvonalát (`~\.lmstudio\...`, `lms.exe`) hat TypeScript- és két Python-fájl külön állítja elő; egy közös beállítás megkönnyítené más telepítések kezelését. A publikálás után | ⚪ nyitott |
+| Ismétlődő LM Studio belső útvonal | A LM Studio belső fájljainak útvonalát (`~\.lmstudio\...`, `lms.exe`) hat TypeScript-fájl külön állítja elő; a Python-kód a C3 lépés óta egy modulból olvassa (CR-15); egy közös beállítás megkönnyítené más telepítések kezelését. A publikálás után | ⚪ nyitott |
 
 ### Függőségek
 

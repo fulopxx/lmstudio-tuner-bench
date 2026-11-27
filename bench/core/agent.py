@@ -24,7 +24,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import failures, progress, sweep
+from . import failures, machine, progress, results, sweep
 from .smoke import LMS, StepError, sh
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -215,7 +215,8 @@ def harness_problem():
 def run_harness(spec, timeout_s):
     """Starts the harness, streams its progress, sends stop on Ctrl+C. Returns the RESULT summary, or None when the
     harness ended without one (killed, crashed); raises if the harness reported an unusable spec."""
-    p = subprocess.Popen([shutil.which("node") or "node", "run-tasks.ts"], cwd=HARNESS, stdin=subprocess.PIPE,
+    p = subprocess.Popen([shutil.which("node") or "node", "run-tasks.ts"], cwd=HARNESS, env=machine.node_env(),
+                         stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
                          errors="replace")
     try:
@@ -337,7 +338,7 @@ def run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s):
             if info.get("mismatches"):
                 raise StepError("fail", "load settings not applied: " + "; ".join(info["mismatches"]))
             spec["backend"] = {"type": "lmstudio", "identifier": IDENTIFIER}
-            meta.update(backend="lmstudio", app_version=info.get("app"), context=a.context, env=sweep.environment())
+            meta.update(backend="lmstudio", app_version=info.get("app"), context=a.context)
         log(f"run {run_id}, {model}: {len(tasks)} task(s) x {a.repeats}, sampling {sampling['source']}")
         summary = run_harness(spec, timeout_s)
     finally:
@@ -374,15 +375,17 @@ def run_tasks(a, on_model_done=None):
     timeout_s = run_timeout(a, data, tasks)
     by_id = {t["id"]: t for t in tasks}
     results_file = ROOT / "results" / f"agent_{run_id}.jsonl"
+    fingerprint = machine.fingerprint()
     all_rows = []
     for model in models:
         try:
             attempts, summary, meta = run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s)
         except StepError as e:  # FA-40: record the model's error and go on with the next model
             log(f"{model}: {e}")
-            row = {"schema_version": TASKS_SCHEMA_VERSION, "run": run_id, "model": model, "task": "*", "attempt": 0,
+            row = {"tasks_schema_version": TASKS_SCHEMA_VERSION, "model": model, "task": "*", "attempt": 0,
                    "status": "error", "passed": False, "primary": "infra_error", "subcode": "harness_error",
                    "error": str(e), "taxonomy_version": failures.TAXONOMY_VERSION}
+            row = results.envelope("agent", run_id, row, fingerprint)
             sweep.append_row(results_file, row)
             all_rows.append(row)
             continue
@@ -392,11 +395,12 @@ def run_tasks(a, on_model_done=None):
             events = read_events(at["trace"]) if at.get("trace") else []
             verdict = evaluate_attempt(task, at, events)
             category = failures.classify(task, at, events, verdict["passed"])
-            row = {"schema_version": TASKS_SCHEMA_VERSION, **meta, "task": at["task"], "attempt": at["attempt"],
+            row = {"tasks_schema_version": TASKS_SCHEMA_VERSION, **meta, "task": at["task"], "attempt": at["attempt"],
                    "status": at["status"], **verdict, **category, "answer": at.get("answer"),
                    "rounds": at.get("rounds"), "tool_calls": at.get("toolCalls"), "limits_hit": at.get("limitsHit"),
                    "seconds": at.get("seconds"), "error": at.get("error"), "trace": at.get("trace"),
                    "sandbox": at.get("sandbox"), "rebuilt_from_traces": summary is None}
+            row = results.envelope("agent", run_id, row, fingerprint)
             sweep.append_row(results_file, row)
             rows.append(row)
         if on_model_done:

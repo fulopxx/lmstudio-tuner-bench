@@ -33,6 +33,8 @@ frissül.
 | `bench.cmd` | Rövid parancs: a projektmappát a Python útvonalára teszi, és a `python -m bench.cli` parancsot futtatja |
 | `bench/cli/main.py` | A `bench` parancssor: csak argumentumfeldolgozás és kimenetformázás; minden eredmény egy core függvényből jön (a `bench/cli/__main__.py` indítja) |
 | `bench/core/progress.py` | A hosszú műveletek előrehaladás-kimenete (a CLI kiírja a sorokat, egy API összegyűjtheti őket) és a `CoreError` a core által elutasított kérésekhez |
+| `bench/core/results.py` | Eredményformátum: minden sor közös borítéka, a régebbi sorok átalakítása olvasáskor, az újabb formátumok elutasítása |
+| `bench/core/machine.py` | Gépfüggő útvonalak (`configs/machine.local.json`, minta: `configs/machine.example.json`) és az eredménysorok környezet-ujjlenyomata |
 | `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, állapot- és vezérléskezelés, táblázatos riport |
 | `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
 | `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
@@ -175,6 +177,8 @@ Az `options` a futás parancssori beállításait tárolja: `repeats`, `gen_toke
 
 ### 4.3 Eredménysorok
 
+A C3 lépés óta minden sor a `schema_version` (az eredményformátum, most 1; független a feladatfájl verziójától, amelyet az agent-sorok `tasks_schema_version` néven őriznek), a `kind` (`sweep` vagy `agent`) és a `run` mezővel kezdődik, és az `env` mezővel zárul: `gpu`, `vram_total_mib`, `driver`, `lmstudio_app`, `runtime`, `sdk`, `harness`, `os`, `python`, `node` (a ki nem olvasható érték `null`). A korábban írt soroknak nincs `kind` mezője; a core olvasáskor alakítja át őket (`migrated_from: 0`), a fájlt soha nem írja át. Újabb formátumú sornál az olvasás a fájl nevével és a verzióval leáll. Kód: `bench/core/results.py`.
+
 Sikeres sor mezői: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`, `driver`, `loader`,
 `status`, `load_s`, `applied`, `loaded_path`, `app_version` (a loadot kiszolgáló alkalmazás), `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`, `decode_tok_s`,
 `prompt_tok_s`, `vram_peak_mib`, `near_vram_limit` (a csúcs 250 MiB-on belül a teljes mérethez), `job_s`, `finished`. A
@@ -275,9 +279,8 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 
 Az első három pont és a modellregiszter a C lépésben tervezett ([követelmények](requirements.hu.md), 7. pont).
 
-- `schema_version` minden tervben és eredménysorban.
-- Teljesebb hardver-ujjlenyomat: a rögzített runtime-választás, driver, loader és alkalmazásverzió mellett a GPU neve,
-  a teljes VRAM és a modellenként ténylegesen használt runtime.
+- `schema_version` minden tervben (az eredménysorokban a C3 lépés óta megvan).
+- A modellenként ténylegesen használt runtime (a C3 lépés ujjlenyomata a kiválasztott runtime-ot rögzíti).
 - Tesztcsomag-eredmények (minőség, tool-használat) a sebességmérés mellett.
 - Jelző, hogy mérés közben nyitva volt-e a dashboard.
 - Speculative decoding (24. feladat): rácsbeállítások, draft statisztikák, terhelésprofil és backend mező.
@@ -289,5 +292,5 @@ Az első három pont és a modellregiszter a C lépésben tervezett ([követelm�
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).
 - Kell-e második inferencia-backend (`llama-server`) a további speculative decoding módszerekhez.
-- A gépfüggő beállítások konfigurációs fájljának helye és formátuma: a C lépésben `configs/machine.local.json` fájlként
-  tervezett (CR-15).
+- Gépfüggő beállítások: a Python-kódban a C3 lépésben kész (`configs/machine.local.json`, CR-15); a `harness/` próbái
+  még maguk állítják elő a LM Studio útvonalait.

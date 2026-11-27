@@ -33,6 +33,8 @@ processes change.
 | `bench.cmd` | Short command: puts the project folder on the Python path and runs `python -m bench.cli` |
 | `bench/cli/main.py` | The `bench` command line: argument parsing and output formatting only; every result comes from a core function (`bench/cli/__main__.py` starts it) |
 | `bench/core/progress.py` | Progress sink of long-running operations (the CLI prints the lines, an API can collect them) and `CoreError` for requests the core refuses |
+| `bench/core/results.py` | Result format: the common envelope of every row, reading with conversion of older rows, refusal of newer formats |
+| `bench/core/machine.py` | Machine-specific paths (`configs/machine.local.json`, example in `configs/machine.example.json`) and the environment fingerprint of result rows |
 | `bench/core/sweep.py` | Sweep operations that return data (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), runner, status and control handling, table report |
 | `bench/core/evaluate.py` | Evaluation of sweep results: estimated response time, warnings, recommendations |
 | `bench/core/smoke.py` | Shared helpers used by the runner (commands, HTTP, streamed measurement, VRAM sampling) and a stand-alone smoke test |
@@ -174,6 +176,8 @@ these values; if `env` differs from the current machine it stops unless `--allow
 
 ### 4.3 Result rows
 
+Since step C3 every row starts with `schema_version` (the result format, now 1; independent of the task file version, which agent rows keep as `tasks_schema_version`), `kind` (`sweep` or `agent`) and `run`, and ends with `env`: `gpu`, `vram_total_mib`, `driver`, `lmstudio_app`, `runtime`, `sdk`, `harness`, `os`, `python`, `node` (a value that cannot be read is `null`). Rows written before have no `kind`; the core converts them when it reads them (`migrated_from: 0`) and never rewrites the file. A row of a newer format stops the reading with the file name and the version. Code: `bench/core/results.py`.
+
 Fields of a successful row: `job_id`, `run`, `model`, `config`, `settings`, `model_path`, `runtime`, `driver`,
 `loader`, `status`, `load_s`, `applied`, `loaded_path`, `app_version` (application that served the load), `vram_before_mib`, `vram_delta_mib`, `runs`, `ttft_s`,
 `decode_tok_s`, `prompt_tok_s`, `vram_peak_mib`, `near_vram_limit` (peak within 250 MiB of the total), `job_s`,
@@ -273,9 +277,8 @@ The runner is Windows specific (`lms.exe` path, process check).
 
 The first three items and the model registry are planned in step C ([requirements](requirements.md), section 7).
 
-- `schema_version` in every plan and result row.
-- Fuller hardware fingerprint: GPU name, total VRAM and the runtime each model actually used, in addition to the
-  recorded runtime selection, driver, loader and application version.
+- `schema_version` in every plan (result rows have it since step C3).
+- The runtime each model actually used (the fingerprint of step C3 records the selected runtime).
 - Test suite results (quality, tool use) next to speed measurements.
 - Flag telling whether the dashboard was open during a measurement.
 - Speculative decoding (task 24): grid settings, draft statistics, workload profile and backend fields.
@@ -287,4 +290,5 @@ The first three items and the model registry are planned in step C ([requirement
 - Detecting spill into shared GPU memory.
 - Final choice of test layers (pytest, Vitest, Playwright).
 - Whether a second inference backend (`llama-server`) is needed for further speculative decoding methods.
-- Location and format of the machine-specific config file: planned as `configs/machine.local.json` in step C (CR-15).
+- Machine-specific settings: done in step C3 for the Python code (`configs/machine.local.json`, CR-15); the probes in
+  `harness/` still build the LM Studio paths themselves.

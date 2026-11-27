@@ -49,7 +49,8 @@ git, shell), statistical comparison of models, speculative decoding as a sweep d
 
 **Known limitation:** models are loaded through the official LM Studio SDK, and the SDK's API port is read from an
 internal LM Studio file (`~\.lmstudio\apps\bionic\.internal\http-server.json`), which may differ on other
-installations (override with the `LMS_API_FILE` environment variable). The application has to be running. Details:
+installations: set the LM Studio folder, the `lms` executable or this file in `configs\machine.local.json` (see
+`configs\machine.example.json`). The application has to be running. Details:
 [load parameters](docs/lmstudio_load_parameters.md).
 
 ## Usage

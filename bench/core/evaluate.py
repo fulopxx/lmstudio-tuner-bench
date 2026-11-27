@@ -8,8 +8,9 @@ Warnings are heuristics, not measurements:
             model's best: typical when VRAM spills into shared system memory
   unstable  the repeated runs differ by more than 10% (decode) or 25% (prompt)
 """
-import json
 import statistics
+
+from . import results
 
 PROMPT_SPILL, DECODE_SPILL = 0.5, 0.6
 DECODE_SPREAD, PROMPT_SPREAD = 0.10, 0.25
@@ -17,10 +18,8 @@ DECODE_SPREAD, PROMPT_SPREAD = 0.10, 0.25
 
 def load_rows(path):
     rows = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            r = json.loads(line)
-            rows[r["job_id"]] = r
+    for r in results.read_rows(path):
+        rows[r["job_id"]] = r
     return [r for r in rows.values() if r["status"] != "invalidated"]
 
 

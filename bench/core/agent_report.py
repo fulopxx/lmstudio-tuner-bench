@@ -9,7 +9,7 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from . import failures
+from . import failures, results
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
@@ -50,7 +50,7 @@ def load_rows(run_id):
     path = RESULTS / f"agent_{run_id}.jsonl"
     if not path.is_file():
         raise SystemExit(f"results file not found: {path}")
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = results.read_rows(path)
     tasks_file = RESULTS / "agent" / run_id / "tasks.json"
     tasks = {}
     if tasks_file.is_file():

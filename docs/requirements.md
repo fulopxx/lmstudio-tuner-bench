@@ -473,12 +473,12 @@ the agent rows that carry the task file version as their `schema_version`.
 
 | ID | Requirement | Reason | Verification | State |
 |---|---|---|---|---|
-| CR-10 | Every result row must carry `schema_version`, the version of the result format, independent of the task file version | Sweep rows have no version today; agent rows carry the task file version | test | ⚪ |
-| CR-11 | Every result row must carry `kind` with the value `sweep` or `agent` | Rows of different runs can be read by one reader | test | ⚪ |
-| CR-12 | Every result row must carry an `env` object with: GPU name, total VRAM, driver version, LM Studio application version, selected runtime, SDK version, harness version (agent rows), operating system version, Python version and Node.js version; a value that cannot be read is `null`, never guessed | Results from different machines and versions must stay comparable (planned format change, architecture section 8) | test | ⚪ |
-| CR-13 | When the core reads a result file with rows of an older format, it must convert them to the current format in memory and must not rewrite the file | Raw measurements stay unchanged; every earlier run stays readable | test | ⚪ |
-| CR-14 | When a result row has a `schema_version` newer than the core knows, the core must stop reading with a message that names the file and the version | No silent misreading | test | ⚪ |
-| CR-15 | The LM Studio folder, the `lms` executable and the API port file must be read from an untracked `configs/machine.local.json` when it exists, otherwise from built-in defaults, through one core module | The same path is built in eight places today; other installations need another location (architecture, open question) | test | ⚪ |
+| CR-10 | Every result row must carry `schema_version`, the version of the result format, independent of the task file version | Sweep rows have no version today; agent rows carry the task file version | test | ✅ |
+| CR-11 | Every result row must carry `kind` with the value `sweep` or `agent` | Rows of different runs can be read by one reader | test | ✅ |
+| CR-12 | Every result row must carry an `env` object with: GPU name, total VRAM, driver version, LM Studio application version, selected runtime, SDK version, harness version (agent rows), operating system version, Python version and Node.js version; a value that cannot be read is `null`, never guessed | Results from different machines and versions must stay comparable (planned format change, architecture section 8) | test | ✅ live sweep and agent run on 2026-11-27: every field filled |
+| CR-13 | When the core reads a result file with rows of an older format, it must convert them to the current format in memory and must not rewrite the file | Raw measurements stay unchanged; every earlier run stays readable | test | ✅ the reports of the existing result files are unchanged |
+| CR-14 | When a result row has a `schema_version` newer than the core knows, the core must stop reading with a message that names the file and the version | No silent misreading | test | ✅ |
+| CR-15 | The LM Studio folder, the `lms` executable and the API port file must be read from an untracked `configs/machine.local.json` when it exists, otherwise from built-in defaults, through one core module | The same path is built in eight places today; other installations need another location (architecture, open question) | test | 🧪 Python code only (the probes in `harness/` keep their own paths); a settings file not yet tried live |
 
 **Model registry (C4)**
 

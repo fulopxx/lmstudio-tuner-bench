@@ -492,12 +492,12 @@ C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl 
 
 | Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
 |---|---|---|---|---|
-| CR-10 | Minden eredménysornak tartalmaznia kell a `schema_version` mezőt, az eredményformátum verzióját, a feladatfájl verziójától függetlenül | A sweep-soroknak ma nincs verziója; az agent-sorok a feladatfájl verzióját hordozzák | teszt | ⚪ |
-| CR-11 | Minden eredménysornak tartalmaznia kell a `kind` mezőt `sweep` vagy `agent` értékkel | Különböző futások sorai egy olvasóval olvashatók | teszt | ⚪ |
-| CR-12 | Minden eredménysornak tartalmaznia kell egy `env` objektumot a következőkkel: GPU-név, teljes VRAM, driververzió, LM Studio-alkalmazásverzió, kiválasztott runtime, SDK-verzió, harness-verzió (agent-soroknál), operációsrendszer-verzió, Python-verzió és Node.js-verzió; a ki nem olvasható érték `null`, soha nem becsült | Különböző gépek és verziók eredményei összehasonlíthatók maradjanak (tervezett formátumváltozás, architektúra 8. pont) | teszt | ⚪ |
-| CR-13 | Ha a core régebbi formátumú sorokat tartalmazó eredményfájlt olvas, a memóriában a mostani formátumra kell alakítania őket, és a fájlt nem írhatja át | A nyers mérés változatlan marad; minden korábbi futás olvasható marad | teszt | ⚪ |
-| CR-14 | Ha egy eredménysor `schema_version` értéke újabb, mint amit a core ismer, a core-nak a fájlt és a verziót megnevező üzenettel le kell állnia az olvasással | Nincs csendes félreolvasás | teszt | ⚪ |
-| CR-15 | A LM Studio mappáját, az `lms` futtatható fájlt és az API-port fájlt egy nem követett `configs/machine.local.json` fájlból kell olvasni, ha létezik, különben beépített alapértékekből, egyetlen core modulon keresztül | Ugyanez az útvonal ma nyolc helyen készül; más telepítésnél más hely kell (architektúra, nyitott kérdés) | teszt | ⚪ |
+| CR-10 | Minden eredménysornak tartalmaznia kell a `schema_version` mezőt, az eredményformátum verzióját, a feladatfájl verziójától függetlenül | A sweep-soroknak ma nincs verziója; az agent-sorok a feladatfájl verzióját hordozzák | teszt | ✅ |
+| CR-11 | Minden eredménysornak tartalmaznia kell a `kind` mezőt `sweep` vagy `agent` értékkel | Különböző futások sorai egy olvasóval olvashatók | teszt | ✅ |
+| CR-12 | Minden eredménysornak tartalmaznia kell egy `env` objektumot a következőkkel: GPU-név, teljes VRAM, driververzió, LM Studio-alkalmazásverzió, kiválasztott runtime, SDK-verzió, harness-verzió (agent-soroknál), operációsrendszer-verzió, Python-verzió és Node.js-verzió; a ki nem olvasható érték `null`, soha nem becsült | Különböző gépek és verziók eredményei összehasonlíthatók maradjanak (tervezett formátumváltozás, architektúra 8. pont) | teszt | ✅ élő sweep- és agent-futás 2026-11-27-én: minden mező kitöltve |
+| CR-13 | Ha a core régebbi formátumú sorokat tartalmazó eredményfájlt olvas, a memóriában a mostani formátumra kell alakítania őket, és a fájlt nem írhatja át | A nyers mérés változatlan marad; minden korábbi futás olvasható marad | teszt | ✅ a meglévő eredményfájlok riportjai változatlanok |
+| CR-14 | Ha egy eredménysor `schema_version` értéke újabb, mint amit a core ismer, a core-nak a fájlt és a verziót megnevező üzenettel le kell állnia az olvasással | Nincs csendes félreolvasás | teszt | ✅ |
+| CR-15 | A LM Studio mappáját, az `lms` futtatható fájlt és az API-port fájlt egy nem követett `configs/machine.local.json` fájlból kell olvasni, ha létezik, különben beépített alapértékekből, egyetlen core modulon keresztül | Ugyanez az útvonal ma nyolc helyen készül; más telepítésnél más hely kell (architektúra, nyitott kérdés) | teszt | 🧪 csak a Python-kód (a `harness/` próbái saját útvonalat használnak); beállítófájl élőben még nincs kipróbálva |
 
 **Modellregiszter (C4)**
 
