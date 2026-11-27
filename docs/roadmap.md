@@ -2,7 +2,7 @@
 
 [Magyar](roadmap.hu.md)
 
-Last updated: 2026-11-26. Goal: tune and compare downloaded local models on your own hardware, for your own use cases,
+Last updated: 2026-11-27. Goal: tune and compare downloaded local models on your own hardware, for your own use cases,
 using LM Studio.
 
 Related documents: [requirements](requirements.md) (interface, testing, agent harness, speculative decoding, bias investigation) and
@@ -20,8 +20,8 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 4 | Selectable models, handling of new downloads (model registry, auto discovery) | 🟡 partial (manual list in the grid file) |
 | 5 | Test suite filtering by model capability (e.g. image captioning only on vision models) | ⚪ open |
 | 6 | Quality suites: coding; git handling; Hungarian language; image recognition and captioning; decisions and explanations based on application screenshots; game and 3D design (Unreal, Blender); cybersecurity | ⚪ open |
-| 7 | MCP / tool use: format, tool selection, parameters, result handling, multi-step chains, parallel calls; instruction following at three levels of detail (goal, numbered steps, one step at a time) | 🟡 partial (a single tool probe in the smoke test) |
-| 8 | Tool timeout behaviour as a **model capability**: no endless retrying, stops after a limit and tells the user | ⚪ open (only the harness's own timeouts exist) |
+| 7 | MCP / tool use: format, tool selection, parameters, result handling, multi-step chains, parallel calls; instruction following at three levels of detail (goal, numbered steps, one step at a time) | 🟡 partial (M1 task set, measured live on four models: tool selection, arguments, error and result handling, chains of up to four steps, tasks that need no tool; open: parallel calls, the three instruction levels, a real MCP server) |
+| 8 | Tool timeout behaviour as a **model capability**: no endless retrying, stops after a limit and tells the user | 🟡 partial (M1 tasks with a tool timeout and a transient error: whether the model reports the problem or retries; endless retrying shows as `loop`; a limit set by the model itself is not measured) |
 | 9 | Skill use: picking the right skill, following its steps and prohibitions | ⚪ open |
 | 10 | Narrowly scoped frontier-model grading in the final round | ⚪ open (decision pending) |
 | 11 | Web UI and dashboard; a simple Excel evaluation sheet with Excel charts | ⚪ open |
@@ -30,10 +30,10 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 14 | Secondary NiceGUI control panel | ⚪ open, low priority |
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | 🟡 partial (documents done, no UI yet) |
 | 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see [requirements](requirements.md), section 3) | 🟡 partial (M1 harness: file read and mock tools, limits, stop, trace; search, git, shell, recovery and context handling open) |
-| 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see [requirements](requirements.md), section 3) | 🟡 partial (taxonomy v1 and rule-based categorizer with evidence; report per model open) |
+| 17 | Failure analysis: full trace per run, FMEA-style failure taxonomy, trace-based diagnostics, report per model (see [requirements](requirements.md), section 3) | 🟡 partial (taxonomy v2, rule-based categorizer with evidence, per-model report with intervals, manual review done; open: transition graph, value provenance, LLM judge) |
 | 18 | Try the official LM Studio SDK on the installed version; if it works, replace the config file edits with it | ✅ done |
 | 19 | Model-specific tool-call differences and repair methods (retry, schema constraint, grammar) | ⚪ open |
-| 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | ⚪ open |
+| 20 | Fixed, reproducible evaluation task set with pass/fail checks and repeated runs | ✅ done (M1 task set, 2026-11-27: 20 tasks with reference solutions, repeated runs; further sets come with task 6) |
 | 21 | Interrupt and recovery tests: stop during a tool call, truncated output, resume | ⚪ open |
 | 22 | Context management measurements: truncation, summarization, tool result size limits, behaviour as context grows | ⚪ open |
 | 23 | Investigation: is a model biased? Factors, test prompts, per-model measurement (see [requirements](requirements.md), section 4) | ⚪ open (not examined yet) |
@@ -77,9 +77,9 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 | D | Finalize `docs/architecture.md`: data formats, control interface | 🟡 partial (draft exists) |
 | E | HTML dashboard and Excel export (after D) | ⚪ open |
 | F | Web control UI | ⚪ open |
-| G | Agent harness: tool loop, sandbox, trace log, CLI | ⚪ open |
-| H | Tool calling, timeout and instruction following suite, running on the harness | ⚪ open |
-| I | Failure analysis: categories and per-model report | ⚪ open |
+| G | Agent harness: tool loop, sandbox, trace log, CLI | 🟡 partial (M1 harness: tool loop, sandbox, trace, `bench agent`; search, git and shell tools open) |
+| H | Tool calling, timeout and instruction following suite, running on the harness | 🟡 partial (tool calling and timeout in the M1 task set; instruction following open) |
+| I | Failure analysis: categories and per-model report | ✅ done (taxonomy v2 and per-model report, 2026-11-27) |
 | J | Quality suites | ⚪ open |
 | L | Secondary NiceGUI panel (low priority) | ⚪ open (low priority) |
 | K | Skill porting (separate task) | ⚪ open (separate task) |
@@ -144,7 +144,6 @@ with step C.
 | Speculative decoding | Phase 0 trial done on 2026-11-26 ([requirements](requirements.md), section 5): switched at load only, counters in the SDK and REST. Open for phase 1: compatibility check of draft pairs, max draft tokens, why greedy outputs differ from the baseline | ⚪ open |
 | Value provenance in agent traces | A graph of where each argument and answer value comes from (prompt, earlier tool results) could replace the text search behind `wrong_arguments/invented_value` and show how a tool error reaches the answer. Defining the edges is uncertain, since models rephrase values; to be tried after M1 | ⚪ open |
 | LLM judge for the heuristic rules | Keyword lists are never complete: the first live M1 run showed four gaps (2026-11-27). Proposal for after M1, next to task 10: a second opinion only for the heuristic decisions (did the answer report the error or the limit, did it invent a value), with a written scoring rubric and a judge model other than the measured one, run offline after a run. The rule stays the primary decision; the report shows where judge and rule disagree, and only those cases go to manual review. Before use, the judge is calibrated against manual labels (agreement such as Cohen's kappa); its own bias is a known risk | ⚪ open |
-| Dependency alert: zod | GitHub reports a high-severity advisory for `zod` below 4.6.6 (memory exhaustion while validating oversized constrained collections) in `harness/package-lock.json` (2026-11-27). `zod` 3.25.76 comes from `@lmstudio/sdk` 2.1.0, which is built on zod 3, so an override to 4.6.6 may break it. Low risk here: the harness talks only to the local LM Studio and validates no outside input. Check with the next SDK version, at the latest before the repository goes public (M1 step 3) | ⚪ open |
 
 ### Stability and testing
 
@@ -154,6 +153,8 @@ with step C.
 | Not tried live (agent harness) | Stop of a real run: Ctrl+C or the stop command, the second Ctrl+C that kills the harness and the trace it leaves; `--run-timeout`; attempt time limit with a real model; a tool call the SDK reports as unparsable (`onToolCallRequestFailure`, never seen); removal of a `bench-agent` instance left over from a killed run; a context other than 8192; a real model trying to read outside the sandbox. All but the last three are covered by offline tests. New in step 5a, offline only: mock answers by call count (`sequence`); the rebuild of attempts from traces after a killed harness; a real context overflow stopped by `stopAtLimit`. Tried live on 2026-11-27: the sampling profile and `stopAtLimit` are applied (LM Studio reports them back, recorded in the trace), and the categorizer on real runs; tried live on 2026-11-27: `--models` with four models, the M1 task set, `report` and `show` on a real run; `--repeats` 5 and 10 with the profile temperatures, and the round limit with the final round without tools | ⚪ open |
 | Late heartbeat | During the sweeps of 2026-11-26 `status --watch` reported "process gone" several times although the run went on. The view no longer ends on a late heartbeat of a living process; why the heartbeat was late is unknown (not reproduced) | 🟡 partial |
 | Display freeze | Once during those sweeps the display stopped responding (Windows reported `explorer.exe` waiting on `dwm.exe`) while the runner was still writing its heartbeat; the machine had to be reset and `resume` continued the run. No display driver reset or hardware error was logged; the cause is unknown | ⚪ open |
+| Tests without the harness dependencies | In a fresh clone without `npm install` in `harness\`, three Python tests that start the harness fail with a broken pipe instead of being skipped with a clear message (2026-11-27) | ⚪ open |
+| LM Studio internal path repeated | The path of the internal LM Studio files (`~\.lmstudio\...`, `lms.exe`) is built separately in six TypeScript and two Python files; one shared setting would make other installations easier. After the public release | ⚪ open |
 
 ### Dependencies
 

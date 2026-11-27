@@ -2,7 +2,7 @@
 
 [English](roadmap.md)
 
-Utolsó frissítés: 2026-11-26. Cél: a letöltött helyi modellek optimalizálása és összehasonlítása a saját hardveren,
+Utolsó frissítés: 2026-11-27. Cél: a letöltött helyi modellek optimalizálása és összehasonlítása a saját hardveren,
 a saját felhasználási esetekre, LM Studióval.
 
 Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesztelés, agent harness, speculative decoding,
@@ -20,8 +20,8 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 4 | Kijelölhető modellek, új letöltések kezelése (modellregiszter, automatikus felvétel) | 🟡 részben (kézi lista a rácsfájlban) |
 | 5 | Tesztcsomag-szűrés modellképesség szerint (pl. képleírás csak vision modellen) | ⚪ nyitott |
 | 6 | Minőségcsomagok: kódolás; git-kezelés; magyar nyelv; képfelismerés, képleírás; alkalmazás-screenshot alapú döntés és magyarázat; játék- és 3D-tervezés (Unreal, Blender); kiberbiztonság | ⚪ nyitott |
-| 7 | MCP / tool-használat: formátum, tool-választás, paraméterek, eredmény feldolgozása, többlépéses lánc, párhuzamos hívás; utasításkövetés három részletességi szinten (cél, számozott lépések, egy lépés egyszerre) | 🟡 részben (egyetlen tool-próba a smoke-ban) |
-| 8 | Tool-timeout viselkedés mint **modellképesség**: nem próbálkozik végtelenül, idő után leáll és jelez a felhasználónak | ⚪ nyitott (eddig csak a mérőrendszer saját timeoutjai vannak kész) |
+| 7 | MCP / tool-használat: formátum, tool-választás, paraméterek, eredmény feldolgozása, többlépéses lánc, párhuzamos hívás; utasításkövetés három részletességi szinten (cél, számozott lépések, egy lépés egyszerre) | 🟡 részben (M1 feladatkészlet, élőben mérve négy modellen: tool-választás, argumentumok, hiba- és eredménykezelés, legfeljebb négylépéses láncok, toolt nem igénylő feladatok; nyitott: párhuzamos hívás, a három utasításszint, valódi MCP szerver) |
+| 8 | Tool-timeout viselkedés mint **modellképesség**: nem próbálkozik végtelenül, idő után leáll és jelez a felhasználónak | 🟡 részben (M1 feladatok tool-timeouttal és átmeneti hibával: jelzi-e a modell a problémát, vagy újrapróbálja; a végtelen próbálkozás `loop`-ként látszik; a modell által magának szabott korlátot nem mérjük) |
 | 9 | Skill-használat: megfelelő skill kiválasztása, lépések és tiltások betartása | ⚪ nyitott |
 | 10 | Szűk körű frontier pontozás a döntő körben | ⚪ nyitott (döntés függőben) |
 | 11 | Webes felület és dashboard; egyszerű Excel-értékelő táblázat Excel-grafikonokkal | ⚪ nyitott |
@@ -30,10 +30,10 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 14 | Másodlagos NiceGUI irányítófelület | ⚪ nyitott, alacsony prioritás |
 | 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | 🟡 részben (dokumentumok kész, felület nincs) |
 | 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (M1 harness: fájlolvasás és mock toolok, korlátok, leállítás, trace; keresés, git, shell, helyreállítás és kontextuskezelés nyitott) |
-| 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (1. verziós taxonómia és szabályalapú kategorizáló bizonyítékkal; a modellenkénti riport nyitott) |
+| 17 | Hibaelemzés: teljes trace futásonként, FMEA-jellegű hibataxonómia, trace-alapú diagnosztika, riport modellenként (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (2. verziós taxonómia, szabályalapú kategorizáló bizonyítékkal, modellenkénti riport intervallumokkal, kézi átnézés kész; nyitott: átmenetgráf, értékek eredete, LLM-bíró) |
 | 18 | A hivatalos LM Studio SDK kipróbálása a telepített verzión; ha működik, kiváltja a config fájlok módosítását | ✅ kész |
 | 19 | Modellenkénti tool-call eltérések és javítási módszerek (retry, séma-kényszerítés, grammar) | ⚪ nyitott |
-| 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | ⚪ nyitott |
+| 20 | Rögzített, reprodukálható eval-feladatkészlet pass/fail ellenőrzéssel és ismételt futásokkal | ✅ kész (M1 feladatkészlet, 2026-11-27: 20 feladat referenciamegoldással, ismételt futások; további készletek a 6. feladattal jönnek) |
 | 21 | Megszakítás- és helyreállítás-tesztek: leállítás tool-hívás közben, félbehagyott kimenet, folytatás | ⚪ nyitott |
 | 22 | Kontextuskezelés mérése: vágás, összegzés, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál | ⚪ nyitott |
 | 23 | Vizsgálat: biased-e egy modell? Tényezők, tesztpromptok, mérés modellenként (lásd [követelmények](requirements.hu.md), 4. pont) | ⚪ nyitott (még nem vizsgált) |
@@ -77,9 +77,9 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 | D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | 🟡 részben (vázlat kész) |
 | E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
 | F | Webes vezérlőfelület | ⚪ nyitott |
-| G | Agent harness: tool loop, sandbox, trace log, CLI | ⚪ nyitott |
-| H | Tool-calling, timeout- és utasításkövetés-csomag a harnessen futtatva | ⚪ nyitott |
-| I | Hibaelemzés: kategóriák és modellenkénti riport | ⚪ nyitott |
+| G | Agent harness: tool loop, sandbox, trace log, CLI | 🟡 részben (M1 harness: tool loop, sandbox, trace, `bench agent`; a keresés, git és shell toolok nyitottak) |
+| H | Tool-calling, timeout- és utasításkövetés-csomag a harnessen futtatva | 🟡 részben (tool-hívás és timeout az M1 feladatkészletben; az utasításkövetés nyitott) |
+| I | Hibaelemzés: kategóriák és modellenkénti riport | ✅ kész (2. verziós taxonómia és modellenkénti riport, 2026-11-27) |
 | J | Minőségcsomagok | ⚪ nyitott |
 | L | NiceGUI másodlagos felület (alacsony prioritás) | ⚪ nyitott (alacsony prioritás) |
 | K | Skill-átvitel (külön feladat) | ⚪ nyitott (külön feladat) |
@@ -145,7 +145,6 @@ lépéssel együtt.
 | Speculative decoding | A 0. fázis próbája 2026-11-26-án kész ([követelmények](requirements.hu.md), 5. pont): csak a loadnál kapcsolható, számlálók az SDK-ban és a REST-ben. Nyitott az 1. fázisra: a draft párok kompatibilitás-ellenőrzése, a maximális draft token, miért tér el a greedy kimenet a baseline-tól | ⚪ nyitott |
 | Értékek eredete az agent-trace-ekben | Egy gráf arról, honnan származik egy argumentum- vagy válaszérték (prompt, korábbi tool-eredmények), kiválthatná a `wrong_arguments/invented_value` mögötti szövegkeresést, és megmutatná, hogyan jut el egy tool-hiba a válaszig. Az élek meghatározása bizonytalan, mert a modellek átfogalmazzák az értékeket; M1 után kipróbálandó | ⚪ nyitott |
 | LLM-bíró a heurisztikus szabályokhoz | A kulcsszólisták soha nem teljesek: az első élő M1 futás négy rést mutatott (2026-11-27). Javaslat M1 utánra, a 10. feladat mellé: második vélemény csak a heurisztikus döntésekhez (jelezte-e a válasz a hibát vagy a korlátot, kitalált-e értéket), írott pontozási szempontrendszerrel és a mért modelltől eltérő bíró modellel, a futás után offline. A szabály marad az elsődleges döntés; a riport megmutatja, hol tér el a bíró és a szabály, és csak ezek az esetek mennek kézi átnézésre. Használat előtt a bírót kézi címkéken kalibráljuk (egyezési mutató, pl. Cohen-féle kappa); a saját bias-a ismert kockázat | ⚪ nyitott |
-| Függőségi riasztás: zod | A GitHub magas súlyosságú figyelmeztetést jelez a 4.6.6 alatti `zod` csomagra (túl nagy, korlátozott gyűjtemények validálásakor kimerítheti a memóriát) a `harness/package-lock.json` fájlban (2026-11-27). A `zod` 3.25.76 a `@lmstudio/sdk` 2.1.0-ból jön, amely a zod 3-ra épül, ezért egy 4.6.6-ra kényszerítő override eltörheti. Itt alacsony a kockázat: a harness csak a helyi LM Studióval beszél, és külső bemenetet nem validál. Vizsgálat a következő SDK-verziónál, legkésőbb a repó publikussá tétele előtt (M1 3. lépés) | ⚪ nyitott |
 
 ### Stabilitás és tesztelés
 
@@ -155,6 +154,8 @@ lépéssel együtt.
 | Élőben nem próbált (agent harness) | Valódi futás leállítása: Ctrl+C vagy a stop parancs, a harnesst leállító második Ctrl+C és az utána maradó trace; `--run-timeout`; próbálkozási időkorlát valódi modellel; az SDK által értelmezhetetlennek jelzett tool-hívás (`onToolCallRequestFailure`, még nem láttuk); egy megszakadt futás után bent maradt `bench-agent` eltávolítása; 8192-től eltérő context; valódi modell próbálkozása a sandboxon kívüli olvasással. Az utolsó három kivételével offline tesztek lefedik. Az 5a lépésben új, csak offline: hívásszám szerinti mock-válasz (`sequence`); a próbálkozások felépítése a trace-ekből leállított harness után; a `stopAtLimit` által megállított valódi kontextus-túlcsordulás. Élőben kipróbálva 2026-11-27-én: a mintavételi profil és a `stopAtLimit` érvényesül (a LM Studio visszaadja őket, a trace rögzíti), és a kategorizáló valódi futásokon; élőben kipróbálva 2026-11-27-én: `--models` négy modellel, az M1 feladatkészlet, a `report` és a `show` valódi futáson; `--repeats` 5 és 10 a profilok temperature-értékeivel, és a körkorlát a tool nélküli záró körrel | ⚪ nyitott |
 | Késő heartbeat | A 2026-11-26-i sweepek közben a `status --watch` többször „process gone” üzenetet adott, pedig a futás ment tovább. A nézet egy élő process késő heartbeatjénél már nem lép ki; hogy a heartbeat miért késett, ismeretlen (nem reprodukáltuk) | 🟡 részben |
 | Kijelző lefagyása | Ugyanezen sweepek alatt egyszer a kijelző nem reagált tovább (a Windows szerint az `explorer.exe` a `dwm.exe`-re várt), miközben a futtató még írta a heartbeatjét; a gépet újra kellett indítani, és a `resume` folytatta a futást. Videódriver-reset vagy hardverhiba nem került a naplóba; az ok ismeretlen | ⚪ nyitott |
+| Tesztek a harness függőségei nélkül | Friss klónban, `harness\`-beli `npm install` nélkül a harnesst indító három Python-teszt broken pipe hibával bukik, ahelyett hogy érthető üzenettel kimaradna (2026-11-27) | ⚪ nyitott |
+| Ismétlődő LM Studio belső útvonal | A LM Studio belső fájljainak útvonalát (`~\.lmstudio\...`, `lms.exe`) hat TypeScript- és két Python-fájl külön állítja elő; egy közös beállítás megkönnyítené más telepítések kezelését. A publikálás után | ⚪ nyitott |
 
 ### Függőségek
 
