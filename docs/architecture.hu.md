@@ -36,7 +36,7 @@ frissül.
 | `bench/core/progress.py` | A hosszú műveletek előrehaladás-kimenete (a CLI kiírja a sorokat, egy API összegyűjtheti őket) és a `CoreError` a core által elutasított kérésekhez |
 | `bench/core/results.py` | Eredményformátum: minden sor közös borítéka, a régebbi sorok átalakítása olvasáskor, az újabb formátumok elutasítása |
 | `bench/core/machine.py` | Gépfüggő útvonalak (`configs/machine.local.json`, minta: `configs/machine.example.json`) és az eredménysorok környezet-ujjlenyomata |
-| `bench/core/models.py` | Modellregiszter: az `lms ls` pillanatképe a `state/models.json` fájlban (az előző a `state/models.previous.json`-ban), saját címkék a `configs/models.local.json`-ból, új modellek, képesség szerinti kiválasztás (`--where`) |
+| `bench/core/models.py` | Modellregiszter a `state/models.json` fájlban: a telepített modellek az első észlelés dátumával, az eltűnt modellek, saját címkék a `configs/models.local.json`-ból, az „új” jelzés, képesség szerinti kiválasztás (`--where`, futás előtt frissítve) |
 | `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, állapot- és vezérléskezelés, táblázatos riport |
 | `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
 | `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
@@ -253,7 +253,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | `bench agent run [--model \| --models] [--where] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
 | `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
-| `bench models refresh` / `list [--where]` / `new` | `POST /models/snapshot`, `GET /models`, `GET /models/new` |
+| `bench models refresh` / `list [--where] [--new] [--refresh]` | `POST /models/refresh`, `GET /models` |
 
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.
@@ -325,7 +325,7 @@ A parancssor és az API ugyanazokat a core függvényeket hívja; egy core függ
 | Feladatfájl | `tasks/*.json` | 2 | A követelmények 3. pontja szerinti formátum |
 | Harness futásleíró | a `run-tasks.ts` stdin-je | 2 | A core-tól a harnessnek |
 | Mintavételi profilok | `configs/sampling.json` | 1 | |
-| Modellregiszter-pillanatkép | `state/models.json` | 1 | |
+| Modellregiszter | `state/models.json` | 2 | Az 1-es formátum (két pillanatkép) olvasáskor átalakul |
 | Agent-riport | `report/agent_<run>.json` | nincs, `taxonomy_version` 2 | Az IF-23 szerint verziót kap, ha a felület olvassa |
 | Rácsfájl | `configs/*.json` | nincs | Felhasználói bemenet; a formátum a 4.1 pont |
 | Futásterv, futásállapot, vezérlés | `state/` | nincs | A D2 lépésben kap verziót (IF-23) |

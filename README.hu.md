@@ -207,10 +207,10 @@ kvantálás, maximális context, méret); a saját címkék, például `mtp`, a 
 
 | Parancs | Mit csinál |
 |---|---|
-| `.\bench models refresh` | Új pillanatkép a telepített modellekről; kiírja az új és az eltűnt modelleket |
-| `.\bench models list [--where tool_use,!vision]` | Minden modell a képességmezőivel és címkéivel, szűrhetően |
-| `.\bench models new` | Az előző pillanatkép óta új modellek |
-| `.\bench run --where architecture=qwen3 --dry-run` | Az illeszkedő modellek sweep-jobjai (a `--models` listából, ha meg van adva, különben a regiszterből) |
+| `.\bench models refresh` | Frissíti a regisztert a telepített modellekből; kiírja az új és az eltűnt modelleket |
+| `.\bench models list [--where tool_use,!vision] [--refresh]` | Minden modell a képességmezőivel, címkéivel és az „új” jelzéssel, szűrhetően; a `--refresh` előbb frissíti a regisztert |
+| `.\bench models list --new [NAP]` | Az utolsó NAP napban (alapból 7) először észlelt modellek; a legelső pillanatkép modelljei az alapállomány |
+| `.\bench run --where architecture=qwen3 --dry-run` | Az illeszkedő modellek sweep-jobjai (a `--models` listából, ha meg van adva, különben az előtte frissített regiszterből) |
 | `.\bench agent run --where tool_use,mtp` | Agent-futás minden modellen, amely tool use-ra tanított, és `mtp` saját címkét kapott |
 
 ## Mappák

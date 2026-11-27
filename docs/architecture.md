@@ -36,7 +36,7 @@ processes change.
 | `bench/core/progress.py` | Progress sink of long-running operations (the CLI prints the lines, an API can collect them) and `CoreError` for requests the core refuses |
 | `bench/core/results.py` | Result format: the common envelope of every row, reading with conversion of older rows, refusal of newer formats |
 | `bench/core/machine.py` | Machine-specific paths (`configs/machine.local.json`, example in `configs/machine.example.json`) and the environment fingerprint of result rows |
-| `bench/core/models.py` | Model registry: snapshot of `lms ls` in `state/models.json` (the previous one in `state/models.previous.json`), own tags from `configs/models.local.json`, new models, selection by capability (`--where`) |
+| `bench/core/models.py` | Model registry in `state/models.json`: the installed models with the date each was first seen, the models that are gone, own tags from `configs/models.local.json`, the new mark, selection by capability (`--where`, refreshed before a run) |
 | `bench/core/sweep.py` | Sweep operations that return data (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), runner, status and control handling, table report |
 | `bench/core/evaluate.py` | Evaluation of sweep results: estimated response time, warnings, recommendations |
 | `bench/core/smoke.py` | Shared helpers used by the runner (commands, HTTP, streamed measurement, VRAM sampling) and a stand-alone smoke test |
@@ -251,7 +251,7 @@ The API routes are proposals and not implemented.
 | `bench agent run [--model \| --models] [--where] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
 | `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
-| `bench models refresh` / `list [--where]` / `new` | `POST /models/snapshot`, `GET /models`, `GET /models/new` |
+| `bench models refresh` / `list [--where] [--new] [--refresh]` | `POST /models/refresh`, `GET /models` |
 
 Exit codes of `run` and `resume`: 0 when the run is done or was stopped by the user, 3 when it was aborted, 2 for
 unusable arguments. `bench <command> --help` lists the defaults.
@@ -323,7 +323,7 @@ Implemented in roadmap step D2, before the web work.
 | Task file | `tasks/*.json` | 2 | Format of section 3 of the requirements |
 | Harness run spec | stdin of `run-tasks.ts` | 2 | Core to harness |
 | Sampling profiles | `configs/sampling.json` | 1 | |
-| Model registry snapshot | `state/models.json` | 1 | |
+| Model registry | `state/models.json` | 2 | Format 1 (two snapshots) converted when read |
 | Agent report | `report/agent_<run>.json` | none, `taxonomy_version` 2 | Gets a version with IF-23 if the interface reads it |
 | Grid file | `configs/*.json` | none | User input; the format is section 4.1 |
 | Run plan, run state, control | `state/` | none | Get a version in step D2 (IF-23) |

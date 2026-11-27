@@ -9,7 +9,7 @@
   bench stop [--now]       exit; can be resumed later, also after a reboot
   bench evaluate [--run]   rank the configurations of a finished sweep (offline)
   bench agent run | report | show
-  bench models refresh | list | new   the model registry (snapshot of `lms ls` with capability tags)
+  bench models refresh | list [--new] [--refresh] [--where]   the model registry (installed models, capability tags)
 
 Exit codes of run and resume: 0 done or stopped by the user, 3 aborted, 2 unusable arguments.
 """
@@ -296,34 +296,41 @@ def size_gb(n):
 def models_main(argv):
     ap = argparse.ArgumentParser(prog="bench models")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("refresh", help="take a new snapshot of the installed models (`lms ls`)")
-    lst = sub.add_parser("list", help="every model of the latest snapshot with its capability fields and own tags")
+    sub.add_parser("refresh", help="update the registry from the installed models (`lms ls`)")
+    lst = sub.add_parser("list", help="every installed model with its capability fields, own tags and the new flag")
     lst.add_argument("--where", help=WHERE_HELP)
-    sub.add_parser("new", help="models that are new since the previous snapshot")
+    lst.add_argument("--new", nargs="?", type=int, const=registry.NEW_DAYS, metavar="DAYS",
+                     help=f"only models first seen within DAYS days (default {registry.NEW_DAYS})")
+    lst.add_argument("--refresh", action="store_true", help="update the registry first")
     a = ap.parse_args(argv)
     try:
-        if a.cmd == "refresh":
+        if a.cmd == "refresh" or a.refresh:
             r = registry.refresh()
-            print(f"{r['count']} models in the snapshot")
+            print(f"{r['count']} models in the registry")
             if r["first_snapshot"]:
-                print("first snapshot: new downloads are shown from the next refresh on")
-            for key in r["new"]:
+                print("first snapshot: these models are the baseline; later downloads are marked new")
+            for key in r["appeared"]:
                 print(f"  new:  {key}")
-            for key in r["gone"]:
+            for key in r["disappeared"]:
                 print(f"  gone: {key}")
-            return 0
-        if a.cmd == "new":
-            keys = registry.new_models()
-            print("\n".join(keys) if keys else "no new models since the previous snapshot")
-            return 0
+            if a.cmd == "refresh":
+                return 0
         reg = registry.registry()
         keys = registry.select(a.where, None, reg) if a.where else sorted(reg)
-        new = set(registry.new_models())
+        if a.new is not None:
+            fresh = set(registry.new_models(a.new))
+            keys = [k for k in keys if k in fresh]
+            if not keys:
+                print(f"no models first seen within {a.new} days")
+                return 0
         print(f"{'model':<44} {'params':>7} {'quant':<8} {'max ctx':>8} {'GB':>5}  tags")
+        hidden = set(registry.FIELDS) | set(registry.DATES) | {"new"}
         for key in keys:
             f = reg[key]
-            own = [k for k, v in f.items() if k not in registry.FIELDS and v is True]
-            flags = [n for n in ("vision", "tool_use") if f.get(n)] + own + (["new"] if key in new else [])
+            own = [k for k, v in f.items() if k not in hidden and v is True]
+            flags = [n for n in ("vision", "tool_use") if f.get(n)] + own
+            if f.get("new"):
+                flags.append(f"new since {f['first_seen'][:10]}")
             if f.get("type") not in (None, "llm"):
                 flags.insert(0, f["type"])
             print(f"{key[:44]:<44} {str(f.get('params') or '-'):>7} {str(f.get('quantization') or '-'):<8} "

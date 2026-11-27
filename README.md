@@ -199,10 +199,10 @@ quantization, maximum context, size); own tags such as `mtp` go into `configs\mo
 
 | Command | What it does |
 |---|---|
-| `.\bench models refresh` | Takes a new snapshot of the installed models and lists the new and the removed ones |
-| `.\bench models list [--where tool_use,!vision]` | Every model with its capability fields and tags, optionally filtered |
-| `.\bench models new` | Models that are new since the previous snapshot |
-| `.\bench run --where architecture=qwen3 --dry-run` | The sweep jobs of the models that match (from `--models` if given, otherwise from the registry) |
+| `.\bench models refresh` | Updates the registry from the installed models and lists the new and the removed ones |
+| `.\bench models list [--where tool_use,!vision] [--refresh]` | Every model with its capability fields, tags and the new mark, optionally filtered; `--refresh` updates the registry first |
+| `.\bench models list --new [DAYS]` | Models first seen within the last DAYS days (default 7); the models of the first snapshot are the baseline |
+| `.\bench run --where architecture=qwen3 --dry-run` | The sweep jobs of the models that match (from `--models` if given, otherwise from the registry, refreshed first) |
 | `.\bench agent run --where tool_use,mtp` | An agent run on every model with tool use and the own tag `mtp` |
 
 ## Folders

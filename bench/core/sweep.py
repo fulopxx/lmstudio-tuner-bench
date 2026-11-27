@@ -580,7 +580,7 @@ def plan_run(grid_path, models=None, where=None):
     grid = json.loads(Path(grid_path).read_text(encoding="utf-8"))
     keys = [k.strip() for k in models.split(",")] if models else grid.get("models", [])
     if where:  # CR-24: the given models, or every model of the registry, that match the capability filter
-        keys = registry.select(where, [k.strip() for k in models.split(",")] if models else None)
+        keys = registry.select_fresh(where, [k.strip() for k in models.split(",")] if models else None)
     meta = model_catalog()
     missing = [k for k in keys if k not in meta]
     if not keys or missing:

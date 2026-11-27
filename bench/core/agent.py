@@ -370,7 +370,7 @@ def run_tasks(a, on_model_done=None):
         models = [m.strip() for m in (a.models or a.model or "").split(",") if m.strip()]
         if getattr(a, "where", None):  # CR-24
             try:
-                models = registry.select(a.where, models or None)
+                models = registry.select_fresh(a.where, models or None)
             except CoreError as e:
                 raise StepError("fail", str(e))
         if not models:
