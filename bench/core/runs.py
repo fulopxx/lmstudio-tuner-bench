@@ -2,8 +2,9 @@
 
 Runs come from the state folders (state/runs/<id>/) and from the result files (results/sweep_<id>.jsonl,
 results/agent_<id>.jsonl), so runs written before per-run state are listed too. A run without a status file is `done`
-when every job of its plan has a result, otherwise `unknown`; a run whose status is active but whose process is gone
-is `gone`.
+when every job of its plan has a result (sweep), or when it has result rows and none of its attempts was stopped,
+skipped or rebuilt from traces after a killed harness (agent); otherwise it is `unknown`. A run whose status is active
+but whose process is gone is `gone`.
 
 `closed` (agreed 2026-11-27): a stopped, aborted, gone or unknown run can be closed. Its files stay, it stays readable
 and can be evaluated, but it is never resumed. A finished (`done`) or living run cannot be closed.
@@ -15,6 +16,7 @@ from . import results, runstate, sweep
 from .progress import CoreError
 
 CLOSABLE = ("stopped", "aborted", "gone", "unknown")
+INTERRUPTED = ("skipped", "aborted")  # attempt states of a stopped agent run
 
 
 def _started(run_id):
@@ -45,6 +47,7 @@ def describe(run_id, kind_hint=None):
     kind = (st or {}).get("kind") or kind_hint or ("sweep" if plan else "agent")
     item = {"run": run_id, "kind": kind, "state": None, "alive": False, "started": _started(run_id),
             "done": 0, "total": None, "closed_from": (st or {}).get("closed_from")}
+    complete = False
     if kind == "sweep":
         path = sweep.ROOT / "results" / f"sweep_{run_id}.jsonl"
         rows = list(results.read_rows(path)) if path.exists() else []
@@ -56,11 +59,13 @@ def describe(run_id, kind_hint=None):
             item["done"] = sum(1 for r in rows if r.get("status") == "ok")
     else:
         path = sweep.ROOT / "results" / f"agent_{run_id}.jsonl"
-        item["done"] = sum(1 for r in results.read_rows(path) if r.get("task") != "*") if path.exists() else 0
+        rows = list(results.read_rows(path)) if path.exists() else []
+        item["done"] = sum(1 for r in rows if r.get("task") != "*")
+        complete = bool(rows) and not any(r.get("status") in INTERRUPTED or r.get("rebuilt_from_traces") for r in rows)
     if st:
         item["alive"] = runstate.runner_alive(st)
         item["state"] = "gone" if st.get("state") in runstate.ACTIVE_STATES and not item["alive"] else st.get("state")
-    elif item["total"] and item["done"] == item["total"]:
+    elif (item["total"] and item["done"] == item["total"]) or (kind == "agent" and complete):
         item["state"] = "done"
     else:
         item["state"] = "unknown"

@@ -63,10 +63,11 @@ class StateDirTest(unittest.TestCase):
         if status:
             runstate.write_json(runstate.status_path(run_id), {"run": run_id, "kind": "sweep", **status})
 
-    def agent_results(self, run_id, attempts):
+    def agent_results(self, run_id, attempts, last_status="done"):
         for i in range(attempts):
+            status = last_status if i == attempts - 1 else "done"
             sweep.append_row(sweep.ROOT / "results" / f"agent_{run_id}.jsonl",
-                             results.envelope("agent", run_id, {"task": "t", "attempt": i + 1}, {}))
+                             results.envelope("agent", run_id, {"task": "t", "attempt": i + 1, "status": status}, {}))
 
 
 class MachineCheckTest(StateDirTest):
@@ -138,10 +139,12 @@ class RunsTest(StateDirTest):
         self.sweep_run("20260101_000003", 1, 2, {"state": "stopped"})
         self.sweep_run("20260101_000004", 1, 2, {"state": "running", "heartbeat": time.time() - 600})
         self.sweep_run("20260101_000005", 1, 2, {"state": "running", "heartbeat": time.time()})
-        self.agent_results("20260101_000006", 3)
+        self.agent_results("20260101_000006", 3, last_status="skipped")  # stopped before the end
+        self.agent_results("20260101_000007", 3, last_status="limit")  # every attempt judged
         self.assertEqual(self.states(), {"20260101_000001": "done", "20260101_000002": "unknown",
                                          "20260101_000003": "stopped", "20260101_000004": "gone",
-                                         "20260101_000005": "running", "20260101_000006": "unknown"})
+                                         "20260101_000005": "running", "20260101_000006": "unknown",
+                                         "20260101_000007": "done"})
         listed = {r["run"]: r for r in runs.list_runs()["runs"]}
         self.assertEqual((listed["20260101_000002"]["done"], listed["20260101_000002"]["total"]), (1, 2))
         self.assertEqual((listed["20260101_000006"]["kind"], listed["20260101_000006"]["done"]), ("agent", 3))
@@ -168,7 +171,7 @@ class CloseTest(StateDirTest):
     def test_gone_and_old_agent_runs_can_be_closed(self):
         self.sweep_run("20260101_000004", 1, 2, {"state": "running", "heartbeat": time.time() - 600})
         self.assertEqual(runs.close_run("20260101_000004")["closed_from"], "gone")
-        self.agent_results("20260101_000006", 3)
+        self.agent_results("20260101_000006", 3, last_status="aborted")
         self.assertEqual(runs.close_run("20260101_000006")["closed_from"], "unknown")
         self.assertEqual(runstate.read_status("20260101_000006")["kind"], "agent")
 

@@ -254,7 +254,7 @@ figyelmeztet, ha a loadok előtti VRAM-foglalás 500 MiB-nál többet ingadozott
 - **Meghalt process:** ha végállapot nélkül ér véget (kill, újraindítás), ezt a `status` mutatja, és a `resume` új
   processt indít, amely először eltávolítja a megszakadt futás után bent maradt modellt.
 - A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki.
-- A **process gone** nem tárolt állapot: a `bench runs` és a `bench status` abból következteti ki, hogy az állapot aktív, de a process már nem él. Befejezett (`done`) vagy élő futás nem zárható le; a lezárás csak a futás `status.json` fájlját írja (`closed_at`, `closed_from`, `reason`).
+- A **process gone** nem tárolt állapot: a `bench runs` és a `bench status` abból következteti ki, hogy az állapot aktív, de a process már nem él. Befejezett (`done`) vagy élő futás nem zárható le; a lezárás csak a futás `status.json` fájlját írja (`closed_at`, `closed_from`, `reason`). Az állapotfájl nélküli (a D2a lépés előtti) futás `done`, ha a terve minden jobjának van eredménye (sweep), vagy ha vannak eredménysorai, és egyik próbálkozása sem állt le, maradt ki vagy épült újra a trace-ekből (agent); különben `unknown`.
 
 A gráfot a `tools/make_diagrams.py` generálja.
 
