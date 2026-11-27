@@ -320,12 +320,14 @@ class SamplingTest(unittest.TestCase):
                     "qwen3-4b-thinking-2507": "qwen3-thinking", "qwen3-4b-instruct-2507": "qwen3-instruct-2507",
                     "qwen3.5-4b-mtp": "qwen3.5", "qwen3.5-9b-deepseek-v4-flash-mtp": "qwen3.5",
                     "qwen2.5-coder-7b-instruct": "qwen2.5-coder", "qwen2.5-coder-0.5b-instruct": "qwen2.5-coder",
-                    "llama-3.2-1b-instruct": "fallback"}
+                    "ministral-3-8b-instruct-2512": "ministral3-instruct", "granite-3.3-8b-instruct": "fallback",
+                    "phi-4-mini-instruct": "fallback", "llama-3.2-1b-instruct": "fallback"}
         for key, profile in expected.items():
             with self.subTest(model=key):
                 self.assertEqual(agent.sampling_for(key)["source"].split(":")[0], profile)
         s = agent.sampling_for("qwen3-4b-instruct-2507")
         self.assertEqual((s["temperature"], s["topP"], s["topK"], s["minP"]), (0.7, 0.8, 20, 0.0))
+        self.assertLess(agent.sampling_for("ministral-3-8b-instruct-2512")["temperature"], 0.1)
         o = agent.sampling_for("qwen3-8b", 0.0)
         self.assertEqual((o["temperature"], o["topP"]), (0.0, 0.95))
         self.assertIn("overridden", o["source"])

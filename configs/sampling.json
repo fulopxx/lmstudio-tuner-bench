@@ -1,5 +1,5 @@
 {
-  "comment": "Sampling profiles for agent runs (FA-20). The first profile whose pattern (a case-insensitive regular expression) matches the model key is used, so a more specific profile comes first; `--temperature` overrides only the temperature. Every value is sent to LM Studio explicitly. Values are taken from the cited model cards or generation configs; a model without a matching profile gets the fallback.",
+  "comment": "Sampling profiles for agent runs (FA-20). The first profile whose pattern (a case-insensitive regular expression) matches the model key is used, so a more specific profile comes first; `--temperature` overrides only the temperature. Every value is sent to LM Studio explicitly. Values are taken from the cited model cards or generation configs; a model without a matching profile gets the fallback. Checked 2026-11-27 without a profile of their own, because their cards and generation configs give no sampling values: granite-3.3-8b-instruct (https://huggingface.co/ibm-granite/granite-3.3-8b-instruct) and phi-4-mini-instruct (https://huggingface.co/microsoft/Phi-4-mini-instruct, whose code examples decode greedily).",
   "schema_version": 1,
   "profiles": [
     {
@@ -25,6 +25,12 @@
       "match": "^qwen2\\.5(\\.\\d+)?-coder",
       "temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "repeat_penalty": 1.1,
       "source": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/raw/main/generation_config.json"
+    },
+    {
+      "id": "ministral3-instruct",
+      "match": "^ministral-3-\\d+b-instruct",
+      "temperature": 0.05, "top_p": 0.95, "top_k": 40, "min_p": 0.05, "repeat_penalty": 1.1,
+      "source": "https://huggingface.co/mistralai/Ministral-3-8B-Instruct-2512 (the card asks for a temperature below 0.1; it gives no other values, so they are the fallback's)"
     }
   ],
   "fallback": {
