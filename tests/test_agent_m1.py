@@ -228,7 +228,7 @@ class CoreIsSilentTest(unittest.TestCase):
             progress.set_sink(None)
             cleanup(result["run"])
         self.assertEqual(out.getvalue(), "")
-        self.assertTrue(any(line.startswith(f"run {result['run']}") for line in lines))
+        self.assertTrue(any(f" run {result['run']}," in line for line in lines))
 
 
 if __name__ == "__main__":
