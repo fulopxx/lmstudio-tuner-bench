@@ -167,8 +167,8 @@ from 1. `configs/*.local.json` files are the user's own grids and are not tracke
 |---|---|
 | `state/active.json` | The run that holds the GPU: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; created exclusively at the start, removed at the end; a lock whose process no longer exists counts as free |
 | `state/runs/<run>/status.json` | `run`, `kind`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (sweep: `n`, `model`, `config`; agent: `n`, `model`), `heartbeat` (written every 2 s), `pid`, `pid_created`, `warning`; agent runs also `scripted` |
-| `state/runs/<run>/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
-| `state/runs/<run>/progress.log` | The run's progress lines (created at the start; filled from step D2b) |
+| `state/runs/<run>/control.json` | The last request: `cmd` (`run` / `pause` / `stop`), `now`, `source` (`cli` / `web` from a user, `runner` from the run itself: start, automatic pause and resume), `ts`; when the runner acknowledges a user's `resume`, the source is kept |
+| `state/runs/<run>/progress.log` | Every progress line of the run as the command line shows it, with the time `HH:MM:SS` (the date is in the run id), harness lines included; appended only by the run's own process |
 | `state/latest.txt` | Id of the latest sweep (its start time, `YYYYMMDD_HHMMSS`) |
 | `state/status.json`, `state/control.json` | Written by versions before step D2a; only read, as the status of a run that has no file of its own |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
@@ -239,8 +239,12 @@ before the loads varied by more than 500 MiB.
   is only reported as a warning.
 - **One GPU run:** a sweep or agent run starts only after taking the lock `state/active.json`; while another run holds
   it, the start is refused with the active run's kind and id (IF-13). `resume` of a living paused sweep only sends a
-  request and needs no lock. `bench status` shows the active run (sweep or agent), otherwise the latest sweep; pause and
-  stop are refused for an agent run (stop through its control file comes in step D2b).
+  request and needs no lock. `bench status` shows the active run (sweep or agent), otherwise the latest sweep, and the
+  last request with its source (IF-14).
+- **Agent stop:** `bench stop` (with or without `--now`) writes `stop` into the agent run's control file; the core reads
+  it every 0.5 s and sends the harness its stop command, the same path as Ctrl+C (IF-15). The current attempt ends as
+  stopped, no further model starts, and the run ends as `stopped`. A stop during a model load takes effect after the
+  load: the harness is then not started. `bench pause` is refused for an agent run.
 - **Dead process:** if it ends without reaching an end state (killed, reboot), `status` shows it and `resume` starts a
   new process, which first unloads a model left over from the dead run.
 - `status --watch` ends after two readings in a row without an active run.
@@ -258,7 +262,7 @@ The API routes are proposals and not implemented.
 | `bench status [--watch] [--jobs]` | `GET /runs/current`, `GET /runs/{id}/jobs` |
 | `bench pause [--now]` | `POST /runs/current/pause` |
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
-| `bench stop [--now]` | `POST /runs/current/stop` |
+| `bench stop [--now]` (sweep and agent run) | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
 | `bench agent run [--model \| --models] [--where] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |

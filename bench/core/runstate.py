@@ -2,12 +2,13 @@
 
 Every run has its own folder state/runs/<id>/ with
   status.json   state, phase, heartbeat, process; written by the run's own process only
-  control.json  the last request to the run (`run`, `pause`, `stop`)
-  progress.log  the run's progress lines
+  control.json  the last request to the run (`run`, `pause`, `stop`), its source (`cli`, `web`, `runner`) and time
+  progress.log  the run's progress lines, appended while the run's process works on it
 These files stay after the run ends; a new run never touches them. state/active.json names the run that holds the
 GPU (run, kind, pid, pid_created). A lock whose process no longer exists counts as free. The shared
 state/status.json of older versions is only read, for runs that have no status file of their own.
 """
+import contextlib
 import ctypes
 import json
 import os
@@ -17,6 +18,7 @@ from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
+from . import progress
 from .progress import CoreError
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -101,6 +103,16 @@ def init_files(run_id):
     log_path(run_id).touch()
 
 
+@contextlib.contextmanager
+def logging_to(run_id):
+    """While inside, every progress line is also appended to the run's progress.log."""
+    progress.set_log(log_path(run_id))
+    try:
+        yield
+    finally:
+        progress.set_log(None)
+
+
 def read_status(run_id):
     """The run's own status file; for runs written before per-run state, the shared file if it names this run."""
     if not run_id:
@@ -114,8 +126,14 @@ def read_status(run_id):
 
 
 # ---------------------------------------------------------------- control channel
-def send(run_id, cmd, now=False):
-    write_json(control_path(run_id), {"cmd": cmd, "now": now, "ts": time.time()})
+SOURCES = ("cli", "web", "runner")  # who asked: a user through the command line or the web, or the run itself
+
+
+def send(run_id, cmd, now=False, source="runner"):
+    """Writes a request to the run (IF-14: with its source and time; the last request wins)."""
+    if source not in SOURCES:
+        raise CoreError(f"unknown request source {source!r}; expected one of {', '.join(SOURCES)}")
+    write_json(control_path(run_id), {"cmd": cmd, "now": now, "source": source, "ts": time.time()})
 
 
 def control(run_id):

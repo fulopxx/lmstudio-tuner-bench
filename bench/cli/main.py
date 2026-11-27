@@ -55,7 +55,8 @@ def status_text(st, show_jobs):
         if st["heartbeat_late_s"] is not None:
             out.append(f"warning: no heartbeat for {fmt_dur(st['heartbeat_late_s'])}, but the runner process "
                        f"(PID {st['pid']}) is still there")
-        out += ["", "stop: Ctrl+C in the run's window | details: bench agent report --run " + st["run"]]
+        out += request_lines(st)
+        out += ["", "commands: bench stop | details: bench agent report --run " + st["run"]]
         return "\n".join(out)
     state = "NOT RUNNING (process gone) -> `bench resume`" if st["gone"] else st["state"]
     total, done = st["total"], st["finished_jobs"]
@@ -77,6 +78,7 @@ def status_text(st, show_jobs):
     if st["requested"]:
         r = st["requested"]
         out.append(f"requested: {r['cmd']}{' --now' if r['now'] else ' after the current job'}")
+    out += request_lines(st)
     if show_jobs:
         out.append("")
         for j in st["jobs"]:
@@ -91,6 +93,15 @@ def status_text(st, show_jobs):
     out.append("")
     out.append("commands: bench pause [--now] | bench resume | bench stop [--now] | bench status --jobs")
     return "\n".join(out)
+
+
+def request_lines(st):
+    """IF-14: the last request with its source, unless it is the run's own start."""
+    r = st.get("last_request")
+    if not r or (r["cmd"] == "run" and r["source"] in ("runner", None)):
+        return []
+    when = time.strftime("%H:%M:%S", time.localtime(r["ts"])) if r.get("ts") else "?"
+    return [f"last request: {r['cmd']}{' --now' if r['now'] else ''} from {r['source'] or 'unknown'} at {when}"]
 
 
 def cmd_run(a):
@@ -131,11 +142,14 @@ def cmd_status(a):
 
 def cmd_control(a):
     try:
-        sweep.request_control(a.cmd, a.now)
+        result = sweep.request_control(a.cmd, a.now)
     except CoreError as e:
         print(e)
         return e.code
-    print(f"{a.cmd} requested ({'now' if a.now else 'after the current job'})")
+    if result["kind"] == "agent":
+        print(f"stop requested for agent run {result['run']}: the current attempt stops, no further model starts")
+    else:
+        print(f"{a.cmd} requested ({'now' if a.now else 'after the current job'})")
     return 0
 
 

@@ -169,9 +169,10 @@ def model_catalog():
 
 
 class Interrupted(Exception):
-    def __init__(self, cmd):
+    def __init__(self, cmd, source=None):
         super().__init__(cmd)
         self.cmd = cmd  # "pause" | "stop"
+        self.source = source  # who asked (IF-14)
 
 
 class Blocked(Exception):
@@ -194,7 +195,7 @@ class Runner:
     def checkpoint(self, in_job=True):
         c = control(self.run_id)
         if c["cmd"] in ("pause", "stop") and (c.get("now") or not in_job):
-            raise Interrupted(c["cmd"])
+            raise Interrupted(c["cmd"], c.get("source"))
 
     def on_chunk(self):
         if time.time() - self._last_check > 0.5:
@@ -348,9 +349,10 @@ class Runner:
                     self.ensure_ready()
                     if control(self.run_id).get("ts") != c.get("ts"):
                         continue  # a new command arrived during the checks
-                    send(self.run_id, "run")
+                    by = c.get("source") if c["cmd"] == "run" else "runner"
+                    send(self.run_id, "run", source=by)  # acknowledged: the request's source stays visible
                     self.status.update(state="running", reason="")
-                    log("RESUMED" if c["cmd"] == "run" else "RESUMED automatically")
+                    log(f"RESUMED ({by})" if c["cmd"] == "run" else "RESUMED automatically")
                     return "run"
                 except (Blocked, StepError) as e:
                     if c["cmd"] == "run" and control(self.run_id).get("ts") == c.get("ts"):
@@ -405,7 +407,7 @@ def execute(run_id, redo_failed=False):
                     row = runner.run_job(job, meta[job["model"]])
                     break
                 except Interrupted as e:
-                    log(f"{e.cmd} requested; job {job['n']} will be measured again")
+                    log(f"{e.cmd} requested ({e.source or 'unknown source'}); job {job['n']} will be measured again")
                     if e.cmd == "stop" or runner.wait_paused("paused by user") == "stop":
                         raise Interrupted("stop")
                 except (Blocked, StepError) as e:  # StepError here = machine/server not usable
@@ -456,12 +458,15 @@ def run_status(show_jobs=False):
     out = {"run": run_id, "kind": (lock or st or {}).get("kind", "sweep"), "state": (st or {}).get("state", "?"),
            "alive": alive, "gone": (st or {}).get("state") in ACTIVE and not alive, "current": None,
            "reason": (st or {}).get("reason"), "warning": (st or {}).get("warning"), "heartbeat_late_s": None,
-           "pid": (st or {}).get("pid"), "requested": None, "finished": not alive}
+           "pid": (st or {}).get("pid"), "requested": None, "last_request": last_request(run_id),
+           "finished": not alive}
     late = now - st.get("heartbeat", 0) if alive else 0
     if late >= HEARTBEAT_LATE_S:
         out["heartbeat_late_s"] = late
-    if out["kind"] == "agent":  # the attempts of an agent run are counted with D2b's progress data
+    if out["kind"] == "agent":
         c = (st or {}).get("current") if alive else None
+        if alive and control(run_id)["cmd"] == "stop":
+            out["requested"] = {"cmd": "stop", "now": True}
         out.update(total=(st or {}).get("total"), current=c and {
             "n": c["n"], "model": c["model"], "phase": st.get("phase"), "elapsed_s": now - st.get("job_started", now)})
         return out
@@ -486,6 +491,12 @@ def run_status(show_jobs=False):
     else:
         out["last_results"] = sorted(rows, key=lambda r: r.get("finished", ""))[-6:]
     return out
+
+
+def last_request(run_id):
+    """IF-14: the last request to a run with its source and time, or None if the run has no control file."""
+    c = read_json(runstate.control_path(run_id))
+    return c and {"cmd": c.get("cmd"), "now": bool(c.get("now")), "source": c.get("source"), "ts": c.get("ts")}
 
 
 def default_grid():
@@ -524,12 +535,13 @@ def start_run(grid_path, models, options, where=None):
                    {"grid": grid_path, "jobs": jobs, "options": {k: options[k] for k in RUN_OPTIONS},
                     "env": environment()})
         latest_path().write_text(run_id)
-        return {"run": run_id, "exit_code": execute(run_id)}
+        with runstate.logging_to(run_id):
+            return {"run": run_id, "exit_code": execute(run_id)}
     finally:
         runstate.release(run_id)
 
 
-def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=False):
+def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=False, source="cli"):
     """Resumes a run: asks a living runner to continue, or restarts a stopped one from disk in this process."""
     lock = runstate.active()
     if lock:
@@ -538,7 +550,7 @@ def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=Fals
         if from_job or redo_failed or allow_env_change:
             raise CoreError("the run is still active; `bench stop` first, then resume with these options")
         st = runstate.read_status(lock["run"]) or {}
-        send(lock["run"], "run")
+        send(lock["run"], "run", source=source)
         return {"run": lock["run"], "exit_code": 0, "message":
                 "resume requested" if st.get("state") == "paused" else "run is active; pending pause/stop cancelled"}
     run_id = run or latest_run()
@@ -558,21 +570,22 @@ def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=Fals
                     append_row(path, results.envelope("sweep", run_id, {"job_id": j["id"], "status": "invalidated"},
                                                       machine.fingerprint()))
         latest_path().write_text(run_id)
-        return {"run": run_id, "exit_code": execute(run_id, redo_failed=redo_failed), "message": None}
+        with runstate.logging_to(run_id):
+            return {"run": run_id, "exit_code": execute(run_id, redo_failed=redo_failed), "message": None}
     finally:
         runstate.release(run_id)
 
 
-def request_control(cmd, now=False):
-    """Asks the running sweep to pause or stop."""
+def request_control(cmd, now=False, source="cli"):
+    """Asks the active run to pause or stop (IF-14: the request records its source). An agent run can only be
+    stopped (IF-15): an attempt cannot be split, so there is no pause."""
     lock = runstate.active()
     if not lock or not runner_alive(runstate.read_status(lock["run"])):
         raise CoreError("no active run")
-    if lock.get("kind") != "sweep":
-        raise CoreError(f"agent run {lock['run']} is active; it cannot be paused, and stopping it from here comes "
-                        "later: press Ctrl+C in its window")
-    send(lock["run"], cmd, now)
-    return {"run": lock["run"], "cmd": cmd, "now": now}
+    if lock.get("kind") != "sweep" and cmd != "stop":
+        raise CoreError(f"agent run {lock['run']} is active; an agent run cannot be paused, only stopped")
+    send(lock["run"], cmd, now, source)
+    return {"run": lock["run"], "kind": lock.get("kind"), "cmd": cmd, "now": now, "source": source}
 
 
 def evaluate_run(run=None, in_tokens=2000, out_tokens=500):

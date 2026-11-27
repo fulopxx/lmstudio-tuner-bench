@@ -168,8 +168,8 @@ indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett r�
 |---|---|
 | `state/active.json` | A GPU-t foglaló futás: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; induláskor kizárólagosan jön létre, a végén törlődik; az a zár, amelynek folyamata már nem él, szabadnak számít |
 | `state/runs/<run>/status.json` | `run`, `kind`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (sweep: `n`, `model`, `config`; agent: `n`, `model`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created`, `warning`; agent-futásnál `scripted` is |
-| `state/runs/<run>/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
-| `state/runs/<run>/progress.log` | A futás előrehaladás-sorai (induláskor jön létre; a D2b lépéstől töltődik) |
+| `state/runs/<run>/control.json` | Az utolsó kérés: `cmd` (`run` / `pause` / `stop`), `now`, `source` (`cli` / `web` a felhasználótól, `runner` magától a futástól: indulás, automatikus szünet és folytatás), `ts`; ha a futtató nyugtázza a felhasználó `resume` kérését, a forrás megmarad |
+| `state/runs/<run>/progress.log` | A futás minden előrehaladás-sora úgy, ahogy a parancssor mutatja, `HH:MM:SS` időbélyeggel (a dátum a futás azonosítójában van), a harness soraival együtt; csak a futás saját processze fűz hozzá |
 | `state/latest.txt` | A legutóbbi sweep azonosítója (az indulás ideje, `YYYYMMDD_HHMMSS`) |
 | `state/status.json`, `state/control.json` | A D2a lépés előtti változatok írták; csak olvasásra, annak a futásnak az állapotaként, amelynek nincs saját fájlja |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
@@ -242,8 +242,12 @@ figyelmeztet, ha a loadok előtti VRAM-foglalás 500 MiB-nál többet ingadozott
 - **Egy GPU-futás:** a sweep- vagy agent-futás csak a `state/active.json` zár felvétele után indul; amíg egy másik
   futás tartja, az indítást a core elutasítja, és megnevezi az aktív futás fajtáját és azonosítóját (IF-13). Egy élő,
   szüneteltetett sweep `resume`-ja csak kérést küld, zár nem kell hozzá. A `bench status` az aktív futást mutatja
-  (sweep vagy agent), különben a legutóbbi sweepet; agent-futásnál a szünetet és a leállítást elutasítja (a
-  vezérlőfájlon át történő leállítás a D2b lépésben jön).
+  (sweep vagy agent), különben a legutóbbi sweepet, és az utolsó kérést a forrásával (IF-14).
+- **Agent-leállítás:** a `bench stop` (`--now`-val vagy anélkül) `stop` kérést ír az agent-futás vezérlőfájljába; a
+  core 0,5 s-onként olvassa, és elküldi a harnessnek a leállító parancsot, ugyanazon az úton, mint a Ctrl+C (IF-15). Az
+  aktuális próbálkozás leállítottként ér véget, további modell nem indul, és a futás `stopped` állapotban zárul. A
+  modell betöltése alatt érkező leállítás a betöltés után hat: a harness ekkor nem indul el. Agent-futásnál a
+  `bench pause` hibát ad.
 - **Meghalt process:** ha végállapot nélkül ér véget (kill, újraindítás), ezt a `status` mutatja, és a `resume` új
   processt indít, amely először eltávolítja a megszakadt futás után bent maradt modellt.
 - A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki.
@@ -261,7 +265,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | `bench status [--watch] [--jobs]` | `GET /runs/current`, `GET /runs/{id}/jobs` |
 | `bench pause [--now]` | `POST /runs/current/pause` |
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
-| `bench stop [--now]` | `POST /runs/current/stop` |
+| `bench stop [--now]` (sweep- és agent-futás) | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
 | `bench agent run [--model \| --models] [--where] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |

@@ -46,7 +46,18 @@ HARNESS_TASK_KEYS = ("id", "prompt", "system", "fixtures", "tools", "limits")
 
 
 def log(m):
-    progress.emit(m)
+    progress.emit(sweep.stamp(m))
+
+
+def stop_requested(run_id):
+    """IF-15: a stop written to the run's control file counts like Ctrl+C. Returns who asked, or None."""
+    if USER_STOP.is_set():
+        return "ctrl+c"
+    c = runstate.control(run_id)
+    if c.get("cmd") == "stop":
+        USER_STOP.set()
+        return c.get("source") or "unknown source"
+    return None
 
 
 def load_settings(context):
@@ -214,9 +225,10 @@ def harness_problem():
     return None
 
 
-def run_harness(spec, timeout_s):
-    """Starts the harness, streams its progress, sends stop on Ctrl+C. Returns the RESULT summary, or None when the
-    harness ended without one (killed, crashed); raises if the harness reported an unusable spec."""
+def run_harness(spec, timeout_s, run_id=None):
+    """Starts the harness, streams its progress, sends stop on Ctrl+C or on a stop in the run's control file (checked
+    every 0.5 s). Returns the RESULT summary, or None when the harness ended without one (killed, crashed); raises if
+    the harness reported an unusable spec."""
     p = subprocess.Popen([shutil.which("node") or "node", "run-tasks.ts"], cwd=HARNESS, env=machine.node_env(),
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
@@ -248,6 +260,10 @@ def run_harness(spec, timeout_s):
                 pass
             if stop_sent_at is None and time.time() > deadline:
                 log("time limit of the whole run reached: sending stop")
+                stop_sent_at = send_stop(p)
+            by = stop_requested(run_id) if run_id and stop_sent_at is None and p.poll() is None else None
+            if by:
+                log(f"stop requested ({by}): asking the harness to stop")
                 stop_sent_at = send_stop(p)
             if stop_sent_at and p.poll() is None and time.time() - stop_sent_at > STOP_GRACE_S:
                 log("harness did not stop in time: killing it")
@@ -342,8 +358,12 @@ def run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s):
                 raise StepError("fail", "load settings not applied: " + "; ".join(info["mismatches"]))
             spec["backend"] = {"type": "lmstudio", "identifier": IDENTIFIER}
             meta.update(backend="lmstudio", app_version=info.get("app"), context=a.context)
+        by = stop_requested(run_id)
+        if by:  # asked while the model was loading: the harness is not started
+            log(f"stop requested ({by}): {model} is not run")
+            return [], {"attempts": [], "stopped": True}, meta
         log(f"run {run_id}, {model}: {len(tasks)} task(s) x {a.repeats}, sampling {sampling['source']}")
-        summary = run_harness(spec, timeout_s)
+        summary = run_harness(spec, timeout_s, run_id)
     finally:
         if loaded:
             sh([LMS, "unload", IDENTIFIER], 60)
@@ -388,7 +408,8 @@ def run_tasks(a, on_model_done=None):
                                           "total": len(models), "started": time.time(), "scripted": not gpu})
         final, reason = "aborted", ""
         try:
-            out = _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done)
+            with runstate.logging_to(run_id):
+                out = _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done)
             final = "stopped" if out.pop("stopped") else "done"
             return out
         except KeyboardInterrupt:
@@ -415,7 +436,7 @@ def _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done
     all_rows = []
     status.update(state="running", phase="running")
     for n, model in enumerate(models, 1):
-        if USER_STOP.is_set():
+        if stop_requested(run_id):
             log(f"stopped by the user: {len(models) - n + 1} model(s) not started")
             break
         status.update(current={"n": n, "model": model}, job_started=time.time())
