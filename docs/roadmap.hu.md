@@ -77,7 +77,7 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 | B | Repó előkészítése, dokumentumok angol és magyar változata | ✅ kész (kétnyelvű dokumentumok; 2026-11-27 óta publikus) |
 | C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | ✅ kész (2026-11-27: [követelmények](requirements.hu.md), 7. pont: C1 csomagszerkezet, C2 core függvények, C3 eredményformátum és gépfüggő beállítások, C4 modellregiszter) |
 | D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | ✅ kész (2026-11-27: [architektúra](architecture.hu.md), 10. pont, vezérlő interfész és adatformátumok; [követelmények](requirements.hu.md), 8. pont) |
-| D2 | A vezérlő interfész a core-ban és a CLI-ben ([követelmények](requirements.hu.md), 8. pont, IF-01–IF-23), az E előtt | ⚪ nyitott |
+| D2 | A vezérlő interfész a core-ban és a CLI-ben ([követelmények](requirements.hu.md), 8. pont, IF-01–IF-23), az E előtt | ⚪ nyitott (a terv 2026-11-27-én elfogadva: D2a futásonkénti állapot és egyszerre egy GPU-futás, IF-10, IF-11, IF-13; D2b előrehaladás-napló, a kérés forrása, agent-leállítás vezérlőfájlon át, IF-12, IF-14, IF-15; D2c `--json`, IF-01; D2d `bench check`, `bench runs`, `bench close` (az állapotgép-változást előbb a tulajdonos látja), IF-20–IF-22; D2e sémaverziók, IF-23. Az IF-02–IF-04 API-követelmények az API-val jönnek) |
 | E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
 | F | Webes vezérlőfelület | ⚪ nyitott |
 | G | Agent harness: tool loop, sandbox, trace log, CLI | 🟡 részben (M1 harness: tool loop, sandbox, trace, `bench agent`; a keresés, git és shell toolok nyitottak) |
