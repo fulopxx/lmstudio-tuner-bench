@@ -41,6 +41,9 @@
 <rect x="56" y="276" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
 <text x="136.0" y="293" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">machine.py</text>
 <text x="136.0" y="311" text-anchor="middle" font-size="11" fill="#495057">paths, env fingerprint</text>
+<rect x="228" y="276" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
+<text x="308.0" y="293" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">models.py</text>
+<text x="308.0" y="311" text-anchor="middle" font-size="11" fill="#495057">model registry</text>
 <rect x="40" y="370" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
 <text x="122.5" y="387" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">harness (Node)</text>
 <text x="122.5" y="405" text-anchor="middle" font-size="11" fill="#495057">load-model, run-tasks</text>

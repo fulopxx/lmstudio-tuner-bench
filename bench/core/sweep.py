@@ -33,6 +33,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import evaluate, machine, progress, results, smoke
+from . import models as registry
 from .progress import CoreError
 from .smoke import LMS, StepError, sh
 
@@ -574,10 +575,12 @@ def default_grid():
     return str(local if local.exists() else ROOT / "configs" / "quick.json")
 
 
-def plan_run(grid_path, models=None):
+def plan_run(grid_path, models=None, where=None):
     """The jobs a run would measure, without starting anything; raises CoreError for unknown models."""
     grid = json.loads(Path(grid_path).read_text(encoding="utf-8"))
     keys = [k.strip() for k in models.split(",")] if models else grid.get("models", [])
+    if where:  # CR-24: the given models, or every model of the registry, that match the capability filter
+        keys = registry.select(where, [k.strip() for k in models.split(",")] if models else None)
     meta = model_catalog()
     missing = [k for k in keys if k not in meta]
     if not keys or missing:
@@ -590,9 +593,9 @@ RUN_OPTIONS = ("repeats", "gen_tokens", "prompt_lines", "load_timeout", "gen_tim
                "busy_retry_s")
 
 
-def start_run(grid_path, models, options):
+def start_run(grid_path, models, options, where=None):
     """Starts a sweep and runs it to the end in this process; progress goes to the progress sink."""
-    jobs = plan_run(grid_path, models)["jobs"]
+    jobs = plan_run(grid_path, models, where)["jobs"]
     if runner_alive(read_json(STATUS)):
         raise CoreError("another run is active; use `bench status`, or `bench stop` first")
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")

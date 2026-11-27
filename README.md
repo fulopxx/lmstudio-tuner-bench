@@ -193,6 +193,18 @@ Run from `harness\`. They load models on the GPU and write a JSON result into `r
 other grid file can be run with `--grid <file>`. Repeats, prompt length and timeouts are command line options, not part
 of the grid (`.\bench run --help`). Agent runs take the model key directly (`--model`).
 
+The model registry is a snapshot of `lms ls` with capability fields (vision, tool use, architecture, parameters,
+quantization, maximum context, size); own tags such as `mtp` go into `configs\models.local.json` (see
+`configs\models.example.json`). Runs can select models by capability with `--where`:
+
+| Command | What it does |
+|---|---|
+| `.\bench models refresh` | Takes a new snapshot of the installed models and lists the new and the removed ones |
+| `.\bench models list [--where tool_use,!vision]` | Every model with its capability fields and tags, optionally filtered |
+| `.\bench models new` | Models that are new since the previous snapshot |
+| `.\bench run --where architecture=qwen3 --dry-run` | The sweep jobs of the models that match (from `--models` if given, otherwise from the registry) |
+| `.\bench agent run --where tool_use,mtp` | An agent run on every model with tool use and the own tag `mtp` |
+
 ## Folders
 
 | Folder | Contents |

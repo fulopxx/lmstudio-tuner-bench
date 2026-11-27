@@ -25,6 +25,8 @@ from datetime import datetime
 from pathlib import Path
 
 from . import failures, machine, progress, results, sweep
+from . import models as registry
+from .progress import CoreError
 from .smoke import LMS, StepError, sh
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -366,8 +368,13 @@ def run_tasks(a, on_model_done=None):
         models = ["scripted"]
     else:
         models = [m.strip() for m in (a.models or a.model or "").split(",") if m.strip()]
+        if getattr(a, "where", None):  # CR-24
+            try:
+                models = registry.select(a.where, models or None)
+            except CoreError as e:
+                raise StepError("fail", str(e))
         if not models:
-            raise StepError("fail", "--model or --models is required (or --scripted for an offline run)")
+            raise StepError("fail", "--model, --models or --where is required (or --scripted for an offline run)")
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = ROOT / "results" / "agent" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)

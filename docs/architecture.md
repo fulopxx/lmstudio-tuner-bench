@@ -35,6 +35,7 @@ processes change.
 | `bench/core/progress.py` | Progress sink of long-running operations (the CLI prints the lines, an API can collect them) and `CoreError` for requests the core refuses |
 | `bench/core/results.py` | Result format: the common envelope of every row, reading with conversion of older rows, refusal of newer formats |
 | `bench/core/machine.py` | Machine-specific paths (`configs/machine.local.json`, example in `configs/machine.example.json`) and the environment fingerprint of result rows |
+| `bench/core/models.py` | Model registry: snapshot of `lms ls` in `state/models.json` (the previous one in `state/models.previous.json`), own tags from `configs/models.local.json`, new models, selection by capability (`--where`) |
 | `bench/core/sweep.py` | Sweep operations that return data (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), runner, status and control handling, table report |
 | `bench/core/evaluate.py` | Evaluation of sweep results: estimated response time, warnings, recommendations |
 | `bench/core/smoke.py` | Shared helpers used by the runner (commands, HTTP, streamed measurement, VRAM sampling) and a stand-alone smoke test |
@@ -240,15 +241,16 @@ The API routes are proposals and not implemented.
 | CLI (current) | API (planned) |
 |---|---|
 | `bench run --dry-run` | `POST /plans` |
-| `bench run [--grid] [--models] [--repeats] [--gen-tokens] [--prompt-lines] [--load-timeout] [--gen-timeout] [--min-free-mib] [--max-util] [--busy-retry]` | `POST /runs` |
+| `bench run [--grid] [--models] [--where] [--repeats] [--gen-tokens] [--prompt-lines] [--load-timeout] [--gen-timeout] [--min-free-mib] [--max-util] [--busy-retry]` | `POST /runs` |
 | `bench status [--watch] [--jobs]` | `GET /runs/current`, `GET /runs/{id}/jobs` |
 | `bench pause [--now]` | `POST /runs/current/pause` |
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
-| `bench agent run [--model \| --models] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
+| `bench agent run [--model \| --models] [--where] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
 | `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
+| `bench models refresh` / `list [--where]` / `new` | `POST /models/snapshot`, `GET /models`, `GET /models/new` |
 
 Exit codes of `run` and `resume`: 0 when the run is done or was stopped by the user, 3 when it was aborted, 2 for
 unusable arguments. `bench <command> --help` lists the defaults.
@@ -275,14 +277,13 @@ The runner is Windows specific (`lms.exe` path, process check).
 
 ## 8. Planned format changes
 
-The first three items and the model registry are planned in step C ([requirements](requirements.md), section 7).
+The first two items were planned in step C ([requirements](requirements.md), section 7).
 
 - `schema_version` in every plan (result rows have it since step C3).
 - The runtime each model actually used (the fingerprint of step C3 records the selected runtime).
 - Test suite results (quality, tool use) next to speed measurements.
 - Flag telling whether the dashboard was open during a measurement.
 - Speculative decoding (task 24): grid settings, draft statistics, workload profile and backend fields.
-- Model registry with capability tags.
 
 ## 9. Open questions
 

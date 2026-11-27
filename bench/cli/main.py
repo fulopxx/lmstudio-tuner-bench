@@ -9,6 +9,7 @@
   bench stop [--now]       exit; can be resumed later, also after a reboot
   bench evaluate [--run]   rank the configurations of a finished sweep (offline)
   bench agent run | report | show
+  bench models refresh | list | new   the model registry (snapshot of `lms ls` with capability tags)
 
 Exit codes of run and resume: 0 done or stopped by the user, 3 aborted, 2 unusable arguments.
 """
@@ -19,6 +20,7 @@ import sys
 import time
 
 from bench.core import agent, progress, sweep
+from bench.core import models as registry
 from bench.core.progress import CoreError
 from bench.core.smoke import StepError
 
@@ -30,6 +32,11 @@ def say(text):
 def fmt_dur(s):
     s = int(max(0, s))
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
+
+
+WHERE_HELP = ("capability filter on the model registry, comma separated terms that all must hold: name (true), !name "
+              "(false), name=value; e.g. tool_use,!vision or architecture=qwen3. Selects from --models if given, "
+              "otherwise from every registered model")
 
 
 # ---------------------------------------------------------------- sweep commands
@@ -76,14 +83,14 @@ def status_text(st, show_jobs):
 def cmd_run(a):
     say(sweep.stamp(f"grid: {a.grid}"))
     if a.dry_run:
-        plan = sweep.plan_run(a.grid, a.models)
+        plan = sweep.plan_run(a.grid, a.models, a.where)
         for j in plan["jobs"]:
             print(f"{j['n']:3d} {j['model']} / {j['config']}")
         print(f"{len(plan['jobs'])} jobs (dry run, nothing started)")
         if plan["warning"]:
             say(sweep.stamp(f"WARNING: {plan['warning']}"))
         return 0
-    return sweep.start_run(a.grid, a.models, {k: getattr(a, k) for k in sweep.RUN_OPTIONS})["exit_code"]
+    return sweep.start_run(a.grid, a.models, {k: getattr(a, k) for k in sweep.RUN_OPTIONS}, a.where)["exit_code"]
 
 
 def cmd_resume(a):
@@ -135,6 +142,7 @@ def sweep_parser():
     r.add_argument("--grid", default=sweep.default_grid(),
                    help="grid file (default: configs/quick.local.json if present, else configs/quick.json)")
     r.add_argument("--models", help="comma separated model keys (default: the grid's list)")
+    r.add_argument("--where", help=WHERE_HELP)
     r.add_argument("--dry-run", action="store_true")
     r.add_argument("--repeats", type=int, default=2)
     r.add_argument("--gen-tokens", type=int, default=200)
@@ -248,6 +256,7 @@ def agent_parser():
     r = sub.add_parser("run", help="run a task set on one or more models through the harness")
     r.add_argument("--model", help="model key from `lms ls`")
     r.add_argument("--models", help="comma separated model keys, run one after another (FA-40)")
+    r.add_argument("--where", help=WHERE_HELP)
     r.add_argument("--tasks", default=str(agent.ROOT / "tasks" / "examples.json"))
     r.add_argument("--only", help="comma separated task ids")
     r.add_argument("--repeats", type=int, default=5)
@@ -279,12 +288,61 @@ def agent_main(argv):
         return 3
 
 
+# ---------------------------------------------------------------- model registry commands
+def size_gb(n):
+    return f"{n / 1e9:.1f}" if isinstance(n, (int, float)) else "-"
+
+
+def models_main(argv):
+    ap = argparse.ArgumentParser(prog="bench models")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("refresh", help="take a new snapshot of the installed models (`lms ls`)")
+    lst = sub.add_parser("list", help="every model of the latest snapshot with its capability fields and own tags")
+    lst.add_argument("--where", help=WHERE_HELP)
+    sub.add_parser("new", help="models that are new since the previous snapshot")
+    a = ap.parse_args(argv)
+    try:
+        if a.cmd == "refresh":
+            r = registry.refresh()
+            print(f"{r['count']} models in the snapshot")
+            if r["first_snapshot"]:
+                print("first snapshot: new downloads are shown from the next refresh on")
+            for key in r["new"]:
+                print(f"  new:  {key}")
+            for key in r["gone"]:
+                print(f"  gone: {key}")
+            return 0
+        if a.cmd == "new":
+            keys = registry.new_models()
+            print("\n".join(keys) if keys else "no new models since the previous snapshot")
+            return 0
+        reg = registry.registry()
+        keys = registry.select(a.where, None, reg) if a.where else sorted(reg)
+        new = set(registry.new_models())
+        print(f"{'model':<44} {'params':>7} {'quant':<8} {'max ctx':>8} {'GB':>5}  tags")
+        for key in keys:
+            f = reg[key]
+            own = [k for k, v in f.items() if k not in registry.FIELDS and v is True]
+            flags = [n for n in ("vision", "tool_use") if f.get(n)] + own + (["new"] if key in new else [])
+            if f.get("type") not in (None, "llm"):
+                flags.insert(0, f["type"])
+            print(f"{key[:44]:<44} {str(f.get('params') or '-'):>7} {str(f.get('quantization') or '-'):<8} "
+                  f"{str(f.get('max_context') or '-'):>8} {size_gb(f.get('size_bytes')):>5}  {', '.join(flags)}")
+        print(f"{len(keys)} model(s)")
+        return 0
+    except CoreError as e:
+        print(e)
+        return e.code
+
+
 # ---------------------------------------------------------------- entry
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     progress.set_sink(say)
     if argv[:1] == ["agent"]:
         return agent_main(argv[1:])
+    if argv[:1] == ["models"]:
+        return models_main(argv[1:])
     a = sweep_parser().parse_args(argv)
     commands = {"run": cmd_run, "resume": cmd_resume, "status": cmd_status, "evaluate": cmd_evaluate,
                 "pause": cmd_control, "stop": cmd_control}

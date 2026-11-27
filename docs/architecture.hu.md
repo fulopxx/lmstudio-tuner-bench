@@ -35,6 +35,7 @@ frissül.
 | `bench/core/progress.py` | A hosszú műveletek előrehaladás-kimenete (a CLI kiírja a sorokat, egy API összegyűjtheti őket) és a `CoreError` a core által elutasított kérésekhez |
 | `bench/core/results.py` | Eredményformátum: minden sor közös borítéka, a régebbi sorok átalakítása olvasáskor, az újabb formátumok elutasítása |
 | `bench/core/machine.py` | Gépfüggő útvonalak (`configs/machine.local.json`, minta: `configs/machine.example.json`) és az eredménysorok környezet-ujjlenyomata |
+| `bench/core/models.py` | Modellregiszter: az `lms ls` pillanatképe a `state/models.json` fájlban (az előző a `state/models.previous.json`-ban), saját címkék a `configs/models.local.json`-ból, új modellek, képesség szerinti kiválasztás (`--where`) |
 | `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, állapot- és vezérléskezelés, táblázatos riport |
 | `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
 | `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
@@ -242,15 +243,16 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | CLI (jelenlegi) | API (tervezett) |
 |---|---|
 | `bench run --dry-run` | `POST /plans` |
-| `bench run [--grid] [--models] [--repeats] [--gen-tokens] [--prompt-lines] [--load-timeout] [--gen-timeout] [--min-free-mib] [--max-util] [--busy-retry]` | `POST /runs` |
+| `bench run [--grid] [--models] [--where] [--repeats] [--gen-tokens] [--prompt-lines] [--load-timeout] [--gen-timeout] [--min-free-mib] [--max-util] [--busy-retry]` | `POST /runs` |
 | `bench status [--watch] [--jobs]` | `GET /runs/current`, `GET /runs/{id}/jobs` |
 | `bench pause [--now]` | `POST /runs/current/pause` |
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
-| `bench agent run [--model \| --models] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
+| `bench agent run [--model \| --models] [--where] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
 | `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
+| `bench models refresh` / `list [--where]` / `new` | `POST /models/snapshot`, `GET /models`, `GET /models/new` |
 
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.
@@ -277,14 +279,13 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 
 ## 8. Tervezett formátumváltozások
 
-Az első három pont és a modellregiszter a C lépésben tervezett ([követelmények](requirements.hu.md), 7. pont).
+Az első két pont a C lépésben tervezett ([követelmények](requirements.hu.md), 7. pont).
 
 - `schema_version` minden tervben (az eredménysorokban a C3 lépés óta megvan).
 - A modellenként ténylegesen használt runtime (a C3 lépés ujjlenyomata a kiválasztott runtime-ot rögzíti).
 - Tesztcsomag-eredmények (minőség, tool-használat) a sebességmérés mellett.
 - Jelző, hogy mérés közben nyitva volt-e a dashboard.
 - Speculative decoding (24. feladat): rácsbeállítások, draft statisztikák, terhelésprofil és backend mező.
-- Modellregiszter képességcímkékkel.
 
 ## 9. Nyitott kérdések
 

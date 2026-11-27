@@ -1,0 +1,10 @@
+{
+  "comment": "Own tags per model key, merged into the model registry (bench models). Copy to models.local.json (not tracked by git). A tag with the name of a generated field (vision, tool_use, architecture, params, quantization, max_context, size_bytes, type) overrides it. Use the tags in filters, e.g. --where mtp,!reasoning.",
+  "qwen3.5-4b-mtp": {
+    "mtp": true,
+    "reasoning": true
+  },
+  "qwen3-8b": {
+    "reasoning": true
+  }
+}

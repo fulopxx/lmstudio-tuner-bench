@@ -201,6 +201,18 @@ szerkeszd a `models` listát; ezt a fájlt a program automatikusan használja, �
 timeoutok parancssori kapcsolók, nem a rács részei (`.\bench run --help`). Az agent-futás közvetlenül a modellkulcsot
 kapja (`--model`).
 
+A modellregiszter az `lms ls` pillanatképe képességmezőkkel (vision, tool use, architektúra, paraméterszám,
+kvantálás, maximális context, méret); a saját címkék, például `mtp`, a `configs\models.local.json` fájlba kerülnek
+(lásd `configs\models.example.json`). A futások a `--where` kapcsolóval képesség szerint választhatnak modellt:
+
+| Parancs | Mit csinál |
+|---|---|
+| `.\bench models refresh` | Új pillanatkép a telepített modellekről; kiírja az új és az eltűnt modelleket |
+| `.\bench models list [--where tool_use,!vision]` | Minden modell a képességmezőivel és címkéivel, szűrhetően |
+| `.\bench models new` | Az előző pillanatkép óta új modellek |
+| `.\bench run --where architecture=qwen3 --dry-run` | Az illeszkedő modellek sweep-jobjai (a `--models` listából, ha meg van adva, különben a regiszterből) |
+| `.\bench agent run --where tool_use,mtp` | Agent-futás minden modellen, amely tool use-ra tanított, és `mtp` saját címkét kapott |
+
 ## Mappák
 
 | Mappa | Tartalom |
