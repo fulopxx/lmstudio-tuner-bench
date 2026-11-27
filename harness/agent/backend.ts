@@ -32,6 +32,15 @@ export interface RoundResult {
   outputTokens?: number;
   ttftS?: number;
   tokensPerSecond?: number;
+  applied?: Record<string, unknown>; // sampling and overflow settings LM Studio reports as used (FA-10)
+}
+
+/** The sampling-related fields of the prediction config LM Studio reports back. */
+export function appliedSampling(config: unknown): Record<string, unknown> {
+  const fields = (config as { fields?: { key: string; value: unknown }[] } | undefined)?.fields ?? [];
+  return Object.fromEntries(fields
+    .filter((f) => /temperature|topK|topP|minP|repeatPenalty|contextOverflowPolicy|maxPredictedTokens/i.test(f.key))
+    .map((f) => [f.key, f.value]));
 }
 
 export interface RoundOptions {
@@ -112,6 +121,7 @@ export class LmsSdkBackend implements ModelBackend {
       outputTokens: s.predictedTokensCount,
       ttftS: s.timeToFirstTokenSec,
       tokensPerSecond: s.tokensPerSecond,
+      applied: appliedSampling(result.predictionConfig),
     };
   }
 }

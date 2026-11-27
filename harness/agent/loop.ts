@@ -115,6 +115,7 @@ export async function runAttempt(p: AttemptParams): Promise<AttemptOutcome> {
         stopReason: r.stopReason, promptTokens: r.promptTokens ?? null, outputTokens: r.outputTokens ?? null,
         ttftS: r.ttftS ?? null, tokensPerSecond: r.tokensPerSecond ?? null,
         toolCalls: r.toolCalls.length, toolCallFailures: r.toolCallFailures,
+        ...(r.applied ? { applied: r.applied } : {}),
       });
       out.answer = r.answer;
       if (r.stopReason === "userStopped" && stopped()) break;

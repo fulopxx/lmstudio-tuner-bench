@@ -202,7 +202,10 @@ live traces before effort goes into the tasks.
 **Status of 5a (2026-11-26).** Implemented and covered by offline tests: FA-01 to FA-07, FA-10 to FA-14, FA-20,
 FA-30 to FA-36, FA-38, FA-41 (rebuild from traces) and the run folder copy of the task file from FA-42; default
 repeats raised to 5 (FA-45). FA-21, live: five attempts of one task on an 8B reasoning model at temperature 0.7 gave
-five different reasoning texts and the same final answer, so repeats do measure variation. Open for 5b: FA-08 (with
+five different reasoning texts and the same final answer, so repeats do measure variation. Live check on 2026-11-27: the prediction config LM Studio reports back shows every
+sampling value of the profile and `stopAtLimit` applied, and the trace now records it (`applied` in `prediction`);
+the four example tasks passed 4 of 4 on the 8B reasoning model, and all four failures of the 7B coder model were
+categorized `format_invalid/text_tool_call`. Open for 5b: FA-08 (with
 the task set), FA-37, FA-39, FA-40, the computed time limit of FA-42, FA-43, FA-44, FA-46, FA-47.
 
 **Task set (5b), 20 tasks:** direct single tool (2), tool choice among close decoys including a destructive one (2),

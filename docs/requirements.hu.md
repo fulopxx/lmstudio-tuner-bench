@@ -211,6 +211,10 @@ trace-eken ellenőrizhető, mielőtt a feladatokba munka kerül.
 FA-30–FA-36, FA-38, FA-41 (felépítés a trace-ekből) és a FA-42-ből a feladatfájl másolata a futás mappájába; az
 alapértelmezett ismétlésszám 5 lett (FA-45). FA-21, élőben: egy feladat öt próbálkozása egy 8B-s gondolkodó modellen
 temperature 0,7 mellett öt különböző gondolatmenetet és azonos végső választ adott, tehát az ismétlés mér szórást.
+Élő ellenőrzés 2026-11-27-én: a LM Studio által visszaadott predikciós konfiguráció
+szerint a profil minden mintavételi értéke és a `stopAtLimit` érvényesült, és a trace ezt most rögzíti is (`applied` a
+`prediction` eseményben); a négy példafeladatból a 8B-s gondolkodó modell 4-et teljesített, a 7B-s kódmodell mind a
+négy bukása `format_invalid/text_tool_call` besorolást kapott.
 Az 5b-re nyitott: FA-08 (a feladatkészlettel), FA-37, FA-39, FA-40, a FA-42 számolt időkorlátja, FA-43, FA-44, FA-46, FA-47.
 
 **Feladatkészlet (5b), 20 feladat:** közvetlen, egy tool (2); toolválasztás közeli csalik között, köztük egy romboló
