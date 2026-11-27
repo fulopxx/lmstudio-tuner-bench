@@ -161,6 +161,9 @@ the tasks; a chain length counts as reliable at 80 % or more. Full report: `benc
 | `qwen2.5-coder-7b-instruct` | 36/200 | 18 % (13–24 %) | 0.15 | 14 | 0 |
 
 - The intervals of the first three models overlap: this set does not rank them.
+- The Wilson interval treats the 200 attempts as independent, so it shows only the variation between repeats on
+  these 20 tasks. Attempts on the same task are strongly related; resampling the tasks gives about twice as wide
+  intervals (85–100 % instead of 90–97 % for the first model).
 - `qwen3-8b` never finished one of the four-step chains (0/10); every model mostly reported a transient tool error to
   the user instead of retrying it.
 - `qwen2.5-coder-7b-instruct` failed 164 attempts, 149 of them because it wrote the tool call as plain text, so the

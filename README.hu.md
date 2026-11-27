@@ -167,6 +167,9 @@ teljes riport: `bench agent report`.
 | `qwen2.5-coder-7b-instruct` | 36/200 | 18% (13–24%) | 0,15 | 14 | 0 |
 
 - Az első három modell intervalluma átfed: ez a készlet nem rangsorolja őket.
+- A Wilson-intervallum függetlennek veszi a 200 próbálkozást, ezért csak az ismétlések közti szórást mutatja ezen a
+  20 feladaton. Az ugyanazon feladaton tett próbálkozások erősen összefüggenek; a feladatok újramintavételezése kb.
+  kétszer szélesebb intervallumot ad (az első modellnél 90–97% helyett 85–100%).
 - A `qwen3-8b` az egyik négylépéses láncot egyszer sem fejezte be (0/10); egy átmeneti tool-hibát mindegyik modell
   többnyire jelzett a felhasználónak ahelyett, hogy újrapróbálta volna.
 - A `qwen2.5-coder-7b-instruct` 164 bukásából 149-ben sima szövegként írta ki a tool-hívást, így nála a készlet főleg

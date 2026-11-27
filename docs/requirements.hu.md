@@ -444,3 +444,20 @@ A "Ma" oszlop a jelenlegi sweep futtatót írja le.
 
 A terhelésprofilok a rögzített feladatkészlettől (20. feladat) függnek. A fejlesztői gép 8 GB-os GPU-ja kevés helyet
 hagy egy draft modellnek; először a tartalékkal beférő modellek jönnek.
+
+## 6. Feladatkészletek (tervezett, a 6. feladathoz)
+
+Rögzítve 2026-11-27-én, a minőségcsomagok tervezése előtt. Egy riport csak a lefuttatott feladatkészletre tehet
+állítást („ezen a készleten A többet teljesített”), egy egész területre nem.
+
+| Azonosító | Követelmény | Indok | Ellenőrzés |
+|---|---|---|---|
+| TS-01 | Minden feladatfájlnak leírót kell tartalmaznia a következő mezőkkel: azonosító, verzió, cél, amit a készlet nem mér, szükséges toolok, szükséges modellképességek, ellenőrzés módja (determinisztikus vagy bíró), feladatok száma, becsült idő próbálkozásonként | Az állítások köre és a futásidő futás előtt ismert kell legyen; a képesség szerinti szűréshez (5. feladat) kellenek a képességek | teszt |
+| TS-02 | Ha egy feladatfájl leírója hiányos, a core-nak el kell utasítania, a hiányzó mezők nevével | A kimondott hatókör nélküli készlet olyan állításokra csábít, amelyeket nem támaszt alá | teszt |
+| TS-03 | A riportban minden sikerarány mellett szerepelnie kell a feladatkészlet azonosítójának és verziójának | Különböző készletek vagy verziók eredményei nem összehasonlíthatók | teszt |
+| TS-04 | Ha több feladatkészlet eredményét egy pontszámmá vonjuk össze, a core-nak fájlból olvasott súlyokat kell használnia; ilyen súlyok nélkül a riport nem mutathat összevont pontszámot | A kimondatlan egyenlő súlyozás elrejt egy döntést | teszt |
+| TS-05 | A riportnak fel kell sorolnia azokat a feladatokat, amelyeket minden mért modell minden próbálkozásban teljesített | Az ilyen feladatok nem választják szét a modelleket, cserére jelöltek | teszt |
+| TS-06 | Ha a felhasználó egy vagy több felhasználási célt megad, a CLI-nek azokat a feladatkészleteket kell kiválasztania, amelyek leírója ezek közül legalább egyet felsorol | A felhasználó cél szerint választ, nem fájlnév szerint | teszt |
+
+Nyitott: a 3D-tervezési és a kiberbiztonsági készletekhez saját toolok, sandbox és ellenőrzők kellenek (pl.
+mesh-érvényesség, izolált célkörnyezet); a shell sandbox döntése még nyitott (3. pont).

@@ -5,7 +5,7 @@
 Last updated: 2026-11-27. Goal: tune and compare downloaded local models on your own hardware, for your own use cases,
 using LM Studio.
 
-Related documents: [requirements](requirements.md) (interface, testing, agent harness, speculative decoding, bias investigation) and
+Related documents: [requirements](requirements.md) (interface, testing, agent harness, speculative decoding, bias investigation, task sets) and
 [measurement findings](findings.md).
 
 ## 1. Tasks
@@ -40,6 +40,8 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 24 | Speculative decoding as an optimization dimension: draft model and MTP compared with speculation off, per task type (see [requirements](requirements.md), section 5) | 🔵 in progress (phase 0 done; phase 1 open) |
 | 25 | Requirement traceability: tests name the requirement IDs they cover; a script builds the matrix (requirement → tests → offline, live, not covered) and fails on unknown IDs or on IDs that differ between the languages | ⚪ open |
 | 26 | Requirement quality: review the existing requirements against the writing rules of the [requirements](requirements.md) and add the verification column | ⚪ open |
+| 27 | Statistical comparison of models: task-level intervals (bootstrap over tasks), paired per-task differences with a "practically equivalent" result, `pass@k`, and a "run more?" advisor that estimates the run time and says whether more repeats or more tasks would narrow the result. The Wilson interval treats attempts as independent; on the ten-repeat M1 run the task-level intervals were about twice as wide (2026-11-27, [findings](findings.md)) | ⚪ open (after the public release) |
+| 28 | Read-only MCP server over the measurement results: a thin layer over the core, every tool matching a CLI command; stdio transport first, tried with the MCP Inspector. The SDK version is checked before adoption and installed by the owner with a pinned version. Mock tools served over MCP belong to task 7 | ⚪ open (after the public release) |
 | K | **Separate task:** porting agent skills (e.g. session export) so that they work compatibly in LM Studio | ⚪ open (not examined yet) |
 
 ### Planned improvements

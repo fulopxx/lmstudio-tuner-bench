@@ -47,3 +47,8 @@ Same machine, 20 tasks, five attempts each, sampling per model card; details in 
 - Ten repeats (same day, 800 attempts) confirmed the picture: 90 to 94 % for the three models that call tools, with
   overlapping intervals; the review found three more rule gaps. One 8B reasoning model failed the same four-step
   chain in all ten attempts, so a single task can separate models whose overall rates do not differ.
+- Attempts on the same task are strongly related, so a Wilson interval over all attempts is too narrow for a
+  statement about the models. A bootstrap over the 20 tasks (offline, from the ten-repeat report) gave 85–100 %
+  instead of 90–97 %, 84–100 % instead of 89–96 % and 75–100 % instead of 85–93 % for the three models that call
+  tools; the paired per-task difference between the best and the third was −2 to +16 points. More repeats hardly
+  narrow such an interval; more tasks do.

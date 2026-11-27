@@ -6,7 +6,7 @@ Utolsó frissítés: 2026-11-27. Cél: a letöltött helyi modellek optimalizál
 a saját felhasználási esetekre, LM Studióval.
 
 Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesztelés, agent harness, speculative decoding,
-bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
+bias-vizsgálat, feladatkészletek) és [mérési megállapítások](findings.hu.md).
 
 ## 1. Feladatok
 
@@ -40,6 +40,8 @@ bias-vizsgálat) és [mérési megállapítások](findings.hu.md).
 | 24 | Speculative decoding mint optimalizálási dimenzió: draft modell és MTP a kikapcsolt spekulációval összevetve, feladattípusonként (lásd [követelmények](requirements.hu.md), 5. pont) | 🔵 folyamatban (a 0. fázis kész; az 1. fázis nyitott) |
 | 25 | Követelmény-traceability: a tesztek megnevezik az általuk lefedett követelmény-azonosítókat; egy script elkészíti a mátrixot (követelmény → tesztek → offline, élő, nem lefedett), és hibát jelez ismeretlen vagy a két nyelvben eltérő azonosítónál | ⚪ nyitott |
 | 26 | Követelményminőség: a meglévő követelmények átnézése a [követelmények](requirements.hu.md) írási szabályai szerint, az ellenőrzés oszlop felvétele | ⚪ nyitott |
+| 27 | Modellek statisztikai összehasonlítása: feladatszintű intervallumok (bootstrap a feladatokon), feladatonként párosított különbség „gyakorlatilag egyenértékű” kimenettel, `pass@k`, és egy „futassunk még?” tanácsadó, amely megbecsüli a futásidőt, és megmondja, hogy több ismétlés vagy több feladat szűkítené-e az eredményt. A Wilson-intervallum függetlennek veszi a próbálkozásokat; a tíz ismétléses M1 futáson a feladatszintű intervallumok kb. kétszer szélesebbek voltak (2026-11-27, [megállapítások](findings.hu.md)) | ⚪ nyitott (a publikálás után) |
+| 28 | Csak olvasó MCP szerver a mérési eredményekhez: vékony réteg a core felett, minden tool egy CLI-parancsnak felel meg; először stdio transport, MCP Inspectorral kipróbálva. Az SDK verzióját felvétel előtt ellenőrizzük, a tulajdonos telepíti rögzített verzióval. Az MCP-n kiszolgált mock toolok a 7. feladathoz tartoznak | ⚪ nyitott (a publikálás után) |
 | K | **Külön feladat:** agent skillek (pl. session-export) átvitele úgy, hogy LM Studióban kompatibilisen működjenek | ⚪ nyitott (még nem vizsgált) |
 
 ### Tervezett fejlesztések

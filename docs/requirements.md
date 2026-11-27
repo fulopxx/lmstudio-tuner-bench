@@ -427,3 +427,20 @@ draft tokens (model cards suggest 2 to 6), a compatibility check for draft pairs
 
 Depends on the fixed task set (task 20) for the workload profiles. The 8 GB development GPU leaves little room for a
 draft model; models that fit with headroom come first.
+
+## 6. Task sets (planned, for task 6)
+
+Recorded on 2026-11-27 before the quality suites are designed. A report may only make claims about the task set it ran
+("on this set A passed more"), not about a whole domain.
+
+| ID | Requirement | Reason | Verification |
+|---|---|---|---|
+| TS-01 | Every task file must carry a descriptor with these fields: identifier, version, purpose, what the set does not measure, required tools, required model capabilities, check method (deterministic or judge), number of tasks, estimated time per attempt | Claims and run time must be known before a run; capability filtering (task 5) needs the capabilities | test |
+| TS-02 | When a task file has no complete descriptor, the core must reject it with the names of the missing fields | A set without a stated scope invites claims it cannot support | test |
+| TS-03 | Every pass rate in a report must be shown with the identifier and version of its task set | Results of different sets or versions are not comparable | test |
+| TS-04 | When the results of several task sets are combined into one score, the core must use weights read from a file; without such weights the report must not show a combined score | An implicit equal weighting hides a choice | test |
+| TS-05 | The report must list the tasks that every measured model passed in every attempt | Such tasks do not separate models and are candidates for replacement | test |
+| TS-06 | When the user names one or more use cases, the CLI must select the task sets whose descriptor lists one of them | Users choose by purpose, not by file name | test |
+
+Open: sets for 3D design and cybersecurity need their own tools, sandbox and checks (for example mesh validity, an
+isolated target environment); the shell sandbox decision is still open (section 3).

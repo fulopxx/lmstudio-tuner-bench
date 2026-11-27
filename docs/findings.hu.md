@@ -49,3 +49,8 @@ Ugyanaz a gép, 20 feladat, mindegyik öt próbálkozással, mintavétel a model
   intervallumokkal; az átnézés további három szabályrést talált. Egy 8B-s gondolkodó modell ugyanazt a négylépéses
   láncot mind a tíz próbálkozásban elbukta, vagyis egyetlen feladat is szétválaszthat olyan modelleket, amelyek
   összesített aránya nem különbözik.
+- Az ugyanazon feladaton tett próbálkozások erősen összefüggenek, ezért az összes próbálkozásra számolt
+  Wilson-intervallum túl szűk a modellekre vonatkozó állításhoz. A 20 feladaton végzett bootstrap (offline, a tíz
+  ismétléses riportból) a toolt hívó három modellre 90–97% helyett 85–100%-ot, 89–96% helyett 84–100%-ot és 85–93%
+  helyett 75–100%-ot adott; a legjobb és a harmadik feladatonként párosított különbsége −2 és +16 pont között volt.
+  Több ismétlés alig szűkíti az ilyen intervallumot, több feladat igen.
