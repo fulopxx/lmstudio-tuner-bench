@@ -144,6 +144,19 @@ def select(where, keys=None, reg=None):
     return chosen
 
 
+def list_models(where=None, new_days=None, refresh_first=False):
+    """`bench models list` as data: the registry entries (own tags merged in) that match `where` and, if `new_days` is
+    given, were first seen within that many days; with refresh_first the registry is updated before."""
+    refreshed = refresh() if refresh_first else None
+    reg = registry()
+    keys = select(where, None, reg) if where else sorted(reg)
+    if new_days is not None:
+        fresh = set(new_models(new_days))
+        keys = [k for k in keys if k in fresh]
+    return {"refreshed": refreshed, "where": where, "new_days": new_days,
+            "models": [{"key": k, **reg[k]} for k in keys]}
+
+
 def select_fresh(where, keys=None):
     """select() after a refresh, so a run chooses from the installed models; when LM Studio cannot be asked, the
     stored registry is used and a warning goes to the progress sink."""

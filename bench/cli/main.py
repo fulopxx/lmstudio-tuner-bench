@@ -323,6 +323,16 @@ def size_gb(n):
     return f"{n / 1e9:.1f}" if isinstance(n, (int, float)) else "-"
 
 
+def print_refresh(r):
+    print(f"{r['count']} models in the registry")
+    if r["first_snapshot"]:
+        print("first snapshot: these models are the baseline; later downloads are marked new")
+    for key in r["appeared"]:
+        print(f"  new:  {key}")
+    for key in r["disappeared"]:
+        print(f"  gone: {key}")
+
+
 def models_main(argv):
     ap = argparse.ArgumentParser(prog="bench models")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -334,29 +344,19 @@ def models_main(argv):
     lst.add_argument("--refresh", action="store_true", help="update the registry first")
     a = ap.parse_args(argv)
     try:
-        if a.cmd == "refresh" or a.refresh:
-            r = registry.refresh()
-            print(f"{r['count']} models in the registry")
-            if r["first_snapshot"]:
-                print("first snapshot: these models are the baseline; later downloads are marked new")
-            for key in r["appeared"]:
-                print(f"  new:  {key}")
-            for key in r["disappeared"]:
-                print(f"  gone: {key}")
-            if a.cmd == "refresh":
-                return 0
-        reg = registry.registry()
-        keys = registry.select(a.where, None, reg) if a.where else sorted(reg)
-        if a.new is not None:
-            fresh = set(registry.new_models(a.new))
-            keys = [k for k in keys if k in fresh]
-            if not keys:
-                print(f"no models first seen within {a.new} days")
-                return 0
+        if a.cmd == "refresh":
+            print_refresh(registry.refresh())
+            return 0
+        result = registry.list_models(a.where, a.new, a.refresh)
+        if result["refreshed"]:
+            print_refresh(result["refreshed"])
+        if a.new is not None and not result["models"]:
+            print(f"no models first seen within {a.new} days")
+            return 0
         print(f"{'model':<44} {'params':>7} {'quant':<8} {'max ctx':>8} {'GB':>5}  tags")
-        hidden = set(registry.FIELDS) | set(registry.DATES) | {"new"}
-        for key in keys:
-            f = reg[key]
+        hidden = set(registry.FIELDS) | set(registry.DATES) | {"new", "key"}
+        for f in result["models"]:
+            key = f["key"]
             own = [k for k, v in f.items() if k not in hidden and v is True]
             flags = [n for n in ("vision", "tool_use") if f.get(n)] + own
             if f.get("new"):
@@ -365,7 +365,7 @@ def models_main(argv):
                 flags.insert(0, f["type"])
             print(f"{key[:44]:<44} {str(f.get('params') or '-'):>7} {str(f.get('quantization') or '-'):<8} "
                   f"{str(f.get('max_context') or '-'):>8} {size_gb(f.get('size_bytes')):>5}  {', '.join(flags)}")
-        print(f"{len(keys)} model(s)")
+        print(f"{len(result['models'])} model(s)")
         return 0
     except CoreError as e:
         print(e)
