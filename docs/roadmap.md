@@ -26,7 +26,7 @@ Status: ✅ **done** (verified by running), 🟡 **partial**, 🔵 **in progress
 | 10 | Narrowly scoped frontier-model grading in the final round | ⚪ open (decision pending) |
 | 11 | Web UI and dashboard; a simple Excel evaluation sheet with Excel charts | ⚪ open |
 | 12 | Show and measure the browser's GPU usage | ⚪ open |
-| 13 | Project shareable on git | 🟡 partial (not released yet) |
+| 13 | Project shareable on git | ✅ done (public on GitHub since 2026-11-27) |
 | 14 | Secondary NiceGUI control panel | ⚪ open, low priority |
 | 15 | Bilingual (English primary, Hungarian) documentation and UI with language switching | 🟡 partial (documents done, no UI yet) |
 | 16 | Agent harness: a small tool loop (files, search, git, shell) in a sandbox, with interruption, recovery and context handling (see [requirements](requirements.md), section 3) | 🟡 partial (M1 harness: file read and mock tools, limits, stop, trace; search, git, shell, recovery and context handling open) |
@@ -62,7 +62,7 @@ M1 comes first: one thin slice that works end to end. The A–L table below appl
 |---|---|---|
 | 1 | SDK trial on the installed LM Studio (task 18) | ✅ done |
 | 2 | Clean sweep, evaluation, recommended settings per model | ✅ done |
-| 3 | Repository preparation, license, public release | 🔵 in progress |
+| 3 | Repository preparation, license, public release | ✅ done (2026-11-27: checks for secrets, personal data and paths including the git history, install from a fresh clone, public repository; release tag pending) |
 | 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | ✅ done (2026-11-26: `bench agent run`, 4/4 example tasks live on one model; Ctrl+C stop tested offline only) |
 | 5 | 10–20 fixed tasks, repeated runs, failure category report | ✅ done (2026-11-27: task set, report, live runs with 4 models × 20 tasks × 5 and × 10, manual review of the failures, taxonomy v2) |
 | 6 | Result table in the README | ✅ done (2026-11-27, ten-repeat M1 run) |
@@ -74,7 +74,7 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 | Step | Content | Status |
 |---|---|---|
 | A | Evaluate the trial sweep, final round | ✅ done (trial and clean sweeps evaluated) |
-| B | Repository preparation, English and Hungarian documents | 🟡 partial (bilingual documents done; public release pending) |
+| B | Repository preparation, English and Hungarian documents | ✅ done (bilingual documents; public since 2026-11-27) |
 | C | Split core and CLI, versioned result format, model registry | ⚪ open |
 | D | Finalize `docs/architecture.md`: data formats, control interface | 🟡 partial (draft exists) |
 | E | HTML dashboard and Excel export (after D) | ⚪ open |

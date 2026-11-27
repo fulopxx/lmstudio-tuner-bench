@@ -26,7 +26,7 @@ bias-vizsgálat, feladatkészletek) és [mérési megállapítások](findings.hu
 | 10 | Szűk körű frontier pontozás a döntő körben | ⚪ nyitott (döntés függőben) |
 | 11 | Webes felület és dashboard; egyszerű Excel-értékelő táblázat Excel-grafikonokkal | ⚪ nyitott |
 | 12 | Böngésző GPU-használatának jelzése és mérése | ⚪ nyitott |
-| 13 | Gitre megosztható projekt | 🟡 részben (még nincs kiadva) |
+| 13 | Gitre megosztható projekt | ✅ kész (2026-11-27 óta publikus a GitHubon) |
 | 14 | Másodlagos NiceGUI irányítófelület | ⚪ nyitott, alacsony prioritás |
 | 15 | Kétnyelvű (angol elsődleges, magyar) dokumentáció és felület nyelvváltással | 🟡 részben (dokumentumok kész, felület nincs) |
 | 16 | Agent harness: kis tool loop (fájl, keresés, git, shell) sandboxban, megszakítással, helyreállítással és kontextuskezeléssel (lásd [követelmények](requirements.hu.md), 3. pont) | 🟡 részben (M1 harness: fájlolvasás és mock toolok, korlátok, leállítás, trace; keresés, git, shell, helyreállítás és kontextuskezelés nyitott) |
@@ -62,7 +62,7 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 |---|---|---|
 | 1 | SDK-próba a telepített LM Studión (18. feladat) | ✅ kész |
 | 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | ✅ kész |
-| 3 | Repó előkészítése, licenc, publikus kiadás | 🔵 folyamatban |
+| 3 | Repó előkészítése, licenc, publikus kiadás | ✅ kész (2026-11-27: titkok, személyes adatok és útvonalak ellenőrzése a git-előzménnyel együtt, telepítés friss klónból, publikus repó; a kiadási tag hátravan) |
 | 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | ✅ kész (2026-11-26: `bench agent run`, élőben 4/4 példafeladat egy modellen; a Ctrl+C leállítás csak offline tesztelve) |
 | 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | ✅ kész (2026-11-27: feladatkészlet, riport, élő futások 4 modell × 20 feladat × 5 és × 10, a bukások kézi átnézése, 2. verziós taxonómia) |
 | 6 | Eredménytábla a README-ben | ✅ kész (2026-11-27, tíz ismétléses M1 futás) |
@@ -74,7 +74,7 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 | Lépés | Tartalom | Állapot |
 |---|---|---|
 | A | Próbasweep kiértékelése, döntő kör | ✅ kész (a próbasweep és a tiszta sweepek kiértékelve) |
-| B | Repó előkészítése, dokumentumok angol és magyar változata | 🟡 részben (kétnyelvű dokumentumok készek; a publikus kiadás hátravan) |
+| B | Repó előkészítése, dokumentumok angol és magyar változata | ✅ kész (kétnyelvű dokumentumok; 2026-11-27 óta publikus) |
 | C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | ⚪ nyitott |
 | D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | 🟡 részben (vázlat kész) |
 | E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
