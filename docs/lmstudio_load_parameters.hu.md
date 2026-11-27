@@ -45,8 +45,8 @@ mért futás. A LM Studio per-modell config fájljai **nem** módosultak (bájtr
 | cpu-t2 | GPU ki, 4k, `--threads 2` | 308 MiB | 9,9 |
 | cpu-t8 | GPU ki, 4k, `--threads 8` | 115 MiB | 15,5 |
 
-- A `gpu.ratio`, a `llamaKCacheQuantizationType` és a `llamaVCacheQuantizationType` érvényesül; az értékek egyeznek a
-  3. pontban lévő, config fájlos mérésekkel.
+- A `gpu.ratio`, a `llamaKCacheQuantizationType` és a `llamaVCacheQuantizationType` érvényesül; az értékek egyeznek a 3.
+  pontban lévő, config fájlos mérésekkel.
 - CPU-szálak: a load configban nincs külön mező, de a `llamaCppArgumentsOverride` `--threads` paramétere érvényesül (a
   decode-sebesség ugyanúgy eltér, mint a config fájllal).
 - Az explicit értékek felülírták a mentett per-modell alapértékeket (mentve: KV-kvantálás ki, 6 szál). A UI-ban
@@ -70,8 +70,8 @@ A load configban experimental mezők vannak a speculative decodinghoz (`speculat
 `speculativeDraftModel`, valamint draft hossz- és valószínűségi korlátok). A sweep explicit kikapcsolja a spekulációt,
 és ez a visszaolvasásban látszik. Draft modellel és MTP-vel 2026-11-26-án próbáltunk loadot (`harness/spec-probe.ts`):
 a mezők érvényesülnek és visszaolvashatók, egy későbbi load nélkülük kikapcsolt állapotot kap, a predikciónkénti
-`draftModel`-t a motor elutasítja (a spekulációt a loadnál kell beállítani). Eredmények: `docs/requirements.hu.md`,
-5. pont.
+`draftModel`-t a motor elutasítja (a spekulációt a loadnál kell beállítani). Eredmények: `docs/requirements.hu.md`, 5.
+pont.
 
 ### A betöltött modell élettartama
 

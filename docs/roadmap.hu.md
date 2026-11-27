@@ -89,7 +89,7 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 Az E–F és a G–J párhuzamosan haladhat. A webes felület **tervezése** (nézetek, drótváz) kód nélkül korábban is
 elkezdhető.
 
-24. feladat (speculative decoding): a rövid próba (0. fázis) az M1 4. lépése előtt, a beépítés az M1 után, a C
+A 24. feladat (speculative decoding): a rövid próba (0. fázis) az M1 4. lépése előtt, a beépítés az M1 után, a C
 lépéssel együtt.
 
 ## 3. Döntések

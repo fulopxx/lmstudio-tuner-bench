@@ -275,7 +275,7 @@ osztály), az ellenintézkedések automatikus kiválasztása, a 14B-s modell kö
 
 ## 4. Vizsgálat: biased-e egy modell?
 
-23. feladat. Állapot: nem vizsgált; az alábbiakból ebben a projektben semmit nem reprodukáltunk.
+A 23. feladat. Állapot: nem vizsgált; az alábbiakból ebben a projektben semmit nem reprodukáltunk.
 
 **Kérdés.** Másként viselkedik-e egy modell, ha csak egy olyan részlet változik, amelynek nem kellene számítania?
 Milyen tényezők váltják ezt ki, és hogyan tér el modellek, modellcsaládok, illetve eredeti és módosított
@@ -337,7 +337,7 @@ tesztelés korrekcióját. A blogbejegyzés nem linkeli a vizsgálat promptjait,
 
 ## 5. Speculative decoding
 
-24. feladat. A 0. fázis (próba) 2026-11-26-án kész; az 1. fázis nyitott (a feladat státusza a roadmapben).
+A 24. feladat. A 0. fázis (próba) 2026-11-26-án kész; az 1. fázis nyitott (a feladat státusza a roadmapben).
 
 **Cél.** A speculative decoding önálló optimalizálási dimenzió: modellenként és feladattípusonként mérjük a gyorsulást
 és az erőforrásárat ugyanazon konfiguráció kikapcsolt spekulációs változatához képest, majd beállítást ajánlunk, amely

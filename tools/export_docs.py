@@ -90,9 +90,11 @@ def inline(text):
 
 def cell(text, header):
     if header.strip().lower() in STATUS_HEADERS:
-        text = text.lstrip(STATUS_ICONS)  # the Markdown shows an icon; the PDF shows a coloured badge instead
+        # a task status ("✅ done (...)") becomes a coloured badge; any other cell of such a column, for example the
+        # requirement state ("✅" or "🧪 note"), keeps its icon
+        bare = text.lstrip(STATUS_ICONS)
         for word, cls in STATES.items():
-            m = re.match(rf"{word}\b(.*)", text)
+            m = re.match(rf"{word}\b(.*)", bare)
             if m:
                 return f'<span class="badge {cls}">{word}</span>{inline(m.group(1))}'
     return inline(text)
