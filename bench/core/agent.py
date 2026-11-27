@@ -35,6 +35,7 @@ TASKS_SCHEMA_VERSION = 2  # the task file (FA-12)
 SPEC_SCHEMA_VERSION = 2  # the run spec sent to the harness
 SAMPLING_FILE = ROOT / "configs" / "sampling.json"
 STOP_GRACE_S = 20  # after a stop command, the harness gets this long before it is killed
+USER_STOP = threading.Event()  # set when the user stops the run: the harness is stopped, no further model starts
 BUILTIN_TOOLS = ("read_file",)
 CHECK_KEYS = ("answer_contains", "answer_contains_any", "answer_not_contains", "tool_called", "tool_not_called",
               "mentions_failure")
@@ -252,6 +253,7 @@ def run_harness(spec, timeout_s):
                 log("harness did not stop in time: killing it")
                 p.kill()
     except KeyboardInterrupt:
+        USER_STOP.set()
         log("Ctrl+C: asking the harness to stop (again to kill it)")
         send_stop(p)
         try:
@@ -375,6 +377,7 @@ def run_tasks(a, on_model_done=None):
         if not models:
             raise StepError("fail", "--model, --models or --where is required (or --scripted for an offline run)")
     run_id = runstate.new_run_id()
+    USER_STOP.clear()
     gpu = not a.scripted  # IF-13: a scripted run uses no GPU, so it does not take the lock
     if gpu:
         runstate.acquire(run_id, "agent")
@@ -409,9 +412,12 @@ def _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done
     by_id = {t["id"]: t for t in tasks}
     results_file = ROOT / "results" / f"agent_{run_id}.jsonl"
     fingerprint = machine.fingerprint()
-    all_rows, stopped = [], False
+    all_rows = []
     status.update(state="running", phase="running")
     for n, model in enumerate(models, 1):
+        if USER_STOP.is_set():
+            log(f"stopped by the user: {len(models) - n + 1} model(s) not started")
+            break
         status.update(current={"n": n, "model": model}, job_started=time.time())
         try:
             attempts, summary, meta = run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s)
@@ -439,11 +445,10 @@ def _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done
             sweep.append_row(results_file, row)
             rows.append(row)
         model_stopped = summary.get("stopped") if summary else True
-        stopped = stopped or bool(model_stopped)
         if on_model_done:
             on_model_done(model, rows, model_stopped)
         all_rows += rows
-    return {"run": run_id, "results_file": results_file, "rows": all_rows, "stopped": stopped}
+    return {"run": run_id, "results_file": results_file, "rows": all_rows, "stopped": USER_STOP.is_set()}
 
 
 # ---------------------------------------------------------------- report and show

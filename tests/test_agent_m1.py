@@ -186,6 +186,26 @@ class MultiModelTest(unittest.TestCase):
         finally:
             cleanup(run_id)
 
+    def test_no_further_model_starts_after_the_user_stopped_the_run(self):
+        calls = []
+
+        def fake_run_model(a, model, *rest):
+            calls.append(model)
+            agent.USER_STOP.set()  # as run_harness does on Ctrl+C
+            return [], {"attempts": [], "stopped": True}, {"model": model}
+
+        out = io.StringIO()
+        with mock.patch.object(agent, "run_model", fake_run_model),                 mock.patch.object(agent, "harness_problem", lambda: None), redirect_stdout(out):
+            code = cli.main(["agent", "run", "--tasks", str(TASKS), "--models", "first,second"])
+        run_id = next(ln for ln in out.getvalue().splitlines() if ln.startswith("results: ")).rsplit("agent_", 1)[1][:-6]
+        try:
+            self.assertEqual(code, 0)
+            self.assertEqual(calls, ["first"])
+            self.assertIn("1 model(s) not started", out.getvalue())
+            self.assertEqual(runstate.read_status(run_id)["state"], "stopped")
+        finally:
+            cleanup(run_id)
+
 
 @unittest.skipIf(agent.harness_problem(), f"agent harness: {agent.harness_problem()}")
 class CoreIsSilentTest(unittest.TestCase):
