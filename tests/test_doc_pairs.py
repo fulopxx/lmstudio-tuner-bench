@@ -1,4 +1,4 @@
-"""The English and Hungarian versions of every public document must have the same structure.
+"""The English and Hungarian versions of every document must have the same structure.
 
 Compared per pair: heading levels, table sizes, list items, requirement and decision ids, status icons, images and
 dates. A Hungarian line must not start with an ordinal ("23. feladat"), because Markdown would read it as a numbered
@@ -18,10 +18,13 @@ ORDINAL_LINE = re.compile(r"^\s*\d+\. [a-záéíóöőúüű]")
 
 
 def pairs():
+    """README, docs/ and the extra folders of the untracked export settings (the same documents as the PDF export;
+    without that file only the public documents are checked)."""
     found = [(ROOT / "README.md", ROOT / "README.hu.md")]
-    for en in sorted((ROOT / "docs").glob("*.md")):
-        if not en.name.endswith(".hu.md"):
-            found.append((en, en.with_name(en.name[:-3] + ".hu.md")))
+    for folder in ["docs", *export_docs.extra_folders()]:
+        for en in sorted((ROOT / folder).glob("*.md")):
+            if not en.name.endswith(".hu.md"):
+                found.append((en, en.with_name(en.name[:-3] + ".hu.md")))
     return found
 
 
