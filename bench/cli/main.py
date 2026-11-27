@@ -12,12 +12,17 @@
   bench models refresh | list [--new] [--refresh] [--where]   the model registry (installed models, capability tags)
 
 Exit codes of run and resume: 0 done or stopped by the user, 3 aborted, 2 unusable arguments.
+
+--json (IF-01): every command that gives a result prints exactly one JSON document on standard output: the data of the
+core function with `schema_version` at the top level, or {"schema_version": 1, "error": {"message", "code"}} with the
+same exit code as without --json. Progress lines then go to standard error.
 """
 import argparse
 import json
 import os
 import sys
 import time
+from pathlib import Path
 
 from bench.core import agent, progress, sweep
 from bench.core import models as registry
@@ -25,8 +30,40 @@ from bench.core.progress import CoreError
 from bench.core.smoke import StepError
 
 
+JSON_SCHEMA_VERSION = 1  # format of the --json output; part of every document
+
+
 def say(text):
     print(text, flush=True)
+
+
+def _plain(value):
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, (set, tuple)):
+        return list(value)
+    raise TypeError(f"not JSON serializable: {type(value).__name__}")
+
+
+def to_json(data):
+    return json.dumps({"schema_version": JSON_SCHEMA_VERSION, **data}, ensure_ascii=False, indent=1, default=_plain)
+
+
+def out_json(data, code=0):
+    print(to_json(data), flush=True)
+    return code
+
+
+def error_json(message, code):
+    return out_json({"error": {"message": str(message), "code": code}}, code)
+
+
+def json_mode(a):
+    """With --json the progress lines go to standard error, so standard output holds only the JSON document."""
+    if getattr(a, "json", False):
+        progress.set_sink(lambda text: print(text, file=sys.stderr, flush=True))
+        return True
+    return False
 
 
 def fmt_dur(s):
@@ -105,6 +142,11 @@ def request_lines(st):
 
 
 def cmd_run(a):
+    if a.json:
+        if a.dry_run:
+            return out_json(sweep.plan_run(a.grid, a.models, a.where))
+        result = sweep.start_run(a.grid, a.models, {k: getattr(a, k) for k in sweep.RUN_OPTIONS}, a.where)
+        return out_json(result, result["exit_code"])
     say(sweep.stamp(f"grid: {a.grid}"))
     if a.dry_run:
         plan = sweep.plan_run(a.grid, a.models, a.where)
@@ -119,12 +161,19 @@ def cmd_run(a):
 
 def cmd_resume(a):
     result = sweep.resume_run(a.run, a.from_job, a.redo_failed, a.allow_env_change)
+    if a.json:
+        return out_json(result, result["exit_code"])
     if result["message"]:
         say(sweep.stamp(result["message"]))
     return result["exit_code"]
 
 
 def cmd_status(a):
+    if a.json:
+        if a.watch:
+            raise CoreError("--watch cannot be combined with --json (one JSON document per call); call status --json "
+                            "repeatedly instead")
+        return out_json(sweep.run_status(a.jobs))
     try:
         finished_reads = 0
         while True:
@@ -144,8 +193,12 @@ def cmd_control(a):
     try:
         result = sweep.request_control(a.cmd, a.now)
     except CoreError as e:
+        if a.json:
+            return error_json(e, e.code)
         print(e)
         return e.code
+    if a.json:
+        return out_json(result)
     if result["kind"] == "agent":
         print(f"stop requested for agent run {result['run']}: the current attempt stops, no further model starts")
     else:
@@ -155,6 +208,8 @@ def cmd_control(a):
 
 def cmd_evaluate(a):
     result = sweep.evaluate_run(a.run, a.in_tokens, a.out_tokens)
+    if a.json:
+        return out_json(result)
     text = result["text"]
     print(text.split("\n## ", 2)[0])
     print("## " + text.split("\n## ", 2)[1])
@@ -195,7 +250,14 @@ def sweep_parser():
     e.add_argument("--run")
     e.add_argument("--in-tokens", type=int, default=2000)
     e.add_argument("--out-tokens", type=int, default=500)
+    add_json(sub)
     return ap
+
+
+def add_json(sub):
+    """IF-01: every subcommand gives a result, so every one accepts --json."""
+    for parser in sub.choices.values():
+        parser.add_argument("--json", action="store_true", help="print the result as one JSON document (IF-01)")
 
 
 # ---------------------------------------------------------------- agent commands
@@ -243,6 +305,8 @@ def print_summary(model, rows, stopped):
 
 
 def agent_run(a):
+    if a.json:
+        return out_json(agent.run_tasks(a))
     result = agent.run_tasks(a, on_model_done=print_summary)
     say(f"results: {result['results_file']}")
     say(f"report:  bench agent report --run {result['run']}")
@@ -251,6 +315,8 @@ def agent_run(a):
 
 def agent_report(a):
     result = agent.report(a.run, a.tasks, a.k, a.reliable)
+    if a.json:
+        return out_json(result)
     print(result["text"].split("\n## Pass rate per task", 1)[0])
     say(f"full report: {result['path']} (and .json)")
     return 0
@@ -258,6 +324,8 @@ def agent_report(a):
 
 def agent_show(a):
     result = agent.show_attempt(a.run, a.attempt, a.model)
+    if a.json:
+        return out_json(result)
     row = result["row"]
     verdict = "passed" if row.get("passed") else (f"failed: {row.get('primary')}" +
                                                   (f"/{row.get('subcode')}" if row.get("subcode") else "") +
@@ -303,17 +371,23 @@ def agent_parser():
     s.add_argument("run", help="run id")
     s.add_argument("attempt", help="<task>-<number>, e.g. chain-3a-2")
     s.add_argument("--model", help="model key, when the run has several models")
+    add_json(sub)
     return ap
 
 
 def agent_main(argv):
     a = agent_parser().parse_args(argv)
+    json_mode(a)
     try:
         return {"run": agent_run, "report": agent_report, "show": agent_show}[a.cmd](a)
     except StepError as e:
+        if a.json:
+            return error_json(e, 3)
         say(f"agent {a.cmd} failed: {e}")
         return 3
     except CoreError as e:
+        if a.json:
+            return error_json(e, e.code)
         say(f"agent {a.cmd}: {e}")
         return e.code
 
@@ -333,7 +407,7 @@ def print_refresh(r):
         print(f"  gone: {key}")
 
 
-def models_main(argv):
+def models_parser():
     ap = argparse.ArgumentParser(prog="bench models")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("refresh", help="update the registry from the installed models (`lms ls`)")
@@ -342,12 +416,23 @@ def models_main(argv):
     lst.add_argument("--new", nargs="?", type=int, const=registry.NEW_DAYS, metavar="DAYS",
                      help=f"only models first seen within DAYS days (default {registry.NEW_DAYS})")
     lst.add_argument("--refresh", action="store_true", help="update the registry first")
-    a = ap.parse_args(argv)
+    add_json(sub)
+    return ap
+
+
+def models_main(argv):
+    a = models_parser().parse_args(argv)
+    json_mode(a)
     try:
         if a.cmd == "refresh":
-            print_refresh(registry.refresh())
+            result = registry.refresh()
+            if a.json:
+                return out_json(result)
+            print_refresh(result)
             return 0
         result = registry.list_models(a.where, a.new, a.refresh)
+        if a.json:
+            return out_json(result)
         if result["refreshed"]:
             print_refresh(result["refreshed"])
         if a.new is not None and not result["models"]:
@@ -368,6 +453,8 @@ def models_main(argv):
         print(f"{len(result['models'])} model(s)")
         return 0
     except CoreError as e:
+        if a.json:
+            return error_json(e, e.code)
         print(e)
         return e.code
 
@@ -381,10 +468,13 @@ def main(argv=None):
     if argv[:1] == ["models"]:
         return models_main(argv[1:])
     a = sweep_parser().parse_args(argv)
+    json_mode(a)
     commands = {"run": cmd_run, "resume": cmd_resume, "status": cmd_status, "evaluate": cmd_evaluate,
                 "pause": cmd_control, "stop": cmd_control}
     try:
         return commands[a.cmd](a)
     except CoreError as e:
+        if a.json:
+            return error_json(e, e.code)
         say(sweep.stamp(str(e)))
         return e.code

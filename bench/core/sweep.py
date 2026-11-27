@@ -589,13 +589,17 @@ def request_control(cmd, now=False, source="cli"):
 
 
 def evaluate_run(run=None, in_tokens=2000, out_tokens=500):
-    """Writes the evaluation report of a sweep; returns its text and path."""
+    """Writes the evaluation report of a sweep; returns its text and path, and the analysis per model and the
+    recommendations it was made from."""
     run_id = run or latest_run()
     path = ROOT / "results" / f"sweep_{run_id}.jsonl"
     if not run_id or not path.exists():
         raise CoreError("no results to evaluate")
-    text = evaluate.report(evaluate.load_rows(path), run_id, in_tokens, out_tokens)
+    rows = evaluate.load_rows(path)
+    text = evaluate.report(rows, run_id, in_tokens, out_tokens)
     out = ROOT / "report" / f"eval_{run_id}.md"
     out.parent.mkdir(exist_ok=True)
     out.write_text(text, encoding="utf-8")
-    return {"run": run_id, "text": text, "path": out}
+    analysis = evaluate.analyze(rows, in_tokens, out_tokens)
+    return {"run": run_id, "in_tokens": in_tokens, "out_tokens": out_tokens,
+            "recommendations": evaluate.recommendations(analysis), "analysis": analysis, "text": text, "path": out}

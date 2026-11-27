@@ -493,7 +493,8 @@ def report(runs=None, tasks_file=None, k=5, reliable=0.8):
     rows = agent_report.rejudge(rows, tasks, read_events, evaluate_attempt)
     models = agent_report.summarize(rows, tasks, k=k, reliable=reliable)
     path = agent_report.write(run_ids, models, meta)
-    return {"runs": run_ids, "text": path.read_text(encoding="utf-8"), "path": path}
+    data = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+    return {"runs": run_ids, "data": data, "text": path.read_text(encoding="utf-8"), "path": path}
 
 
 def show_attempt(run, attempt, model=None):

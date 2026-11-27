@@ -275,6 +275,16 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.
 
+**`--json` (IF-01, D2c lépés).** Minden fenti parancs elfogadja a `--json` kapcsolót, és ekkor pontosan egy
+JSON-dokumentumot ír a standard outputra: a core függvénye adatát, a legfelső szinten `schema_version` mezővel (most
+1), pl. `{"schema_version": 1, "run": "…", "kind": "sweep", "state": "done", …}`; az útvonalak szövegek. Egy elutasított
+kérés kimenete `{"schema_version": 1, "error": {"message": "…", "code": 2}}`, ugyanazzal a kilépési kóddal, mint
+`--json` nélkül. A `run`, a `resume` és az `agent run` előrehaladás-sorai ekkor a standard errorra mennek (és a futás
+`progress.log` fájljába), az `agent run` pedig nem ír összegző táblát. A `status --watch --json` hibát ad: egy hívás
+egy dokumentumot ad. Az `evaluate` a modellenkénti elemzést és az ajánlásokat is visszaadja, az `agent report` a
+`report/agent_<run>.json` tartalmát (`data`), így egy felület az adatot kapja, nem csak a Markdown szöveget. Az
+argparse argumentumhibái szövegként maradnak a standard erroron.
+
 Egyéb belépési pontok: `python bench/core/smoke.py` (egy modell smoke tesztje: leltár, GPU-ellenőrzés, load a CLI-vel,
 generálás, tool-hívás próba; a `results/smoke_*.json` fájlt és egy modellistát ír az `inventory/` mappába),
 `python tools/export_docs.py`, `python tools/make_diagrams.py` és a `harness/` próbái.
@@ -344,5 +354,6 @@ A parancssor és az API ugyanazokat a core függvényeket hívja; egy core függ
 | Mintavételi profilok | `configs/sampling.json` | 1 | |
 | Modellregiszter | `state/models.json` | 2 | Az 1-es formátum (két pillanatkép) olvasáskor átalakul |
 | Agent-riport | `report/agent_<run>.json` | nincs, `taxonomy_version` 2 | Az IF-23 szerint verziót kap, ha a felület olvassa |
+| Parancskimenet | `--json` a standard outputon | `schema_version` 1 | 6. pont; az API ugyanezt a dokumentumot adja vissza |
 | Rácsfájl | `configs/*.json` | nincs | Felhasználói bemenet; a formátum a 4.1 pont |
 | Futásterv, futásállapot, vezérlés | `state/` | nincs | A D2 lépésben kap verziót (IF-23) |

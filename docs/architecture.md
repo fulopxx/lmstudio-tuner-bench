@@ -272,6 +272,15 @@ The API routes are proposals and not implemented.
 Exit codes of `run` and `resume`: 0 when the run is done or was stopped by the user, 3 when it was aborted, 2 for
 unusable arguments. `bench <command> --help` lists the defaults.
 
+**`--json` (IF-01, step D2c).** Every command above accepts `--json` and then prints exactly one JSON document on
+standard output: the data of its core function with `schema_version` (now 1) at the top level, e.g.
+`{"schema_version": 1, "run": "…", "kind": "sweep", "state": "done", …}`; paths are strings. A refused request prints
+`{"schema_version": 1, "error": {"message": "…", "code": 2}}` with the same exit code as without `--json`. Progress
+lines of `run`, `resume` and `agent run` then go to standard error (and to the run's `progress.log`), and `agent run`
+prints no summary table. `status --watch --json` is refused: one call gives one document. `evaluate` also returns the
+analysis per model and the recommendations, `agent report` the content of `report/agent_<run>.json` (`data`), so an
+interface gets the data, not only the Markdown text. Argument errors of argparse stay text on standard error.
+
 Other entry points: `python bench/core/smoke.py` (smoke test of one model: inventory, GPU check, load through the CLI,
 generation, tool-call probe; writes `results/smoke_*.json` and a model list into `inventory/`),
 `python tools/export_docs.py`, `python tools/make_diagrams.py`, and the probes in `harness/`.
@@ -341,5 +350,6 @@ Implemented in roadmap step D2, before the web work.
 | Sampling profiles | `configs/sampling.json` | 1 | |
 | Model registry | `state/models.json` | 2 | Format 1 (two snapshots) converted when read |
 | Agent report | `report/agent_<run>.json` | none, `taxonomy_version` 2 | Gets a version with IF-23 if the interface reads it |
+| Command output | `--json` on standard output | `schema_version` 1 | Section 6; the API returns the same document |
 | Grid file | `configs/*.json` | none | User input; the format is section 4.1 |
 | Run plan, run state, control | `state/` | none | Get a version in step D2 (IF-23) |

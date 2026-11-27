@@ -504,7 +504,7 @@ it (roadmap step D2).
 
 | ID | Requirement | Reason | Verification | State |
 |---|---|---|---|---|
-| IF-01 | Every `bench` command that returns a result must accept `--json` and then print the data of its core function as one JSON document | One data source for the CLI, the API and the interface (web concept C6, C12) | test | ⚪ |
+| IF-01 | Every `bench` command that returns a result must accept `--json` and then print the data of its core function as one JSON document | One data source for the CLI, the API and the interface (web concept C6, C12) | test | ✅ (D2c, 2026-11-27; offline tests, `tests/test_json_output.py`) |
 | IF-02 | Every API route must call the core function of its CLI command and return the same JSON | CLI parity: the interface cannot do more than the CLI | test | ⚪ |
 | IF-03 | The API must listen on `127.0.0.1` only and serve its routes under `/api/v1` | Local use only (decision); a version prefix allows later changes | test | ⚪ |
 | IF-04 | The API must start sweep and agent runs as separate processes of the command line and must not measure in its own process | A run survives a restart of the browser or the API; control works through files as today | review | ⚪ |

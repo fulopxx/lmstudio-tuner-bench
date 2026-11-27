@@ -523,7 +523,7 @@ használja a web (a roadmap D2 lépése).
 
 | Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
 |---|---|---|---|---|
-| IF-01 | Minden eredményt adó `bench` parancsnak el kell fogadnia a `--json` kapcsolót, és ekkor a core függvénye adatát egyetlen JSON-dokumentumként kell kiírnia | Egy adatforrás a CLI-nek, az API-nak és a felületnek (webes koncepció C6, C12) | teszt | ⚪ |
+| IF-01 | Minden eredményt adó `bench` parancsnak el kell fogadnia a `--json` kapcsolót, és ekkor a core függvénye adatát egyetlen JSON-dokumentumként kell kiírnia | Egy adatforrás a CLI-nek, az API-nak és a felületnek (webes koncepció C6, C12) | teszt | ✅ (D2c, 2026-11-27; offline tesztek, `tests/test_json_output.py`) |
 | IF-02 | Minden API-útvonalnak a CLI-parancsa core függvényét kell hívnia, és ugyanazt a JSON-t kell visszaadnia | CLI-paritás: a felület nem tud többet a CLI-nél | teszt | ⚪ |
 | IF-03 | Az API-nak csak a `127.0.0.1` címen szabad figyelnie, és az útvonalait a `/api/v1` alatt kell kiszolgálnia | Csak helyi használat (döntés); a verzió-előtag későbbi változtatást enged | teszt | ⚪ |
 | IF-04 | Az API-nak a sweep- és agent-futásokat a parancssor külön folyamataként kell indítania, a saját folyamatában nem mérhet | A futás túléli a böngésző vagy az API újraindítását; a vezérlés a mai módon, fájlokon át működik | átnézés | ⚪ |
