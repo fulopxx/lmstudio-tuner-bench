@@ -62,7 +62,7 @@ M1 comes first: one thin slice that works end to end. The A–L table below appl
 |---|---|---|
 | 1 | SDK trial on the installed LM Studio (task 18) | ✅ done |
 | 2 | Clean sweep, evaluation, recommended settings per model | ✅ done |
-| 3 | Repository preparation, license, public release | ✅ done (2026-11-27: checks for secrets, personal data and paths including the git history, install from a fresh clone, public repository; release tag pending) |
+| 3 | Repository preparation, license, public release | ✅ done (2026-11-27: checks for secrets, personal data and paths including the git history, install from a fresh clone, public repository, release `v0.1.0`) |
 | 4 | Minimal TypeScript harness: 1–2 tools (file read and mock, no shell), timeout, interrupt, trace | ✅ done (2026-11-26: `bench agent run`, 4/4 example tasks live on one model; Ctrl+C stop tested offline only) |
 | 5 | 10–20 fixed tasks, repeated runs, failure category report | ✅ done (2026-11-27: task set, report, live runs with 4 models × 20 tasks × 5 and × 10, manual review of the failures, taxonomy v2) |
 | 6 | Result table in the README | ✅ done (2026-11-27, ten-repeat M1 run) |

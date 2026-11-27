@@ -62,7 +62,7 @@ Az M1 az első: egy vékony, végigmenő szelet, amely működik. Az alábbi A�
 |---|---|---|
 | 1 | SDK-próba a telepített LM Studión (18. feladat) | ✅ kész |
 | 2 | Tiszta sweep, kiértékelés, ajánlott beállítás modellenként | ✅ kész |
-| 3 | Repó előkészítése, licenc, publikus kiadás | ✅ kész (2026-11-27: titkok, személyes adatok és útvonalak ellenőrzése a git-előzménnyel együtt, telepítés friss klónból, publikus repó; a kiadási tag hátravan) |
+| 3 | Repó előkészítése, licenc, publikus kiadás | ✅ kész (2026-11-27: titkok, személyes adatok és útvonalak ellenőrzése a git-előzménnyel együtt, telepítés friss klónból, publikus repó, `v0.1.0` kiadás) |
 | 4 | Minimális TypeScript harness: 1–2 tool (fájlolvasás és mock, shell nélkül), timeout, megszakítás, trace | ✅ kész (2026-11-26: `bench agent run`, élőben 4/4 példafeladat egy modellen; a Ctrl+C leállítás csak offline tesztelve) |
 | 5 | 10–20 rögzített feladat, ismételt futások, hibakategória-riport | ✅ kész (2026-11-27: feladatkészlet, riport, élő futások 4 modell × 20 feladat × 5 és × 10, a bukások kézi átnézése, 2. verziós taxonómia) |
 | 6 | Eredménytábla a README-ben | ✅ kész (2026-11-27, tíz ismétléses M1 futás) |
