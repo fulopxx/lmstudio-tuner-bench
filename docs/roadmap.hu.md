@@ -144,6 +144,7 @@ lépéssel együtt.
 | CLI `lms load` | A per-modell default config értékekhez való viszonya nem mért | ⚪ nyitott |
 | Speculative decoding | A 0. fázis próbája 2026-11-26-án kész ([követelmények](requirements.hu.md), 5. pont): csak a loadnál kapcsolható, számlálók az SDK-ban és a REST-ben. Nyitott az 1. fázisra: a draft párok kompatibilitás-ellenőrzése, a maximális draft token, miért tér el a greedy kimenet a baseline-tól | ⚪ nyitott |
 | Értékek eredete az agent-trace-ekben | Egy gráf arról, honnan származik egy argumentum- vagy válaszérték (prompt, korábbi tool-eredmények), kiválthatná a `wrong_arguments/invented_value` mögötti szövegkeresést, és megmutatná, hogyan jut el egy tool-hiba a válaszig. Az élek meghatározása bizonytalan, mert a modellek átfogalmazzák az értékeket; M1 után kipróbálandó | ⚪ nyitott |
+| LLM-bíró a heurisztikus szabályokhoz | A kulcsszólisták soha nem teljesek: az első élő M1 futás négy rést mutatott (2026-11-27). Javaslat M1 utánra, a 10. feladat mellé: második vélemény csak a heurisztikus döntésekhez (jelezte-e a válasz a hibát vagy a korlátot, kitalált-e értéket), írott pontozási szempontrendszerrel és a mért modelltől eltérő bíró modellel, a futás után offline. A szabály marad az elsődleges döntés; a riport megmutatja, hol tér el a bíró és a szabály, és csak ezek az esetek mennek kézi átnézésre. Használat előtt a bírót kézi címkéken kalibráljuk (egyezési mutató, pl. Cohen-féle kappa); a saját bias-a ismert kockázat | ⚪ nyitott |
 
 ### Stabilitás és tesztelés
 
