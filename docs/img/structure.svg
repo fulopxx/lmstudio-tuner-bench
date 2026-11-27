@@ -16,7 +16,7 @@
 <text x="56" y="122" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#1c7ed6">bench/core</text>
 <rect x="56" y="136" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
 <text x="136.0" y="153" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">sweep.py</text>
-<text x="136.0" y="171" text-anchor="middle" font-size="11" fill="#495057">runner, status, control</text>
+<text x="136.0" y="171" text-anchor="middle" font-size="11" fill="#495057">sweep runner, control</text>
 <rect x="228" y="136" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
 <text x="308.0" y="153" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">evaluate.py</text>
 <text x="308.0" y="171" text-anchor="middle" font-size="11" fill="#495057">sweep evaluation</text>
@@ -44,6 +44,9 @@
 <rect x="228" y="276" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
 <text x="308.0" y="293" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">models.py</text>
 <text x="308.0" y="311" text-anchor="middle" font-size="11" fill="#495057">model registry</text>
+<rect x="400" y="276" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
+<text x="480.0" y="293" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">runstate.py</text>
+<text x="480.0" y="311" text-anchor="middle" font-size="11" fill="#495057">run state, GPU lock</text>
 <rect x="40" y="370" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
 <text x="122.5" y="387" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">harness (Node)</text>
 <text x="122.5" y="405" text-anchor="middle" font-size="11" fill="#495057">load-model, run-tasks</text>

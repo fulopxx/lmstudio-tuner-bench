@@ -37,7 +37,8 @@ processes change.
 | `bench/core/results.py` | Result format: the common envelope of every row, reading with conversion of older rows, refusal of newer formats |
 | `bench/core/machine.py` | Machine-specific paths (`configs/machine.local.json`, example in `configs/machine.example.json`) and the environment fingerprint of result rows |
 | `bench/core/models.py` | Model registry in `state/models.json`: the installed models with the date each was first seen, the models that are gone, own tags from `configs/models.local.json`, the new mark, selection by capability (`--where`, refreshed before a run) |
-| `bench/core/sweep.py` | Sweep operations that return data (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), runner, status and control handling, table report |
+| `bench/core/runstate.py` | Per-run state files (`state/runs/<id>/`: status, control, progress log) and the lock `state/active.json` that allows one GPU run at a time, for sweep and agent runs |
+| `bench/core/sweep.py` | Sweep operations that return data (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), runner, pause and resume handling, table report |
 | `bench/core/evaluate.py` | Evaluation of sweep results: estimated response time, warnings, recommendations |
 | `bench/core/smoke.py` | Shared helpers used by the runner (commands, HTTP, streamed measurement, VRAM sampling) and a stand-alone smoke test |
 | `harness/load-model.ts` | Loads one model through the SDK and exits; called by the runner |
@@ -71,8 +72,8 @@ bench run / resume  (runner process)
   |-- node load-model.ts one short-lived process per load, LM Studio SDK
   |-- HTTP server        generation and measurement (REST, streamed)
   |-- nvidia-smi         VRAM, GPU utilization, driver
-bench status / pause / resume / stop  (separate processes, talk to the runner through files)
-bench agent run  (agent process)
+bench status / pause / resume / stop  (separate processes, talk to the runner through the run's files)
+bench agent run  (agent process; takes the same GPU lock as a sweep)
   |-- node load-model.ts  loads the model (identifier bench-agent)
   |-- node run-tasks.ts   the harness: spec and stop on stdin, progress and RESULT on stdout, one trace per attempt
   |-- lms.exe             loaded models, unload
@@ -164,9 +165,12 @@ from 1. `configs/*.local.json` files are the user's own grids and are not tracke
 
 | File | Content |
 |---|---|
-| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (written every 2 s), `pid`, `pid_created`, `warning` |
-| `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
-| `state/latest.txt` | Id of the latest run (its start time, `YYYYMMDD_HHMMSS`) |
+| `state/active.json` | The run that holds the GPU: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; created exclusively at the start, removed at the end; a lock whose process no longer exists counts as free |
+| `state/runs/<run>/status.json` | `run`, `kind`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (sweep: `n`, `model`, `config`; agent: `n`, `model`), `heartbeat` (written every 2 s), `pid`, `pid_created`, `warning`; agent runs also `scripted` |
+| `state/runs/<run>/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
+| `state/runs/<run>/progress.log` | The run's progress lines (created at the start; filled from step D2b) |
+| `state/latest.txt` | Id of the latest sweep (its start time, `YYYYMMDD_HHMMSS`) |
+| `state/status.json`, `state/control.json` | Written by versions before step D2a; only read, as the status of a run that has no file of its own |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
 | `results/sweep_<run>.jsonl` | One job result per line; the last line wins for a given `job_id` |
 | `report/sweep_<run>.md` | Table report |
@@ -175,6 +179,10 @@ from 1. `configs/*.local.json` files are the user's own grids and are not tracke
 `options` holds the run's command line settings: `repeats`, `gen_tokens`, `prompt_lines`, `load_timeout`,
 `gen_timeout`, `min_free_mib`, `max_util`, `busy_retry_s`, and `allow_env_change` after a resume. A run continues with
 these values; if `env` differs from the current machine it stops unless `--allow-env-change` is given.
+
+Sweep and agent run ids share one name space (the start time); a run waits for the next second if the id is taken.
+The files of a run stay after it ends, and a new run never writes into them (IF-10, IF-11). A scripted agent run
+(`--scripted`) gets its state folder but takes no GPU lock, because it uses no GPU.
 
 ### 4.3 Result rows
 
@@ -228,7 +236,11 @@ before the loads varied by more than 500 MiB.
   command turns the re-checks off.
 - **Alive:** the runner counts as alive while its `heartbeat` is younger than 20 seconds, or while the process that wrote
   it still exists (same `pid` and `pid_created`, so a reused PID does not count). A late heartbeat of a living process
-  is only reported as a warning. Only one run can be active.
+  is only reported as a warning.
+- **One GPU run:** a sweep or agent run starts only after taking the lock `state/active.json`; while another run holds
+  it, the start is refused with the active run's kind and id (IF-13). `resume` of a living paused sweep only sends a
+  request and needs no lock. `bench status` shows the active run (sweep or agent), otherwise the latest sweep; pause and
+  stop are refused for an agent run (stop through its control file comes in step D2b).
 - **Dead process:** if it ends without reaching an end state (killed, reboot), `status` shows it and `resume` starts a
   new process, which first unloads a model left over from the dead run.
 - `status --watch` ends after two readings in a row without an active run.
@@ -307,7 +319,7 @@ Implemented in roadmap step D2, before the web work.
 |---|---|---|---|
 | 1 | Starting long runs from the API | A separate process of the command line (`python -m bench.cli run …`, `… agent run …`) | A run survives a restart of the browser or the API; pause, stop and resume already work through files |
 | 2 | Output for interfaces | `--json` on every command that returns a result; the API returns the same data | One source of data; CLI parity can be tested |
-| 3 | State of a run | `state/runs/<id>/` per run with `status.json`, `control.json`, `progress.log`, for sweep and agent runs; `state/status.json` only points to the active run | A new run no longer overwrites the state of an older one; agent runs get a state |
+| 3 | State of a run | `state/runs/<id>/` per run with `status.json`, `control.json`, `progress.log`, for sweep and agent runs; `state/active.json` names the active run, the shared `state/status.json` is no longer written and stays readable for older runs (made precise in step D2a) | A new run no longer overwrites the state of an older one; agent runs get a state |
 | 4 | Several runs at once | One GPU run at a time, through `state/active.json`, across sweep and agent runs | Parallel load spoils the measurement |
 | 5 | Live log | `progress.log` per run; the API reads it, a stream can follow later | The progress sink of the core only needs a file |
 | 6 | CLI and web control at the same time | The last request wins; `control.json` records its source (`cli`, `web`) and time, and the state shows it | Simple, and it is visible who asked |

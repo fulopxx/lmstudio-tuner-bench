@@ -44,6 +44,19 @@ def status_text(st, show_jobs):
     """Formats sweep.run_status()."""
     if not st["run"]:
         return "no run yet"
+    if st["kind"] == "agent":
+        state = "NOT RUNNING (process gone)" if st["gone"] else st["state"]
+        out = [f"agent run {st['run']}   state: {state.upper() if st['alive'] else state}"]
+        if st["current"]:
+            c = st["current"]
+            out.append(f"now: model {c['n']}/{st['total']} {c['model']} ({fmt_dur(c['elapsed_s'])})")
+        if st["reason"]:
+            out.append(f"reason: {st['reason']}")
+        if st["heartbeat_late_s"] is not None:
+            out.append(f"warning: no heartbeat for {fmt_dur(st['heartbeat_late_s'])}, but the runner process "
+                       f"(PID {st['pid']}) is still there")
+        out += ["", "stop: Ctrl+C in the run's window | details: bench agent report --run " + st["run"]]
+        return "\n".join(out)
     state = "NOT RUNNING (process gone) -> `bench resume`" if st["gone"] else st["state"]
     total, done = st["total"], st["finished_jobs"]
     bar_n = int(30 * done / total) if total else 0
@@ -286,6 +299,9 @@ def agent_main(argv):
     except StepError as e:
         say(f"agent {a.cmd} failed: {e}")
         return 3
+    except CoreError as e:
+        say(f"agent {a.cmd}: {e}")
+        return e.code
 
 
 # ---------------------------------------------------------------- model registry commands

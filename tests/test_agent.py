@@ -12,9 +12,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bench.cli import main as cli  # noqa: E402
-from bench.core import agent, failures  # noqa: E402
+from bench.core import agent, failures, runstate  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+_REAL_STATE = runstate.STATE
+
+
+def setUpModule():  # runs write their run state into a temporary folder, never into the real state/
+    global _state
+    _state = tempfile.TemporaryDirectory()
+    runstate.STATE = Path(_state.name)
+
+
+def tearDownModule():
+    runstate.STATE = _REAL_STATE
+    _state.cleanup()
 FIXTURES = ROOT / "tests" / "fixtures" / "traces"
 
 

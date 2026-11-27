@@ -11,7 +11,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bench.cli import main as cli  # noqa: E402
-from bench.core import sweep  # noqa: E402
+from bench.core import runstate, sweep  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -103,15 +103,15 @@ class PausedWaitTest(unittest.TestCase):
 
         real_sleep = sweep.time.sleep
         with tempfile.TemporaryDirectory() as d, \
-                mock.patch.object(sweep, "CONTROL", Path(d) / "control.json"), \
+                mock.patch.object(runstate, "STATE", Path(d)), \
                 mock.patch.object(sweep, "environment", return_value={}), \
                 mock.patch.object(sweep, "log"), \
                 mock.patch.object(sweep.time, "sleep", sleep):
-            sweep.write_json(sweep.CONTROL, {"cmd": "pause", "now": False, "ts": 1})
+            sweep.write_json(runstate.control_path("r"), {"cmd": "pause", "now": False, "ts": 1})
             runner = sweep.Runner("r", {"options": {"busy_retry_s": retry}, "env": {}}, mock.Mock())
             runner.ensure_ready = mock.Mock(side_effect=ready)
             result = runner.wait_paused("GPU busy", auto=auto)
-            return result, sweep.control()["cmd"], runner.ensure_ready.call_count
+            return result, sweep.control("r")["cmd"], runner.ensure_ready.call_count
 
     def test_busy_gpu_resumes_by_itself(self):
         ready = [sweep.Blocked("busy"), sweep.StepError("timeout", "lms ps"), None]
@@ -120,14 +120,14 @@ class PausedWaitTest(unittest.TestCase):
     def test_user_pause_turns_automatic_checks_off(self):
         def on_sleep(n):
             if n == 1:
-                sweep.send("pause")
+                sweep.send("r", "pause")
             if n == 5:
-                sweep.send("stop")
+                sweep.send("r", "stop")
 
         self.assertEqual(self.wait(True, [], on_sleep, retry=0.03), ("stop", "stop", 0))
 
     def test_manual_pause_never_resumes_by_itself(self):
-        on_sleep = lambda n: n == 5 and sweep.send("stop")
+        on_sleep = lambda n: n == 5 and sweep.send("r", "stop")
         self.assertEqual(self.wait(False, [], on_sleep), ("stop", "stop", 0))
 
 

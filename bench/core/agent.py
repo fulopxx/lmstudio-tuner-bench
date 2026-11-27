@@ -21,10 +21,9 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime
 from pathlib import Path
 
-from . import failures, machine, progress, results, sweep
+from . import failures, machine, progress, results, runstate, sweep
 from . import models as registry
 from .progress import CoreError
 from .smoke import LMS, StepError, sh
@@ -375,7 +374,34 @@ def run_tasks(a, on_model_done=None):
                 raise StepError("fail", str(e))
         if not models:
             raise StepError("fail", "--model, --models or --where is required (or --scripted for an offline run)")
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = runstate.new_run_id()
+    gpu = not a.scripted  # IF-13: a scripted run uses no GPU, so it does not take the lock
+    if gpu:
+        runstate.acquire(run_id, "agent")
+    try:
+        runstate.new_run_dir(run_id)
+        runstate.init_files(run_id)
+        status = runstate.Status(run_id, {"kind": "agent", "state": "starting", "phase": "starting", "reason": "",
+                                          "total": len(models), "started": time.time(), "scripted": not gpu})
+        final, reason = "aborted", ""
+        try:
+            out = _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done)
+            final = "stopped" if out.pop("stopped") else "done"
+            return out
+        except KeyboardInterrupt:
+            final, reason = "stopped", "stopped by user"
+            raise
+        except Exception as e:
+            reason = str(e) or repr(e)
+            raise
+        finally:
+            status.close(state=final, phase=final, reason=reason, current=None)
+    finally:
+        if gpu:
+            runstate.release(run_id)
+
+
+def _run_models(a, data, task_hash, tasks, models, run_id, status, on_model_done):
     run_dir = ROOT / "results" / "agent" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(a.tasks, run_dir / "tasks.json")  # FA-42: the run can be re-evaluated later
@@ -383,8 +409,10 @@ def run_tasks(a, on_model_done=None):
     by_id = {t["id"]: t for t in tasks}
     results_file = ROOT / "results" / f"agent_{run_id}.jsonl"
     fingerprint = machine.fingerprint()
-    all_rows = []
-    for model in models:
+    all_rows, stopped = [], False
+    status.update(state="running", phase="running")
+    for n, model in enumerate(models, 1):
+        status.update(current={"n": n, "model": model}, job_started=time.time())
         try:
             attempts, summary, meta = run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s)
         except StepError as e:  # FA-40: record the model's error and go on with the next model
@@ -410,10 +438,12 @@ def run_tasks(a, on_model_done=None):
             row = results.envelope("agent", run_id, row, fingerprint)
             sweep.append_row(results_file, row)
             rows.append(row)
+        model_stopped = summary.get("stopped") if summary else True
+        stopped = stopped or bool(model_stopped)
         if on_model_done:
-            on_model_done(model, rows, summary.get("stopped") if summary else True)
+            on_model_done(model, rows, model_stopped)
         all_rows += rows
-    return {"run": run_id, "results_file": results_file, "rows": all_rows}
+    return {"run": run_id, "results_file": results_file, "rows": all_rows, "stopped": stopped}
 
 
 # ---------------------------------------------------------------- report and show

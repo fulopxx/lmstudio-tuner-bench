@@ -11,9 +11,21 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bench.cli import main as cli  # noqa: E402
-from bench.core import agent, agent_report, failures  # noqa: E402
+from bench.core import agent, agent_report, failures, runstate  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+_REAL_STATE = runstate.STATE
+
+
+def setUpModule():  # runs write their run state into a temporary folder, never into the real state/
+    global _state
+    _state = tempfile.TemporaryDirectory()
+    runstate.STATE = Path(_state.name)
+
+
+def tearDownModule():
+    runstate.STATE = _REAL_STATE
+    _state.cleanup()
 TASKS = ROOT / "tasks" / "m1.json"
 REFERENCE = ROOT / "tests" / "m1_reference.json"
 FAILURES = ROOT / "tests" / "m1_failures.json"

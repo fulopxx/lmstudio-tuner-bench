@@ -37,7 +37,8 @@ frissül.
 | `bench/core/results.py` | Eredményformátum: minden sor közös borítéka, a régebbi sorok átalakítása olvasáskor, az újabb formátumok elutasítása |
 | `bench/core/machine.py` | Gépfüggő útvonalak (`configs/machine.local.json`, minta: `configs/machine.example.json`) és az eredménysorok környezet-ujjlenyomata |
 | `bench/core/models.py` | Modellregiszter a `state/models.json` fájlban: a telepített modellek az első észlelés dátumával, az eltűnt modellek, saját címkék a `configs/models.local.json`-ból, az „új” jelzés, képesség szerinti kiválasztás (`--where`, futás előtt frissítve) |
-| `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, állapot- és vezérléskezelés, táblázatos riport |
+| `bench/core/runstate.py` | Futásonkénti állapotfájlok (`state/runs/<id>/`: állapot, vezérlés, előrehaladás-napló) és a `state/active.json` zár, amely egyszerre egy GPU-futást enged, sweep- és agent-futásnál is |
+| `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, szünet és folytatás kezelése, táblázatos riport |
 | `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
 | `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
 | `harness/load-model.ts` | Egy modellt tölt be az SDK-val, majd kilép; a futtató hívja |
@@ -71,8 +72,8 @@ bench run / resume  (futtató process)
   |-- node load-model.ts loadonként egy rövid életű process, LM Studio SDK
   |-- HTTP szerver       generálás és mérés (REST, streamelve)
   |-- nvidia-smi         VRAM, GPU-kihasználtság, driver
-bench status / pause / resume / stop  (külön processek, fájlokon át beszélnek a futtatóval)
-bench agent run  (agent process)
+bench status / pause / resume / stop  (külön processek, a futás fájljain át beszélnek a futtatóval)
+bench agent run  (agent process; ugyanazt a GPU-zárat veszi fel, mint a sweep)
   |-- node load-model.ts  betölti a modellt (identifier: bench-agent)
   |-- node run-tasks.ts   a harness: spec és leállítás a stdinen, haladás és RESULT a stdouton, próbálkozásonként egy trace
   |-- lms.exe             betöltött modellek, unload
@@ -165,9 +166,12 @@ indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett r�
 
 | Fájl | Tartalom |
 |---|---|
-| `state/status.json` | `run`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (`n`, `model`, `config`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created`, `warning` |
-| `state/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
-| `state/latest.txt` | A legutóbbi futás azonosítója (az indulás ideje, `YYYYMMDD_HHMMSS`) |
+| `state/active.json` | A GPU-t foglaló futás: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; induláskor kizárólagosan jön létre, a végén törlődik; az a zár, amelynek folyamata már nem él, szabadnak számít |
+| `state/runs/<run>/status.json` | `run`, `kind`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (sweep: `n`, `model`, `config`; agent: `n`, `model`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created`, `warning`; agent-futásnál `scripted` is |
+| `state/runs/<run>/control.json` | `cmd` (`run` / `pause` / `stop`), `now`, `ts` |
+| `state/runs/<run>/progress.log` | A futás előrehaladás-sorai (induláskor jön létre; a D2b lépéstől töltődik) |
+| `state/latest.txt` | A legutóbbi sweep azonosítója (az indulás ideje, `YYYYMMDD_HHMMSS`) |
+| `state/status.json`, `state/control.json` | A D2a lépés előtti változatok írták; csak olvasásra, annak a futásnak az állapotaként, amelynek nincs saját fájlja |
 | `state/runs/<run>/plan.json` | `grid`, `jobs` (`n`, `id`, `model`, `config`, `settings`), `options`, `env` (`runtime`, `driver`, `loader`) |
 | `results/sweep_<run>.jsonl` | Soronként egy job eredménye; azonos `job_id` esetén az utolsó sor érvényes |
 | `report/sweep_<run>.md` | Táblázatos riport |
@@ -176,6 +180,10 @@ indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett r�
 Az `options` a futás parancssori beállításait tárolja: `repeats`, `gen_tokens`, `prompt_lines`, `load_timeout`,
 `gen_timeout`, `min_free_mib`, `max_util`, `busy_retry_s`, folytatás után pedig `allow_env_change`. A futás ezekkel az
 értékekkel folytatódik; ha az `env` eltér a gép mostani állapotától, `--allow-env-change` nélkül leáll.
+
+A sweep- és az agent-futások azonosítója közös névtér (az indulás ideje); ha az azonosító foglalt, a futás a
+következő másodpercig vár. Egy futás fájljai a vége után is megmaradnak, és egy új futás nem ír beléjük (IF-10, IF-11).
+A scripted agent-futás (`--scripted`) megkapja az állapotmappáját, de GPU-zárat nem vesz fel, mert nem használ GPU-t.
 
 ### 4.3 Eredménysorok
 
@@ -230,7 +238,12 @@ figyelmeztet, ha a loadok előtti VRAM-foglalás 500 MiB-nál többet ingadozott
   `pause` parancs kikapcsolja az újraellenőrzést.
 - **Élő futtató:** akkor számít élőnek, ha a `heartbeat` 20 másodpercnél frissebb, vagy ha még létezik az a process,
   amelyik írta (azonos `pid` és `pid_created`, így egy újra kiosztott PID nem számít). Egy élő process késő heartbeatje
-  csak figyelmeztetésként jelenik meg. Egyszerre egy futás lehet aktív.
+  csak figyelmeztetésként jelenik meg.
+- **Egy GPU-futás:** a sweep- vagy agent-futás csak a `state/active.json` zár felvétele után indul; amíg egy másik
+  futás tartja, az indítást a core elutasítja, és megnevezi az aktív futás fajtáját és azonosítóját (IF-13). Egy élő,
+  szüneteltetett sweep `resume`-ja csak kérést küld, zár nem kell hozzá. A `bench status` az aktív futást mutatja
+  (sweep vagy agent), különben a legutóbbi sweepet; agent-futásnál a szünetet és a leállítást elutasítja (a
+  vezérlőfájlon át történő leállítás a D2b lépésben jön).
 - **Meghalt process:** ha végállapot nélkül ér véget (kill, újraindítás), ezt a `status` mutatja, és a `resume` új
   processt indít, amely először eltávolítja a megszakadt futás után bent maradt modellt.
 - A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki.
@@ -309,7 +322,7 @@ A parancssor és az API ugyanazokat a core függvényeket hívja; egy core függ
 |---|---|---|---|
 | 1 | Hosszú futások indítása az API-ból | A parancssor külön folyamataként (`python -m bench.cli run …`, `… agent run …`) | A futás túléli a böngésző vagy az API újraindítását; a szünet, a leállítás és a folytatás már fájlokon át működik |
 | 2 | Kimenet a felületeknek | `--json` minden eredményt adó parancson; az API ugyanezt az adatot adja | Egy adatforrás; a CLI-paritás tesztelhető |
-| 3 | Egy futás állapota | Futásonként `state/runs/<id>/` a `status.json`, `control.json`, `progress.log` fájlokkal, sweep- és agent-futásnál is; a `state/status.json` csak az aktív futásra mutat | Egy új futás már nem írja felül a régebbi állapotát; az agent-futás is kap állapotot |
+| 3 | Egy futás állapota | Futásonként `state/runs/<id>/` a `status.json`, `control.json`, `progress.log` fájlokkal, sweep- és agent-futásnál is; az aktív futást a `state/active.json` nevezi meg, a közös `state/status.json` már nem íródik, a régebbi futásoknál olvasható marad (a D2a lépésben pontosítva) | Egy új futás már nem írja felül a régebbi állapotát; az agent-futás is kap állapotot |
 | 4 | Több futás egyszerre | Egyszerre egy GPU-futás, a `state/active.json` fájlon át, sweep- és agent-futás között is | A párhuzamos terhelés elrontja a mérést |
 | 5 | Élő napló | Futásonként `progress.log`; az API olvassa, később folyamatos stream is jöhet | A core előrehaladás-kimenetének csak egy fájl kell |
 | 6 | CLI- és webes vezérlés egyszerre | Az utolsó kérés nyer; a `control.json` rögzíti a forrását (`cli`, `web`) és idejét, és az állapot mutatja | Egyszerű, és látszik, ki kérte |

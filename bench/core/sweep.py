@@ -18,7 +18,6 @@ itself once the machine is free (--busy-retry; a manual pause stays); only the r
 instance is unloaded. Models are loaded through the LM Studio SDK (harness/load-model.ts), so LM Studio's
 per-model config files are not touched; generation and measurement use the HTTP server.
 """
-import ctypes
 import json
 import os
 import re
@@ -26,13 +25,11 @@ import shutil
 import statistics
 import subprocess
 import sys
-import threading
 import time
-from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
-from . import evaluate, machine, progress, results, smoke
+from . import evaluate, machine, progress, results, runstate, smoke
 from . import models as registry
 from .progress import CoreError
 from .smoke import LMS, StepError, sh
@@ -40,13 +37,19 @@ from .smoke import LMS, StepError, sh
 ROOT = Path(__file__).resolve().parents[2]
 HARNESS = ROOT / "harness"
 IDENTIFIER = "bench-sweep"  # the only model instance this runner loads and removes
-STATE = ROOT / "state"
-CONTROL = STATE / "control.json"
-STATUS = STATE / "status.json"
-LATEST = STATE / "latest.txt"
-ACTIVE = ("starting", "running", "paused")
+ACTIVE = runstate.ACTIVE_STATES
 BUSY_RETRY_S = 90  # re-check interval while paused because the machine was not ready
-HEARTBEAT_LATE_S = 20  # an older heartbeat is reported, and trusted only if the process still exists
+HEARTBEAT_LATE_S = runstate.HEARTBEAT_LATE_S
+
+
+def latest_path():
+    """state/latest.txt: the latest sweep (the one `resume`, `status` and `evaluate` use by default)."""
+    return runstate.STATE / "latest.txt"
+
+
+def latest_run():
+    path = latest_path()
+    return path.read_text().strip() if path.exists() else None
 
 
 def stamp(m):
@@ -57,74 +60,10 @@ def log(m):
     progress.emit(stamp(m))
 
 
-# ---------------------------------------------------------------- files, control channel
-def write_json(path, obj):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-    tmp.write_text(json.dumps(obj, indent=1, ensure_ascii=False), encoding="utf-8")
-    for attempt in range(30):  # Windows: replace fails while a reader has the file open
-        try:
-            os.replace(tmp, path)
-            return
-        except PermissionError:
-            if attempt == 29:
-                raise
-            time.sleep(0.1)
-
-
-def read_json(path, default=None):
-    for _ in range(10):
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except FileNotFoundError:
-            return default
-        except (PermissionError, json.JSONDecodeError):
-            time.sleep(0.1)
-    return default
-
-
-def send(cmd, now=False):
-    write_json(CONTROL, {"cmd": cmd, "now": now, "ts": time.time()})
-
-
-def control():
-    return read_json(CONTROL, {"cmd": "run", "now": False})
-
-
-def process_created(pid):
-    """Creation time of a running process as an integer; None if there is no such process. Together with
-    the PID it identifies one process, even if Windows reuses the PID later (for example after a reboot)."""
-    if os.name != "nt" or not pid:
-        return None
-    k = ctypes.WinDLL("kernel32")
-    k.OpenProcess.argtypes, k.OpenProcess.restype = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE
-    k.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
-    k.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
-    k.CloseHandle.argtypes = [wintypes.HANDLE]
-    handle = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-    if not handle:
-        return None
-    try:
-        code = wintypes.DWORD()
-        if not k.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value != 259:  # STILL_ACTIVE
-            return None
-        times = [wintypes.FILETIME() for _ in range(4)]
-        if not k.GetProcessTimes(handle, *(ctypes.byref(t) for t in times)):
-            return None
-        return (times[0].dwHighDateTime << 32) | times[0].dwLowDateTime
-    finally:
-        k.CloseHandle(handle)
-
-
-def runner_alive(st):
-    """An active run counts as alive while its heartbeat is fresh, or while the very process that wrote it
-    still exists: a late heartbeat alone must not end the status view or allow a second runner."""
-    if not st or st.get("state") not in ACTIVE:
-        return False
-    if time.time() - st.get("heartbeat", 0) < HEARTBEAT_LATE_S:
-        return True
-    created = st.get("pid_created")
-    return created is not None and process_created(st.get("pid")) == created
+# ---------------------------------------------------------------- files, control channel (per run, see runstate)
+write_json, read_json = runstate.write_json, runstate.read_json
+process_created, runner_alive = runstate.process_created, runstate.runner_alive
+send, control = runstate.send, runstate.control
 
 
 # ---------------------------------------------------------------- plan and results
@@ -243,33 +182,6 @@ class Fatal(Exception):
     pass
 
 
-class Status:
-    def __init__(self, base):
-        self.data = dict(base, heartbeat=time.time(), pid=os.getpid(), pid_created=process_created(os.getpid()))
-        self._lock = threading.Lock()
-        self._stop = threading.Event()
-        self.update()
-        self._thread = threading.Thread(target=self._beat, daemon=True)
-        self._thread.start()
-
-    def update(self, **kw):
-        with self._lock:
-            self.data.update(kw, heartbeat=time.time())
-            try:
-                write_json(STATUS, self.data)
-            except OSError:
-                pass  # status display must never kill a run
-
-    def _beat(self):
-        while not self._stop.wait(2):
-            self.update()
-
-    def close(self, **kw):
-        self._stop.set()
-        self._thread.join(timeout=5)
-        self.update(**kw)
-
-
 # ---------------------------------------------------------------- runner
 class Runner:
     def __init__(self, run_id, plan, status):
@@ -280,7 +192,7 @@ class Runner:
         self._last_check = 0.0
 
     def checkpoint(self, in_job=True):
-        c = control()
+        c = control(self.run_id)
         if c["cmd"] in ("pause", "stop") and (c.get("now") or not in_job):
             raise Interrupted(c["cmd"])
 
@@ -412,7 +324,7 @@ class Runner:
         repeated every busy_retry_s seconds, until the user sends `pause` to keep the run paused."""
         self.release()
         retry = self.o.get("busy_retry_s", BUSY_RETRY_S) if auto else 0
-        seen = control().get("ts")
+        seen = control(self.run_id).get("ts")
         next_check = time.time() + retry
 
         def note(text):
@@ -421,7 +333,7 @@ class Runner:
         self.status.update(state="paused", phase="paused", reason=note(reason))
         log(f"PAUSED: {note(reason)}\n         `bench resume` to continue, `bench stop` to exit.")
         while True:
-            c = control()
+            c = control(self.run_id)
             if c["cmd"] == "stop":
                 return "stop"
             if c["cmd"] == "pause" and c.get("ts") != seen:  # explicit `bench pause`: stay paused
@@ -434,16 +346,16 @@ class Runner:
                         raise Blocked("runtime or driver changed during the pause; `bench stop`, "
                                       "then `bench resume --allow-env-change`")
                     self.ensure_ready()
-                    if control().get("ts") != c.get("ts"):
+                    if control(self.run_id).get("ts") != c.get("ts"):
                         continue  # a new command arrived during the checks
-                    send("run")
+                    send(self.run_id, "run")
                     self.status.update(state="running", reason="")
                     log("RESUMED" if c["cmd"] == "run" else "RESUMED automatically")
                     return "run"
                 except (Blocked, StepError) as e:
-                    if c["cmd"] == "run" and control().get("ts") == c.get("ts"):
-                        send("pause")
-                        seen = control().get("ts")
+                    if c["cmd"] == "run" and control(self.run_id).get("ts") == c.get("ts"):
+                        send(self.run_id, "pause")
+                        seen = control(self.run_id).get("ts")
                     next_check = time.time() + retry
                     self.status.update(reason=note(str(e)))
                     log(f"cannot resume yet: {e}")
@@ -451,7 +363,8 @@ class Runner:
 
 
 def execute(run_id, redo_failed=False):
-    run_dir = STATE / "runs" / run_id
+    """Runs the jobs of a planned sweep in this process. The caller holds the GPU lock (runstate.acquire)."""
+    run_dir = runstate.run_dir(run_id)
     plan = read_json(run_dir / "plan.json")
     if not plan:
         log(f"no plan for run {run_id}")
@@ -459,9 +372,9 @@ def execute(run_id, redo_failed=False):
     results_path = ROOT / "results" / f"sweep_{run_id}.jsonl"
     report_path = ROOT / "report" / f"sweep_{run_id}.md"
     jobs = plan["jobs"]
-    send("run")
-    status = Status({"run": run_id, "state": "starting", "phase": "starting", "reason": "",
-                     "total": len(jobs), "started": time.time()})
+    runstate.init_files(run_id)
+    status = runstate.Status(run_id, {"kind": "sweep", "state": "starting", "phase": "starting", "reason": "",
+                                      "total": len(jobs), "started": time.time()})
     runner = Runner(run_id, plan, status)
     final, reason, code, consecutive_timeouts = "aborted", "", 3, 0
     try:
@@ -501,7 +414,7 @@ def execute(run_id, redo_failed=False):
                                "config": job["config"], "status": e.kind, "error": str(e)}
                         runner.unload_ours()
                         break
-                    send("pause")
+                    send(run_id, "pause")
                     if runner.wait_paused(str(e), auto=True) == "stop":
                         raise Interrupted("stop")
             append_row(results_path, results.envelope("sweep", run_id, row, fingerprint))
@@ -531,34 +444,40 @@ def execute(run_id, redo_failed=False):
 
 # ---------------------------------------------------------------- operations (called by the CLI, later by the API)
 def run_status(show_jobs=False):
-    """State of the latest (or running) sweep as data; `finished` is true when no runner is alive."""
-    st = read_json(STATUS)
-    run_id = (st or {}).get("run") or (LATEST.read_text().strip() if LATEST.exists() else None)
+    """State of the active run (sweep or agent), otherwise of the latest sweep, as data; `finished` is true when no
+    runner is alive."""
+    lock = runstate.active()
+    run_id = lock["run"] if lock else latest_run()
     if not run_id:
-        return {"run": None, "finished": True}
-    plan = read_json(STATE / "runs" / run_id / "plan.json", {"jobs": []})
+        return {"run": None, "kind": None, "finished": True}
+    st = runstate.read_status(run_id)
+    alive = runner_alive(st)
+    now = time.time()
+    out = {"run": run_id, "kind": (lock or st or {}).get("kind", "sweep"), "state": (st or {}).get("state", "?"),
+           "alive": alive, "gone": (st or {}).get("state") in ACTIVE and not alive, "current": None,
+           "reason": (st or {}).get("reason"), "warning": (st or {}).get("warning"), "heartbeat_late_s": None,
+           "pid": (st or {}).get("pid"), "requested": None, "finished": not alive}
+    late = now - st.get("heartbeat", 0) if alive else 0
+    if late >= HEARTBEAT_LATE_S:
+        out["heartbeat_late_s"] = late
+    if out["kind"] == "agent":  # the attempts of an agent run are counted with D2b's progress data
+        c = (st or {}).get("current") if alive else None
+        out.update(total=(st or {}).get("total"), current=c and {
+            "n": c["n"], "model": c["model"], "phase": st.get("phase"), "elapsed_s": now - st.get("job_started", now)})
+        return out
+    plan = read_json(runstate.run_dir(run_id) / "plan.json", {"jobs": []})
     results = latest_results(ROOT / "results" / f"sweep_{run_id}.jsonl")
     jobs = plan["jobs"]
     rows = [results[j["id"]] for j in jobs if j["id"] in results and results[j["id"]]["status"] != "invalidated"]
     ok = [r for r in rows if r["status"] == "ok"]
-    alive = runner_alive(st)
-    now = time.time()
-    out = {"run": run_id, "state": (st or {}).get("state", "?"), "alive": alive, "gone": False,
-           "total": len(jobs), "finished_jobs": len(rows), "failed": len(rows) - len(ok), "ok_jobs": len(ok),
-           "remaining_s": statistics.mean(r["job_s"] for r in ok) * (len(jobs) - len(rows)) if ok else None,
-           "current": None, "reason": (st or {}).get("reason"), "warning": (st or {}).get("warning"),
-           "heartbeat_late_s": None, "pid": (st or {}).get("pid"), "requested": None, "finished": not alive}
-    if out["state"] in ACTIVE and not alive:
-        out["gone"] = True
+    out.update(total=len(jobs), finished_jobs=len(rows), failed=len(rows) - len(ok), ok_jobs=len(ok),
+               remaining_s=statistics.mean(r["job_s"] for r in ok) * (len(jobs) - len(rows)) if ok else None)
     if alive and st.get("current") and st["state"] == "running":
         c = st["current"]
         out["current"] = {"n": c["n"], "model": c["model"], "config": c["config"], "phase": st.get("phase"),
                           "elapsed_s": now - st.get("job_started", now)}
-    late = now - st.get("heartbeat", 0) if alive else 0
-    if late >= HEARTBEAT_LATE_S:
-        out["heartbeat_late_s"] = late
     if alive:
-        cmd = control()
+        cmd = control(run_id)
         if cmd["cmd"] != "run" and st["state"] == "running":
             out["requested"] = {"cmd": cmd["cmd"], "now": bool(cmd.get("now"))}
     if show_jobs:
@@ -594,56 +513,71 @@ RUN_OPTIONS = ("repeats", "gen_tokens", "prompt_lines", "load_timeout", "gen_tim
 
 
 def start_run(grid_path, models, options, where=None):
-    """Starts a sweep and runs it to the end in this process; progress goes to the progress sink."""
+    """Starts a sweep and runs it to the end in this process; progress goes to the progress sink. Refuses to start
+    while another sweep or agent run holds the GPU (IF-13)."""
     jobs = plan_run(grid_path, models, where)["jobs"]
-    if runner_alive(read_json(STATUS)):
-        raise CoreError("another run is active; use `bench status`, or `bench stop` first")
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    write_json(STATE / "runs" / run_id / "plan.json",
-               {"grid": grid_path, "jobs": jobs, "options": {k: options[k] for k in RUN_OPTIONS},
-                "env": environment()})
-    LATEST.write_text(run_id)
-    return {"run": run_id, "exit_code": execute(run_id)}
+    run_id = runstate.new_run_id()
+    runstate.acquire(run_id, "sweep")
+    try:
+        runstate.new_run_dir(run_id)
+        write_json(runstate.run_dir(run_id) / "plan.json",
+                   {"grid": grid_path, "jobs": jobs, "options": {k: options[k] for k in RUN_OPTIONS},
+                    "env": environment()})
+        latest_path().write_text(run_id)
+        return {"run": run_id, "exit_code": execute(run_id)}
+    finally:
+        runstate.release(run_id)
 
 
 def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=False):
     """Resumes a run: asks a living runner to continue, or restarts a stopped one from disk in this process."""
-    st = read_json(STATUS)
-    if runner_alive(st):
-        if from_job or redo_failed or run or allow_env_change:
+    lock = runstate.active()
+    if lock:
+        if lock.get("kind") != "sweep" or (run and run != lock["run"]):
+            raise CoreError(f"another run is active: {lock.get('kind')} run {lock['run']}; wait for it or stop it first")
+        if from_job or redo_failed or allow_env_change:
             raise CoreError("the run is still active; `bench stop` first, then resume with these options")
-        send("run")
-        return {"run": st.get("run"), "exit_code": 0, "message":
-                "resume requested" if st["state"] == "paused" else "run is active; pending pause/stop cancelled"}
-    run_id = run or (LATEST.read_text().strip() if LATEST.exists() else None)
-    run_dir = STATE / "runs" / str(run_id)
+        st = runstate.read_status(lock["run"]) or {}
+        send(lock["run"], "run")
+        return {"run": lock["run"], "exit_code": 0, "message":
+                "resume requested" if st.get("state") == "paused" else "run is active; pending pause/stop cancelled"}
+    run_id = run or latest_run()
+    run_dir = runstate.run_dir(run_id)
     plan = read_json(run_dir / "plan.json")
     if not plan:
         raise CoreError("nothing to resume")
-    plan["options"]["allow_env_change"] = allow_env_change
-    write_json(run_dir / "plan.json", plan)
-    if from_job:
-        path = ROOT / "results" / f"sweep_{run_id}.jsonl"
-        have = latest_results(path)
-        for j in plan["jobs"]:
-            if j["n"] >= from_job and j["id"] in have:
-                append_row(path, results.envelope("sweep", run_id, {"job_id": j["id"], "status": "invalidated"},
-                                                  machine.fingerprint()))
-    LATEST.write_text(run_id)
-    return {"run": run_id, "exit_code": execute(run_id, redo_failed=redo_failed), "message": None}
+    runstate.acquire(run_id, "sweep")
+    try:
+        plan["options"]["allow_env_change"] = allow_env_change
+        write_json(run_dir / "plan.json", plan)
+        if from_job:
+            path = ROOT / "results" / f"sweep_{run_id}.jsonl"
+            have = latest_results(path)
+            for j in plan["jobs"]:
+                if j["n"] >= from_job and j["id"] in have:
+                    append_row(path, results.envelope("sweep", run_id, {"job_id": j["id"], "status": "invalidated"},
+                                                      machine.fingerprint()))
+        latest_path().write_text(run_id)
+        return {"run": run_id, "exit_code": execute(run_id, redo_failed=redo_failed), "message": None}
+    finally:
+        runstate.release(run_id)
 
 
 def request_control(cmd, now=False):
     """Asks the running sweep to pause or stop."""
-    if not runner_alive(read_json(STATUS)):
+    lock = runstate.active()
+    if not lock or not runner_alive(runstate.read_status(lock["run"])):
         raise CoreError("no active run")
-    send(cmd, now)
-    return {"cmd": cmd, "now": now}
+    if lock.get("kind") != "sweep":
+        raise CoreError(f"agent run {lock['run']} is active; it cannot be paused, and stopping it from here comes "
+                        "later: press Ctrl+C in its window")
+    send(lock["run"], cmd, now)
+    return {"run": lock["run"], "cmd": cmd, "now": now}
 
 
 def evaluate_run(run=None, in_tokens=2000, out_tokens=500):
     """Writes the evaluation report of a sweep; returns its text and path."""
-    run_id = run or (LATEST.read_text().strip() if LATEST.exists() else None)
+    run_id = run or latest_run()
     path = ROOT / "results" / f"sweep_{run_id}.jsonl"
     if not run_id or not path.exists():
         raise CoreError("no results to evaluate")
