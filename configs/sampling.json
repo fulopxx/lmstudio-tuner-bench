@@ -1,12 +1,18 @@
 {
-  "comment": "Sampling profiles for agent runs (FA-20). The first profile whose pattern matches the model key (case-insensitive regular expression) is used; `--temperature` overrides only the temperature. Every value is sent to LM Studio explicitly. Values are taken from the cited model cards or generation configs; a model without a matching profile gets the fallback.",
+  "comment": "Sampling profiles for agent runs (FA-20). The first profile whose pattern (a case-insensitive regular expression) matches the model key is used, so a more specific profile comes first; `--temperature` overrides only the temperature. Every value is sent to LM Studio explicitly. Values are taken from the cited model cards or generation configs; a model without a matching profile gets the fallback.",
   "schema_version": 1,
   "profiles": [
     {
+      "id": "qwen3-instruct-2507",
+      "match": "^qwen3-\\d+(\\.\\d+)?b-instruct-2507",
+      "temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0, "repeat_penalty": 1.0,
+      "source": "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507 (non-thinking only; Best Practices)"
+    },
+    {
       "id": "qwen3-thinking",
-      "match": "^qwen3-(\\d+b|\\d+b-.*|vl-.*-thinking.*)$",
+      "match": "^qwen3-(\\d+(\\.\\d+)?b(-.*)?|vl-.*-thinking.*)$",
       "temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0.0, "repeat_penalty": 1.0,
-      "source": "https://huggingface.co/Qwen/Qwen3-8B (thinking mode; greedy decoding is discouraged)"
+      "source": "https://huggingface.co/Qwen/Qwen3-8B (thinking mode; greedy decoding is discouraged); the same values in the cards of Qwen3-0.6B, Qwen3-1.7B and Qwen3-4B-Thinking-2507"
     },
     {
       "id": "qwen3.5",

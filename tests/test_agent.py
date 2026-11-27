@@ -302,6 +302,18 @@ class SamplingTest(unittest.TestCase):
         self.assertEqual(agent.sampling_for("qwen2.5-coder-7b-instruct")["repeatPenalty"], 1.1)
         self.assertEqual(agent.sampling_for("qwen3.5-4b-mtp")["topK"], 20)
         self.assertTrue(agent.sampling_for("llama-3.2-1b-instruct")["source"].startswith("fallback"))
+
+    def test_model_keys_get_the_profile_of_their_model_card(self):
+        expected = {"qwen3-8b": "qwen3-thinking", "qwen3-1.7b": "qwen3-thinking", "qwen3-0.6b": "qwen3-thinking",
+                    "qwen3-4b-thinking-2507": "qwen3-thinking", "qwen3-4b-instruct-2507": "qwen3-instruct-2507",
+                    "qwen3.5-4b-mtp": "qwen3.5", "qwen3.5-9b-deepseek-v4-flash-mtp": "qwen3.5",
+                    "qwen2.5-coder-7b-instruct": "qwen2.5-coder", "qwen2.5-coder-0.5b-instruct": "qwen2.5-coder",
+                    "llama-3.2-1b-instruct": "fallback"}
+        for key, profile in expected.items():
+            with self.subTest(model=key):
+                self.assertEqual(agent.sampling_for(key)["source"].split(":")[0], profile)
+        s = agent.sampling_for("qwen3-4b-instruct-2507")
+        self.assertEqual((s["temperature"], s["topP"], s["topK"], s["minP"]), (0.7, 0.8, 20, 0.0))
         o = agent.sampling_for("qwen3-8b", 0.0)
         self.assertEqual((o["temperature"], o["topP"]), (0.0, 0.95))
         self.assertIn("overridden", o["source"])
