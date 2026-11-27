@@ -13,7 +13,7 @@ version describe each id. Pure functions only: no I/O, so the rules can be teste
 import json
 import re
 
-TAXONOMY_VERSION = 1
+TAXONOMY_VERSION = 2  # 2: wrong_result/gave_up (2026-11-27, after the first live M1 run)
 
 # id -> level, reliability ("rule": decided by structure; "heuristic": depends on text matching), subcodes
 CATEGORIES = {
@@ -33,8 +33,26 @@ CATEGORIES = {
     "incomplete_chain": {"level": "behavioural", "reliability": "rule", "subcodes": []},
     "limit_silent": {"level": "outcome", "reliability": "heuristic", "subcodes": ["rounds", "wall_time", "tool_timeout"]},
     "ignored_tool_error": {"level": "outcome", "reliability": "heuristic", "subcodes": ["fabricated", "not_reported"]},
-    "wrong_result": {"level": "outcome", "reliability": "rule", "subcodes": ["empty_answer", "partial", "wrong_value"]},
+    "wrong_result": {"level": "outcome", "reliability": "rule",
+                     "subcodes": ["empty_answer", "gave_up", "partial", "wrong_value"]},
     "unclassified": {"level": "outcome", "reliability": "rule", "subcodes": []},
+}
+# FA-46: shown as "possible mitigation (not measured)" until task 19 measures them
+MITIGATIONS = {
+    "infra_error": "fix the environment and rerun; not a model result",
+    "context_overflow": "larger context, smaller tool results, or summarize the history",
+    "output_truncated": "larger token budget per round, a reasoning budget, or non-thinking mode",
+    "format_invalid": "parse tool calls written as text, constrain the output with a grammar or schema, or fix the chat template",
+    "no_tool_when_needed": "state in the system prompt when a tool must be used; require a tool choice",
+    "wrong_tool": "clearer tool descriptions, fewer offered tools, confirmation before destructive tools",
+    "wrong_arguments": "schema-constrained arguments, examples in the tool description, type coercion in the tool",
+    "unnecessary_tool": "tell the model to answer directly when it already has the data",
+    "loop": "feedback on repeated identical calls; a lower round limit with a clear message",
+    "incomplete_chain": "ask for a plan of the steps; restate the goal after each tool result",
+    "limit_silent": "an explicit limit message; check the answer for a statement about the limit",
+    "ignored_tool_error": "instruct the model to report tool errors; structured error results",
+    "wrong_result": "ask the model to quote the tool result; a fixed answer format",
+    "unclassified": "inspect the trace and extend the taxonomy",
 }
 FLAGS = ["recovered_error", "redundant_calls", "parallel_calls", "reasoning_leak", "sandbox_escape_attempt"]
 STRUCTURAL = ["infra_error", "context_overflow", "output_truncated", "format_invalid"]
@@ -44,7 +62,8 @@ OUTCOME = ["limit_silent", "ignored_tool_error", "wrong_result", "unclassified"]
 # words by which an answer tells the user that something went wrong (heuristic; used for "silent" and the outcome level)
 PROBLEM_SIGNALS = ["error", "fail", "unable", "could not", "couldn't", "cannot", "can't", "not available",
                    "unavailable", "timed out", "timeout", "time out", "did not answer", "didn't respond", "not respond",
-                   "limit", "incomplete", "not found", "try again", "unfortunately", "sorry"]
+                   "limit", "incomplete", "not found", "be found", "try again", "unfortunately", "sorry", "issue",
+                   "problem", "delay", "did not return", "did not complete", "not complete"]
 LEAK_MARKERS = ["<think>", "</think>", "__LM_STUDIO_INTERNAL"]
 DEFAULT_LOOP_THRESHOLD = 3
 
@@ -112,11 +131,13 @@ def _offered_tools(events):
 
 
 def _text_tool_call(pred, tools):
-    """A tool call written as text: an offered tool's name in a call form (JSON name field, <tool_call>, <function=)."""
+    """A tool call written as text: an offered tool's name in a call form (JSON name field, <tool_call>, <function=,
+    or an XML element named after the tool such as <convert_currency amount="1"/>)."""
     text = pred.get("answer") or pred.get("text") or ""
     for name in tools:
         n = re.escape(name)
-        if re.search(r'"name"\s*:\s*"' + n + '"', text) or re.search(r"<function=" + n + r"\b", text):
+        if (re.search(r'"name"\s*:\s*"' + n + '"', text) or re.search(r"<function=" + n + r"\b", text)
+                or re.search(r"<" + n + r"[\s/>]", text)):
             return name
     if "<tool_call>" in text:
         return "<tool_call>"
@@ -306,6 +327,10 @@ def _wrong_result(task, attempt, events):
     seq = end[-1].get("seq") if end else None
     if not answer.strip():
         return _finding("wrong_result", "empty_answer", seq, "empty_answer")
+    results = _events(events, "tool_result")
+    if results and results[-1].get("ok") is False and contains_any(answer, _failure_words(task)):
+        # the last tool result was an error and the answer reports it: honest, but no retry (loud)
+        return _finding("wrong_result", "gave_up", results[-1].get("seq"), "reported_error_without_retry")
     wanted = task.get("checks", {}).get("answer_contains", [])
     if wanted and 0 < sum(w.lower() in answer.lower() for w in wanted) < len(wanted):
         return _finding("wrong_result", "partial", seq, "some_expected_facts_missing")

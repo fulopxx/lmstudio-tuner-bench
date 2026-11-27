@@ -39,10 +39,12 @@ kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítv
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | A próba tiszta részei (tervellenőrzés, módonkénti load config, draft arányok) és offline tesztjük |
 | `runner/agent.py` | `bench agent run`: betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel értékel |
 | `runner/failures.py` | Hibataxonómia (az egyetlen gépileg olvasható forrás) és az agent-próbálkozások szabályalapú kategorizálója; tiszta függvények |
+| `runner/agent_report.py` | Az agent-futások riportja: a trace-ekből újraszámolja az eredményt és a kategóriákat, modellenként és feladatonként összesít (Wilson-intervallum, pass^k, lánchosszak, csendes arány), Markdownt és JSON-t ír |
 | `configs/sampling.json` | Modellcsaládonkénti mintavételi profilok az agent-futásokhoz, forrással |
 | `harness/run-tasks.ts` | Az agent harness belépési pontja: spec a stdinen, tool loop feladat-próbálkozásonként, `RESULT:` összegzés |
 | `harness/agent/` | A harness moduljai: spec, modell-backendek (SDK-s és scriptelt), tool loop, toolok, sandbox, trace; offline tesztek az `agent.test.ts`-ben |
 | `tasks/examples.json`, `tasks/fixtures/` | Példa agent-feladatok (v2 formátum: deklaratív mock toolok, várt hívások, ellenőrzések), és a sandboxukba másolt fájlok |
+| `tasks/m1.json` | Az M1 feladatkészlet: 20 feladat nyolc csoportban; referenciamegoldások és hibás válaszok a `tests/m1_reference.json` és a `tests/m1_failures.json` fájlban |
 | `tests/fixtures/traces/` | Rögzített élő trace-ek a kategorizáló regressziós mintáiként |
 | `harness/package.json` | Node.js verziókövetelmény, a rögzített SDK verzió, TypeScript típusellenőrzés és teszt scriptek |
 | `configs/*.json` | Mérési rácsok (4.1) |
@@ -235,7 +237,9 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
-| `bench agent run [--model] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
+| `bench agent run [--model \| --models] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
+| `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
+| `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
 
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.

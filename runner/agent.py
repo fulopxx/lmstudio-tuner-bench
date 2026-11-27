@@ -1,7 +1,10 @@
 """Agent task runs: load one model, run a task set through the TypeScript harness, check and categorize the attempts.
 
   bench agent run --model qwen3-8b [--tasks tasks/examples.json] [--repeats 1] [--context 8192]
+  bench agent run --models a,b,c [--tasks tasks/m1.json] [--repeats 5]
   bench agent run --scripted replies.json      offline: scripted model replies, no GPU and no LM Studio
+  bench agent report [--run <id>]               pass rates, categories, chains (offline)
+  bench agent show <run> <task>-<n>             the steps of one attempt with the evidence (offline)
 
 The harness (harness/run-tasks.ts) executes the tool loop and writes one JSONL trace per attempt; this module loads
 and unloads the model, starts the harness, passes Ctrl+C on as a stop command, judges each attempt from its trace with
@@ -37,7 +40,8 @@ STOP_GRACE_S = 20  # after a stop command, the harness gets this long before it 
 BUILTIN_TOOLS = ("read_file",)
 CHECK_KEYS = ("answer_contains", "answer_contains_any", "answer_not_contains", "tool_called", "tool_not_called",
               "mentions_failure")
-TASK_KEYS = ("id", "comment", "prompt", "system", "fixtures", "tools", "limits", "expected_calls", "forbidden_tools",
+TASK_KEYS = ("id", "comment", "chain_length", "prompt", "system", "fixtures", "tools", "limits", "expected_calls",
+             "forbidden_tools",
              "checks", "accept_limit", "no_tool_needed", "max_tool_calls", "loop_threshold")
 HARNESS_TASK_KEYS = ("id", "prompt", "system", "fixtures", "tools", "limits")
 
@@ -267,6 +271,61 @@ def machine_ready(min_free_mib, max_util):
 
 # ---------------------------------------------------------------- the run command
 
+def model_slug(model):
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", model)
+
+
+def run_timeout(a, data, tasks):
+    """FA-42: unless given, the time for the whole task set follows from tasks, repeats and the attempt limit."""
+    if a.run_timeout:
+        return a.run_timeout
+    default_wall = data.get("limits", {}).get("wallTimeMs", 180_000)
+    per_attempt = [t.get("limits", {}).get("wallTimeMs", default_wall) / 1000 + 5 for t in tasks]
+    return int(sum(per_attempt) * a.repeats + 120)
+
+
+def run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s):
+    """One model of a run: load, harness, unload. Returns (attempts, summary or None, meta)."""
+    out_dir = run_dir / model_slug(model)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    used_tools = {n for t in tasks for n in t.get("tools", [])}
+    sampling = sampling_for(model, a.temperature)
+    spec = {"schemaVersion": SPEC_SCHEMA_VERSION, "run": run_id,
+            "tools": {k: v for k, v in data.get("toolsets", {}).items() if k in used_tools},
+            "tasks": [{k: v for k, v in t.items() if k in HARNESS_TASK_KEYS} for t in tasks],
+            "repeats": a.repeats, "limits": data.get("limits", {}), "sampling": sampling, "outDir": str(out_dir),
+            "fixturesRoot": str((Path(a.tasks).resolve().parent / data.get("fixtures", "fixtures"))),
+            "meta": {"model": model, "contextLength": None if a.scripted else a.context,
+                     "taskFile": str(a.tasks), "taskFileHash": task_hash}}
+    meta = {"run": run_id, "model": model, "tasks_file": str(a.tasks), "tasks_hash": task_hash, "repeats": a.repeats,
+            "sampling": sampling, "taxonomy_version": failures.TAXONOMY_VERSION}
+    loaded = False
+    try:
+        if a.scripted:
+            spec["backend"] = {"type": "scripted",
+                               "replies": json.loads(Path(a.scripted).read_text(encoding="utf-8"))}
+            meta["backend"] = "scripted"
+        else:
+            machine_ready(a.min_free_mib, a.max_util)
+            catalog = sweep.model_catalog()
+            if model not in catalog:
+                raise StepError("fail", f"unknown model key '{model}' (see `lms ls`)")
+            log(f"loading {model} (context {a.context})")
+            loaded = True  # a failed load may still leave the instance behind
+            info = sweep.sdk_load(catalog[model]["path"], load_settings(a.context), a.load_timeout, IDENTIFIER)
+            if info.get("mismatches"):
+                raise StepError("fail", "load settings not applied: " + "; ".join(info["mismatches"]))
+            spec["backend"] = {"type": "lmstudio", "identifier": IDENTIFIER}
+            meta.update(backend="lmstudio", app_version=info.get("app"), context=a.context, env=sweep.environment())
+        log(f"run {run_id}, {model}: {len(tasks)} task(s) x {a.repeats}, sampling {sampling['source']}")
+        summary = run_harness(spec, timeout_s)
+    finally:
+        if loaded:
+            sh([LMS, "unload", IDENTIFIER], 60)
+    attempts = summary["attempts"] if summary else attempts_from_traces(out_dir, tasks, a.repeats)
+    return attempts, summary, meta
+
+
 def cmd_run(a):
     data, task_hash = load_tasks(a.tasks)
     tasks = data["tasks"]
@@ -275,72 +334,54 @@ def cmd_run(a):
         tasks = [t for t in tasks if t["id"] in wanted]
         if not tasks:
             raise StepError("fail", f"no task matches --only {a.only}")
+    if a.scripted:
+        models = ["scripted"]
+    else:
+        models = [m.strip() for m in (a.models or a.model or "").split(",") if m.strip()]
+        if not models:
+            raise StepError("fail", "--model or --models is required (or --scripted for an offline run)")
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = ROOT / "results" / "agent" / run_id
-    out_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(a.tasks, out_dir / "tasks.json")  # FA-42: the run can be re-evaluated later
-    used_tools = {n for t in tasks for n in t.get("tools", [])}
-    model_key = "scripted" if a.scripted else a.model
-    sampling = sampling_for(model_key, a.temperature)
-    spec = {"schemaVersion": SPEC_SCHEMA_VERSION, "run": run_id,
-            "tools": {k: v for k, v in data.get("toolsets", {}).items() if k in used_tools},
-            "tasks": [{k: v for k, v in t.items() if k in HARNESS_TASK_KEYS} for t in tasks],
-            "repeats": a.repeats, "limits": data.get("limits", {}), "sampling": sampling, "outDir": str(out_dir),
-            "fixturesRoot": str((Path(a.tasks).resolve().parent / data.get("fixtures", "fixtures"))),
-            "meta": {"model": model_key, "contextLength": None if a.scripted else a.context,
-                     "taskFile": str(a.tasks), "taskFileHash": task_hash}}
-    meta = {"run": run_id, "tasks_file": str(a.tasks), "tasks_hash": task_hash, "repeats": a.repeats,
-            "sampling": sampling, "taxonomy_version": failures.TAXONOMY_VERSION}
-    loaded = False
-    try:
-        if a.scripted:
-            spec["backend"] = {"type": "scripted",
-                               "replies": json.loads(Path(a.scripted).read_text(encoding="utf-8"))}
-            meta.update(model="scripted", backend="scripted")
-        else:
-            if not a.model:
-                raise StepError("fail", "--model is required (or --scripted for an offline run)")
-            machine_ready(a.min_free_mib, a.max_util)
-            catalog = sweep.model_catalog()
-            if a.model not in catalog:
-                raise StepError("fail", f"unknown model key '{a.model}' (see `lms ls`)")
-            log(f"loading {a.model} (context {a.context})")
-            loaded = True  # a failed load may still leave the instance behind
-            info = sweep.sdk_load(catalog[a.model]["path"], load_settings(a.context), a.load_timeout, IDENTIFIER)
-            if info.get("mismatches"):
-                raise StepError("fail", "load settings not applied: " + "; ".join(info["mismatches"]))
-            spec["backend"] = {"type": "lmstudio", "identifier": IDENTIFIER}
-            meta.update(model=a.model, backend="lmstudio", app_version=info.get("app"), context=a.context,
-                        env=sweep.environment())
-        log(f"run {run_id}: {len(tasks)} task(s) x {a.repeats}, sampling {sampling['source']}")
-        summary = run_harness(spec, a.run_timeout)
-    finally:
-        if loaded:
-            sh([LMS, "unload", IDENTIFIER], 60)
-    attempts = summary["attempts"] if summary else attempts_from_traces(out_dir, tasks, a.repeats)
-
+    run_dir = ROOT / "results" / "agent" / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(a.tasks, run_dir / "tasks.json")  # FA-42: the run can be re-evaluated later
+    timeout_s = run_timeout(a, data, tasks)
     by_id = {t["id"]: t for t in tasks}
-    rows = []
     results_file = ROOT / "results" / f"agent_{run_id}.jsonl"
-    for at in attempts:
-        task = by_id[at["task"]]
-        events = read_events(at["trace"]) if at.get("trace") else []
-        verdict = evaluate_attempt(task, at, events)
-        category = failures.classify(task, at, events, verdict["passed"])
-        row = {"schema_version": TASKS_SCHEMA_VERSION, **meta, "task": at["task"], "attempt": at["attempt"],
-               "status": at["status"], **verdict, **category, "answer": at.get("answer"), "rounds": at.get("rounds"),
-               "tool_calls": at.get("toolCalls"), "limits_hit": at.get("limitsHit"), "seconds": at.get("seconds"),
-               "error": at.get("error"), "trace": at.get("trace"), "sandbox": at.get("sandbox"),
-               "rebuilt_from_traces": summary is None}
-        sweep.append_row(results_file, row)
-        rows.append(row)
-    print_summary(rows, summary.get("stopped") if summary else True)
+    all_rows = []
+    for model in models:
+        try:
+            attempts, summary, meta = run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s)
+        except StepError as e:  # FA-40: record the model's error and go on with the next model
+            log(f"{model}: {e}")
+            row = {"schema_version": TASKS_SCHEMA_VERSION, "run": run_id, "model": model, "task": "*", "attempt": 0,
+                   "status": "error", "passed": False, "primary": "infra_error", "subcode": "harness_error",
+                   "error": str(e), "taxonomy_version": failures.TAXONOMY_VERSION}
+            sweep.append_row(results_file, row)
+            all_rows.append(row)
+            continue
+        rows = []
+        for at in attempts:
+            task = by_id[at["task"]]
+            events = read_events(at["trace"]) if at.get("trace") else []
+            verdict = evaluate_attempt(task, at, events)
+            category = failures.classify(task, at, events, verdict["passed"])
+            row = {"schema_version": TASKS_SCHEMA_VERSION, **meta, "task": at["task"], "attempt": at["attempt"],
+                   "status": at["status"], **verdict, **category, "answer": at.get("answer"),
+                   "rounds": at.get("rounds"), "tool_calls": at.get("toolCalls"), "limits_hit": at.get("limitsHit"),
+                   "seconds": at.get("seconds"), "error": at.get("error"), "trace": at.get("trace"),
+                   "sandbox": at.get("sandbox"), "rebuilt_from_traces": summary is None}
+            sweep.append_row(results_file, row)
+            rows.append(row)
+        print_summary(model, rows, summary.get("stopped") if summary else True)
+        all_rows += rows
     log(f"results: {results_file}")
+    log(f"report:  bench agent report --run {run_id}")
     return 0
 
 
-def print_summary(rows, stopped):
+def print_summary(model, rows, stopped):
     log("")
+    log(f"{model}")
     log(f"{'task':<22} {'try':>3}  {'status':<8} {'pass':<5} {'rounds':>6} {'tools':>5}  category")
     for r in rows:
         cat = "" if r["passed"] else f"{r['primary']}" + (f"/{r['subcode']}" if r["subcode"] else "") + \
@@ -351,26 +392,124 @@ def print_summary(rows, stopped):
     log(f"passed {passed}/{len(rows)}" + (" (stopped early)" if stopped else ""))
 
 
+# ---------------------------------------------------------------- report and show
+
+def cmd_report(a):
+    import agent_report
+    run_ids = a.run or [agent_report.latest_run()]
+    rows, tasks, meta = [], {}, {}
+    for rid in run_ids:
+        r, t = agent_report.load_rows(rid)
+        rows += r
+        tasks.update(t)
+        if r:
+            meta.setdefault("tasks_hash", r[0].get("tasks_hash"))
+    if a.tasks:  # re-judge with a newer task file, e.g. after fixing a check; the traces stay as recorded
+        data, digest = load_tasks(a.tasks)
+        tasks = {t["id"]: t for t in data["tasks"]}
+        meta.update(tasks_hash=digest, rejudged_with=str(a.tasks))
+    rows = agent_report.rejudge(rows, tasks, read_events, evaluate_attempt)
+    models = agent_report.summarize(rows, tasks, k=a.k, reliable=a.reliable)
+    path = agent_report.write(run_ids, models, meta)
+    text = path.read_text(encoding="utf-8")
+    print(text.split("\n## Pass rate per task", 1)[0])
+    log(f"full report: {path} (and .json)")
+    return 0
+
+
+def _short(value, n=160):
+    s = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    s = s.replace("\n", " ")
+    return s if len(s) <= n else s[:n] + "…"
+
+
+def describe(e):
+    kind = e.get("event")
+    if kind == "task_start":
+        return f"task {e.get('task')} attempt {e.get('attempt')}, model {e.get('model')}, tools {e.get('tools')}"
+    if kind == "prediction":
+        shown = e.get("answer") or (f"[no answer; {e.get('reasoningChars')} reasoning chars] " + (e.get("text") or ""))
+        return (f"round {e.get('round')}: {e.get('stopReason')}, {e.get('toolCalls')} call(s), "
+                f"{e.get('duration_s')} s: {_short(shown)}")
+    if kind == "tool_call":
+        if not e.get("parsed"):
+            return f"unparsed call: {e.get('error')} raw={_short(e.get('raw'), 80)}"
+        extra = "" if e.get("valid", True) else f" INVALID {[p.get('code') for p in e.get('problems', [])]}"
+        return f"call #{e.get('call_seq')} {e.get('name')}({_short(e.get('arguments'), 100)}){extra}"
+    if kind == "tool_result":
+        state = "ok" if e.get("ok") else f"error {e.get('errorKind')}"
+        return f"result #{e.get('call_seq')} {state}: {_short(e.get('content'), 120)}"
+    if kind == "limit_hit":
+        return f"limit {e.get('limit')} ({e.get('value')})"
+    if kind == "task_end":
+        return f"status {e.get('status')}, answer: {_short(e.get('answer'))}"
+    return _short({k: v for k, v in e.items() if k not in ("schema_version", "t", "seq", "event")})
+
+
+def cmd_show(a):
+    """FA-47: an attempt's steps with sequence numbers; the evidence event of its category is marked with >>."""
+    import agent_report
+    rows, tasks = agent_report.load_rows(a.run)
+    task_id, _, attempt = a.attempt.rpartition("-")
+    if not task_id or not attempt.isdigit():
+        raise StepError("fail", "give the attempt as <task>-<number>, e.g. chain-3a-2")
+    found = [r for r in rows if r.get("task") == task_id and r.get("attempt") == int(attempt)
+             and (not a.model or r.get("model") == a.model)]
+    if not found:
+        raise StepError("fail", f"no attempt {a.attempt} in run {a.run}" + (f" for {a.model}" if a.model else ""))
+    if len(found) > 1:
+        raise StepError("fail", "several models ran this attempt; choose one with --model: "
+                        + ", ".join(r.get("model") for r in found))
+    row = agent_report.rejudge(found, tasks, read_events, evaluate_attempt)[0]
+    mark = (row.get("evidence") or {}).get("seq")
+    verdict = "passed" if row.get("passed") else (f"failed: {row.get('primary')}" +
+                                                  (f"/{row.get('subcode')}" if row.get("subcode") else "") +
+                                                  (" (silent)" if row.get("silent") else ""))
+    log(f"{row.get('model')} {a.attempt}: {verdict}; rule {(row.get('evidence') or {}).get('rule')}")
+    if row.get("secondary"):
+        log("secondary: " + ", ".join(f"{s['category']}" + (f"/{s['subcode']}" if s.get("subcode") else "")
+                                      + f" @{s.get('seq')}" for s in row["secondary"]))
+    if row.get("flags"):
+        log("flags: " + ", ".join(row["flags"]))
+    log(f"checks: {row.get('checks')}")
+    log("")
+    for e in read_events(row["trace"]):
+        prefix = ">>" if e.get("seq") == mark else "  "
+        log(f"{prefix} {e.get('seq'):>3} {e.get('event'):<12} {describe(e)}")
+    log(f"\ntrace: {row['trace']}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="bench agent")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="run a task set on one model through the harness")
+    r = sub.add_parser("run", help="run a task set on one or more models through the harness")
     r.add_argument("--model", help="model key from `lms ls`")
+    r.add_argument("--models", help="comma separated model keys, run one after another (FA-40)")
     r.add_argument("--tasks", default=str(ROOT / "tasks" / "examples.json"))
     r.add_argument("--only", help="comma separated task ids")
     r.add_argument("--repeats", type=int, default=5)
     r.add_argument("--context", type=int, default=8192)
     r.add_argument("--temperature", type=float, help="overrides the temperature of the model's sampling profile")
     r.add_argument("--load-timeout", type=int, default=240)
-    r.add_argument("--run-timeout", type=int, default=3600, help="seconds for the whole task set")
+    r.add_argument("--run-timeout", type=int, help="seconds per model for the whole task set (default: computed)")
     r.add_argument("--min-free-mib", type=int, default=3500)
     r.add_argument("--max-util", type=int, default=30)
     r.add_argument("--scripted", help="JSON file with scripted replies per task id (offline, no model)")
+    p = sub.add_parser("report", help="aggregate one or more runs: pass rates, categories, chains (offline)")
+    p.add_argument("--run", action="append", help="run id (repeatable; default: the latest run)")
+    p.add_argument("--tasks", help="judge with this task file instead of the copy in the run folder")
+    p.add_argument("--k", type=int, default=5, help="k of pass^k")
+    p.add_argument("--reliable", type=float, default=0.8, help="pass rate a chain length needs to count as reliable")
+    s = sub.add_parser("show", help="the steps of one attempt with the evidence of its category (offline)")
+    s.add_argument("run", help="run id")
+    s.add_argument("attempt", help="<task>-<number>, e.g. chain-3a-2")
+    s.add_argument("--model", help="model key, when the run has several models")
     a = ap.parse_args(argv)
     try:
-        return cmd_run(a)
+        return {"run": cmd_run, "report": cmd_report, "show": cmd_show}[a.cmd](a)
     except StepError as e:
-        log(f"agent run failed: {e}")
+        log(f"agent {a.cmd} failed: {e}")
         return 3
 
 

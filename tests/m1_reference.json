@@ -1,0 +1,91 @@
+{
+  "direct-file": [
+    { "toolCalls": [{ "name": "read_file", "arguments": { "path": "notes.txt" } }] },
+    { "text": "The marker in notes.txt is BLUE-HERON-17." }
+  ],
+  "direct-lookup": [
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-1042" } }] },
+    { "text": "Order A-1042 has shipped with DHL (tracking TRK-4Q1C) and should arrive on 2026-12-01." }
+  ],
+  "choice-status": [
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-2201" } }] },
+    { "text": "Yes, order A-2201 was delivered on 2026-11-20. Signature code: SIG-7Q4X." }
+  ],
+  "choice-history": [
+    { "toolCalls": [{ "name": "get_order_history", "arguments": { "order_id": "A-3310" } }] },
+    { "text": "Order A-3310 was paid on 2026-10-14, payment reference PAY-55KD." }
+  ],
+  "args-typed": [
+    { "toolCalls": [{ "name": "convert_currency", "arguments": { "amount": 249.9, "from": "EUR", "to": "HUF" } }] },
+    { "text": "249.90 EUR is 97461 HUF today (quote Q-8812)." }
+  ],
+  "args-identifier": [
+    { "toolCalls": [{ "name": "get_invoice", "arguments": { "invoice_id": "INV-2026-000417-Bx" } }] },
+    { "text": "Invoice INV-2026-000417-Bx belongs to purchase order PO-77231 and is due on 2026-12-15." }
+  ],
+  "args-missing": [
+    { "text": "Which order should I cancel? Please give me the order number." }
+  ],
+  "chain-2": [
+    { "toolCalls": [{ "name": "read_file", "arguments": { "path": "customer.txt" } }] },
+    { "toolCalls": [{ "name": "lookup_customer", "arguments": { "email": "mira.k@example.test" } }] },
+    { "text": "The customer (mira.k@example.test) has the loyalty tier GOLD-ZETA." }
+  ],
+  "chain-3a": [
+    { "toolCalls": [{ "name": "lookup_customer", "arguments": { "email": "olaf.b@example.test" } }] },
+    { "toolCalls": [{ "name": "get_latest_order", "arguments": { "customer_id": "CUST-5082" } }] },
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-9061" } }] },
+    { "text": "The latest order A-9061 is in transit, tracking number TRK-31X8." }
+  ],
+  "chain-3b": [
+    { "toolCalls": [{ "name": "read_file", "arguments": { "path": "ticket.txt" } }] },
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-7770" } }] },
+    { "toolCalls": [{ "name": "get_shipment", "arguments": { "tracking_number": "TRK-90QZ" } }] },
+    { "text": "The parcel of order A-7770 is held at depot DEPOT-SZ04, waiting for customs papers." }
+  ],
+  "chain-4a": [
+    { "toolCalls": [{ "name": "lookup_customer", "arguments": { "email": "ines.v@example.test" } }] },
+    { "toolCalls": [{ "name": "get_latest_order", "arguments": { "customer_id": "CUST-6390" } }] },
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-8123" } }] },
+    { "toolCalls": [{ "name": "get_shipment", "arguments": { "tracking_number": "TRK-6M2D" } }] },
+    { "text": "Yes, order A-8123 arrived: it is in parcel locker LKR-5521." }
+  ],
+  "chain-4b": [
+    { "toolCalls": [{ "name": "read_file", "arguments": { "path": "refund.txt" } }] },
+    { "toolCalls": [{ "name": "get_invoice", "arguments": { "invoice_id": "INV-2026-000902-Kp" } }] },
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-6120" } }] },
+    { "toolCalls": [{ "name": "get_refund", "arguments": { "refund_id": "RF-2Q7" } }] },
+    { "text": "Yes, refund RF-2Q7 for order A-6120 was paid out on 2026-11-25 (812.40 EUR), transfer reference TX-88VN." }
+  ],
+  "error-service": [
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "B-7" } }] },
+    { "text": "I could not check order B-7: the order service is unavailable (HTTP 503). Please try again later." }
+  ],
+  "error-missing-file": [
+    { "toolCalls": [{ "name": "read_file", "arguments": { "path": "contract.txt" } }] },
+    { "text": "I could not find contract.txt in the working folder, so I cannot tell you the notice period." }
+  ],
+  "error-transient": [
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-5005" } }] },
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-5005" } }] },
+    { "text": "Yes, order A-5005 has shipped; the shipment reference is SHP-61T." }
+  ],
+  "timeout": [
+    { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "C-55" } }] },
+    { "text": "The order service did not answer in time, so I could not check C-55. Please try again later." }
+  ],
+  "none-knowledge": [
+    { "text": "391" }
+  ],
+  "none-in-prompt": [
+    { "text": "Your tracking number is TRK-8A2M." }
+  ],
+  "none-not-offered": [
+    { "text": "I cannot look up weather forecasts: I do not have a weather tool." }
+  ],
+  "pending": [
+    { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+    { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+    { "text": "JOB-77 is not finished yet: it is still pending. Please check again later." }
+  ]
+}

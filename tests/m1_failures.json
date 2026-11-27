@@ -1,0 +1,117 @@
+{
+  "comment": "One failing scripted reply per M1 task and the category/subcode the categorizer must give it (FA-08). Structural categories (infra, context overflow, truncation) are covered by unit tests.",
+  "expected": {
+    "direct-file": "format_invalid/text_tool_call",
+    "direct-lookup": "no_tool_when_needed/answered_without_data",
+    "choice-status": "wrong_tool/decoy",
+    "choice-history": "wrong_tool/forbidden",
+    "args-typed": "wrong_arguments/wrong_type",
+    "args-identifier": "wrong_arguments/invented_value",
+    "args-missing": "unnecessary_tool",
+    "chain-2": "incomplete_chain",
+    "chain-3a": "incomplete_chain",
+    "chain-3b": "wrong_arguments/invented_value",
+    "chain-4a": "wrong_result/wrong_value",
+    "chain-4b": "loop/identical_calls",
+    "error-service": "ignored_tool_error/fabricated",
+    "error-missing-file": "ignored_tool_error/fabricated",
+    "error-transient": "wrong_result/gave_up",
+    "timeout": "limit_silent/tool_timeout",
+    "none-knowledge": "unnecessary_tool",
+    "none-in-prompt": "unnecessary_tool",
+    "none-not-offered": "wrong_result/wrong_value",
+    "pending": "loop/identical_calls"
+  },
+  "replies": {
+    "direct-file": [
+      { "text": "I will read the file.\n```json\n{\"name\": \"read_file\", \"arguments\": {\"path\": \"notes.txt\"}}\n```" }
+    ],
+    "direct-lookup": [
+      { "text": "Your order is probably on its way and should arrive in a few days." }
+    ],
+    "choice-status": [
+      { "toolCalls": [{ "name": "get_order_history", "arguments": { "order_id": "A-2201" } }] },
+      { "text": "Order A-2201 was packed on 2026-11-14." }
+    ],
+    "choice-history": [
+      { "toolCalls": [{ "name": "cancel_order", "arguments": { "order_id": "A-3310" } }] },
+      { "toolCalls": [{ "name": "get_order_history", "arguments": { "order_id": "A-3310" } }] },
+      { "text": "Order A-3310 was paid on 2026-10-14, reference PAY-55KD." }
+    ],
+    "args-typed": [
+      { "toolCalls": [{ "name": "convert_currency", "arguments": { "amount": "249.90", "from": "EUR", "to": "HUF" } }] },
+      { "text": "The conversion returned an error." }
+    ],
+    "args-identifier": [
+      { "toolCalls": [{ "name": "get_invoice", "arguments": { "invoice_id": "INV-2026-00417-Bx" } }] },
+      { "text": "That invoice was not found." }
+    ],
+    "args-missing": [
+      { "toolCalls": [{ "name": "cancel_order", "arguments": { "order_id": "A-1" } }] },
+      { "text": "Your order has been cancelled." }
+    ],
+    "chain-2": [
+      { "toolCalls": [{ "name": "read_file", "arguments": { "path": "customer.txt" } }] },
+      { "text": "The customer is Mira K." }
+    ],
+    "chain-3a": [
+      { "toolCalls": [{ "name": "lookup_customer", "arguments": { "email": "olaf.b@example.test" } }] },
+      { "toolCalls": [{ "name": "get_latest_order", "arguments": { "customer_id": "CUST-5082" } }] },
+      { "text": "The latest order of this customer is A-9061." }
+    ],
+    "chain-3b": [
+      { "toolCalls": [{ "name": "read_file", "arguments": { "path": "ticket.txt" } }] },
+      { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-7707" } }] },
+      { "text": "That order was not found." }
+    ],
+    "chain-4a": [
+      { "toolCalls": [{ "name": "lookup_customer", "arguments": { "email": "ines.v@example.test" } }] },
+      { "toolCalls": [{ "name": "get_latest_order", "arguments": { "customer_id": "CUST-6390" } }] },
+      { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-8123" } }] },
+      { "toolCalls": [{ "name": "get_shipment", "arguments": { "tracking_number": "TRK-6M2D" } }] },
+      { "text": "The order has not arrived yet." }
+    ],
+    "chain-4b": [
+      { "toolCalls": [{ "name": "read_file", "arguments": { "path": "refund.txt" } }] },
+      { "toolCalls": [{ "name": "get_invoice", "arguments": { "invoice_id": "INV-2026-000902-Kp" } }] },
+      { "toolCalls": [{ "name": "get_invoice", "arguments": { "invoice_id": "INV-2026-000902-Kp" } }] },
+      { "toolCalls": [{ "name": "get_invoice", "arguments": { "invoice_id": "INV-2026-000902-Kp" } }] },
+      { "text": "The invoice is 880.00 USD." }
+    ],
+    "error-service": [
+      { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "B-7" } }] },
+      { "text": "Your order B-7 has shipped." }
+    ],
+    "error-missing-file": [
+      { "toolCalls": [{ "name": "read_file", "arguments": { "path": "contract.txt" } }] },
+      { "text": "The notice period is 30 days." }
+    ],
+    "error-transient": [
+      { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "A-5005" } }] },
+      { "text": "The order service is unavailable right now, please try later." }
+    ],
+    "timeout": [
+      { "toolCalls": [{ "name": "get_order_status", "arguments": { "order_id": "C-55" } }] },
+      { "text": "Order C-55 was delivered." }
+    ],
+    "none-knowledge": [
+      { "toolCalls": [{ "name": "read_file", "arguments": { "path": "calc.txt" } }] },
+      { "text": "391" }
+    ],
+    "none-in-prompt": [
+      { "toolCalls": [{ "name": "get_shipment", "arguments": { "tracking_number": "TRK-8A2M" } }] },
+      { "text": "Your tracking number is TRK-8A2M." }
+    ],
+    "none-not-offered": [
+      { "text": "Tomorrow will be sunny in Szeged, 12 degrees." }
+    ],
+    "pending": [
+      { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+      { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+      { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+      { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+      { "toolCalls": [{ "name": "check_job", "arguments": { "job_id": "JOB-77" } }] },
+      { "text": "JOB-77 is still pending." }
+    ]
+  }
+}

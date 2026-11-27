@@ -129,6 +129,11 @@ class CategorizerTest(unittest.TestCase):
         self.assertEqual((c["primary"], c["subcode"]), ("format_invalid", "text_tool_call"))
         self.assertIn("no_tool_when_needed", [f["category"] for f in c["secondary"]])
 
+    def test_xml_form_text_tool_call(self):
+        text = '```xml\n<lookup id="A-1"/>\n```'
+        c = self.primary(Trace().pred(text).end(answer=text))
+        self.assertEqual((c["primary"], c["subcode"]), ("format_invalid", "text_tool_call"))
+
     def test_quoted_unknown_tool_name_is_not_a_text_call(self):
         text = '{"name": "something_else", "arguments": {}}'
         c = self.primary(Trace().pred(text).end(answer=text))
@@ -220,6 +225,11 @@ class CategorizerTest(unittest.TestCase):
         self.assertEqual(self.primary(t, task)["subcode"], "partial")
         t = Trace().pred(calls=1).call("lookup", {"id": "A-1"}).pred("").end(answer="")
         self.assertEqual(self.primary(t, task)["subcode"], "empty_answer")
+        t = Trace().pred(calls=1).call("lookup", {"id": "A-1"}, ok=False, kind="mock_error")
+        t.pred("The service is unavailable, please try later.").end(answer="The service is unavailable, please try later.")
+        c = self.primary(t, task)
+        self.assertEqual((c["primary"], c["subcode"]), ("wrong_result", "gave_up"))
+        self.assertFalse(c["silent"])
 
     def test_unclassified(self):
         task = {"checks": {"answer_contains": ["x"]}}  # no expected calls: the steps cannot be judged

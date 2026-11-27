@@ -1,0 +1,3 @@
+Refund request
+
+The customer returned the goods of invoice INV-2026-000902-Kp and asks about the refund.

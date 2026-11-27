@@ -106,6 +106,9 @@ Viselkedés:
 | `.\bench agent run --model qwen3-8b` | A példafeladatokat (`tasks\examples.json`) futtatja egy modellen, és ellenőrzi a válaszokat |
 | `.\bench agent run --model qwen3-8b --repeats 3 --only file-marker` | Kiválasztott feladatok, mindegyik többször |
 | `.\bench agent run --model qwen3-8b --tasks <fájl> --context 16384` | Másik feladatfájl, másik contexthossz |
+| `.\bench agent run --models qwen3-8b,qwen3.5-4b-mtp --tasks tasks\m1.json` | Az M1 feladatkészlet (20 feladat) több modellen, egymás után |
+| `.\bench agent report` | A legutóbbi futás riportja: sikerarány intervallummal, hibakategóriák, leghosszabb megbízható lánc (offline) |
+| `.\bench agent show <run> chain-3a-2` | Egy próbálkozás lépései, kijelölve a kategóriáról döntő trace-eseményt (offline) |
 
 A feladatfájl feladatonként megadja a promptot, a modell által használható toolokat (`read_file`, `mock_lookup`), egy
 opcionális mappát, amelynek fájljai a feladat sandboxába másolódnak, a mock tool válaszait (azonosítónként eredmény,

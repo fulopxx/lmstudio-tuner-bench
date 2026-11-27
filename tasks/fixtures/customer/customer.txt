@@ -1,0 +1,5 @@
+Customer note
+
+name: Mira K.
+e-mail: mira.k@example.test
+since: 2021

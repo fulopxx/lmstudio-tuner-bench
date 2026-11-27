@@ -39,10 +39,12 @@ existing code; the "target" and "planned" parts are not implemented yet. Task li
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | Pure parts of the probe (plan check, load configs per mode, draft ratios) and their offline test |
 | `runner/agent.py` | `bench agent run`: loads one model, starts the harness, passes a stop on, judges each attempt from its trace with the task's checks |
 | `runner/failures.py` | Failure taxonomy (single machine-readable source) and the rule-based categorizer of agent attempts; pure functions |
+| `runner/agent_report.py` | Report of agent runs: recomputes verdicts and categories from the traces, aggregates per model and task (Wilson intervals, pass^k, chain lengths, silent share), writes Markdown and JSON |
 | `configs/sampling.json` | Sampling profiles per model family for agent runs, with sources |
 | `harness/run-tasks.ts` | Agent harness entry point: spec on stdin, tool loop per task attempt, `RESULT:` summary |
 | `harness/agent/` | Harness modules: spec, model backends (SDK and scripted), tool loop, tools, sandbox, trace; offline tests in `agent.test.ts` |
 | `tasks/examples.json`, `tasks/fixtures/` | Example agent tasks (format v2: declarative mock tools, expected calls, checks), and the files copied into their sandboxes |
+| `tasks/m1.json` | The M1 task set: 20 tasks in eight groups; reference solutions and failing replies in `tests/m1_reference.json` and `tests/m1_failures.json` |
 | `tests/fixtures/traces/` | Recorded live traces used as regression samples for the categorizer |
 | `harness/package.json` | Node.js version requirement, the pinned SDK version, TypeScript type check and test scripts |
 | `configs/*.json` | Measurement grids (section 4.1) |
@@ -233,7 +235,9 @@ The API routes are proposals and not implemented.
 | `bench resume [--run] [--from N] [--redo-failed] [--allow-env-change]` | `POST /runs/{id}/resume` |
 | `bench stop [--now]` | `POST /runs/current/stop` |
 | `bench evaluate [--run] [--in-tokens] [--out-tokens]` | `GET /runs/{id}/evaluation` |
-| `bench agent run [--model] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
+| `bench agent run [--model \| --models] [--tasks] [--only] [--repeats] [--context] [--temperature] [--scripted]` | `POST /agent-runs` |
+| `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
+| `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
 
 Exit codes of `run` and `resume`: 0 when the run is done or was stopped by the user, 3 when it was aborted, 2 for
 unusable arguments. `bench <command> --help` lists the defaults.

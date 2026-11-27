@@ -32,3 +32,15 @@ Same machine, 4k context, single trial runs with the LM Studio default of 3 draf
   limited by memory bandwidth, and a draft model at about 40 % of the main model's size costs more than it saves.
 - Built-in MTP heads were faster on three models (+4 % to +33 %), with no extra VRAM.
 - Speculation is switched at load only; the REST chat endpoint returns the draft counters.
+
+## Agent tasks, first live run of the M1 set, 2026-11-27
+
+Same machine, 20 tasks, five attempts each, sampling per model card; details in the
+[requirements](requirements.md), section 3, and the [failure taxonomy](failure_taxonomy.md).
+
+- Three models that call tools passed 90 to 96 % of the attempts; their intervals overlap at five repeats.
+- 74 of the 83 failures of a 7B coder model were tool calls written as text; for such a model the task set measures
+  only the format problem.
+- A transient tool error was retried by almost no model: they reported the error to the user instead.
+- The manual review of the failures found four gaps in the keyword-based rules; a categorizer of this kind needs
+  such a review after every new task set.

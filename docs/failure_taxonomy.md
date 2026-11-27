@@ -2,10 +2,10 @@
 
 [Magyar](failure_taxonomy.hu.md)
 
-Taxonomy version 1 (2026-11-26). Requirements and reasons: [requirements](requirements.md), section 3 (FA-30 to
+Taxonomy version 2 (2026-11-27; version 1: 2026-11-26; version 2 adds `wrong_result/gave_up` after the first live run of the M1 task set). Requirements and reasons: [requirements](requirements.md), section 3 (FA-30 to
 FA-39). The machine-readable source is `CATEGORIES` in `runner/failures.py`; a test checks that every id below matches
 it. Status: implemented and tested on synthetic traces and two recorded live traces; not yet used on a full task set,
-and the heuristic rules have not been checked against a manual review (FA-37).
+and the heuristic rules have been checked by a manual review of the failures of one live run only (FA-37, 2026-11-27: it found a gap in a task's keyword list and led to the `gave_up` subcode).
 
 ## How an attempt is categorized
 
@@ -42,7 +42,7 @@ the trace structure; *heuristic* = depends on text matching.
 | `infra_error` | The harness or the SDK failed, the attempt was stopped, skipped, or its trace has no end | No statement about the model; excluded from model scores | Status `error`, `aborted`, `skipped`; an `error` event; no `task_end` | rule | Fix the environment; rerun |
 | `context_overflow` | The conversation no longer fits the context | The answer is cut off or missing | Stop reason `contextLengthReached` (the harness asks LM Studio to stop at the limit) | rule | Larger context; smaller tool results; summarizing history |
 | `output_truncated` | The token budget of a round ran out | Missing or partial answer | Stop reason `maxPredictedTokensReached` | rule | Larger budget per round; reasoning budget; non-thinking mode |
-| `format_invalid` | The model tried to call a tool, but the call was not recognized | No tool runs; the model looks as if it ignored the tools | The SDK reported an unparsable call; or a reply without tool calls names an offered tool in call form (`"name": "<tool>"`, `<function=<tool>`, `<tool_call>`) | heuristic (text form), rule (SDK report) | Parse text calls (repair); grammar or schema constraint; a better chat template |
+| `format_invalid` | The model tried to call a tool, but the call was not recognized | No tool runs; the model looks as if it ignored the tools | The SDK reported an unparsable call; or a reply without tool calls names an offered tool in call form (`"name": "<tool>"`, `<function=<tool>`, `<tool_call>`, an XML element `<tool ...>`) | heuristic (text form), rule (SDK report) | Parse text calls (repair); grammar or schema constraint; a better chat template |
 | `no_tool_when_needed` | The model answered without calling a tool the task needs | Invented answer, or a question back to the user | No parsed call although the task expects calls | rule | Stronger tool instruction in the system prompt; tool choice "required" |
 | `wrong_tool` | A tool that does not exist, a decoy or a forbidden tool was called | Wrong data; with a forbidden tool, an unwanted action | Call to an unknown tool; call to a `forbidden_tools` entry; a tool outside the expected calls while the expected chain is not complete | rule | Clearer tool descriptions; fewer offered tools; confirmation before destructive tools |
 | `wrong_arguments` | The right tool with wrong arguments | Tool error or wrong data | Schema check failed (missing, wrong type, value outside the enum, unknown argument); or the next expected call was made with non-matching arguments | rule | Schema constraint; examples in the tool description; type coercion in the tool |
@@ -81,6 +81,7 @@ the trace structure; *heuristic* = depends on text matching.
 | `ignored_tool_error` | `fabricated` | A value from the deny list in the answer |
 | | `not_reported` | The failure is not mentioned |
 | `wrong_result` | `empty_answer` | No answer |
+| | `gave_up` | The last tool result was an error and the answer reports it, without a retry that would have succeeded (honest and loud, but the task was not done) |
 | | `partial` | Some of the expected facts are missing |
 | | `wrong_value` | The answer checks fail otherwise |
 

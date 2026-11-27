@@ -2,10 +2,10 @@
 
 [English](failure_taxonomy.md)
 
-Taxonómia 1. verzió (2026-11-26). Követelmények és indokok: [követelmények](requirements.hu.md), 3. pont (FA-30–FA-39).
+Taxonómia 2. verzió (2026-11-27; az 1. verzió: 2026-11-26; a 2. verzió az M1 feladatkészlet első élő futása után a `wrong_result/gave_up` alkóddal bővült). Követelmények és indokok: [követelmények](requirements.hu.md), 3. pont (FA-30–FA-39).
 A gépileg olvasható forrás a `runner/failures.py` `CATEGORIES` szótára; teszt ellenőrzi, hogy minden alábbi azonosító
 egyezik vele. Állapot: megvalósítva, szintetikus és két rögzített élő trace-en tesztelve; teljes feladatkészleten még
-nem használtuk, és a heurisztikus szabályokat még nem vetettük össze kézi átnézéssel (FA-37).
+nem használtuk, és a heurisztikus szabályokat csak egy élő futás bukásainak kézi átnézésével ellenőriztük (FA-37, 2026-11-27: egy feladat kulcsszólistájában rést talált, és ebből lett a `gave_up` alkód).
 
 ## Hogyan kap kategóriát egy próbálkozás
 
@@ -42,7 +42,7 @@ Az ellenintézkedések lehetséges ellenintézkedések, **nem mértük** őket (
 | `infra_error` | A harness vagy az SDK hibázott, a próbálkozást leállították, kihagyták, vagy a trace-ének nincs vége | A modellről nem mond semmit; a modell pontszámába nem számít | `error`, `aborted`, `skipped` állapot; `error` esemény; hiányzó `task_end` | szabály | Környezet javítása; újrafuttatás |
 | `context_overflow` | A beszélgetés nem fér a contextbe | Levágott vagy hiányzó válasz | `contextLengthReached` leállási ok (a harness a határon megállást kér a LM Studiótól) | szabály | Nagyobb context; kisebb tool-eredmények; az előzmény összegzése |
 | `output_truncated` | Elfogyott egy kör tokenkerete | Hiányzó vagy részleges válasz | `maxPredictedTokensReached` leállási ok | szabály | Nagyobb körönkénti keret; gondolkodási keret; nem gondolkodó mód |
-| `format_invalid` | A modell toolt próbált hívni, de a hívás nem lett felismerve | Nem fut tool; úgy látszik, mintha a modell figyelmen kívül hagyta volna a toolokat | Az SDK értelmezhetetlen hívást jelzett; vagy egy tool-hívás nélküli válasz hívásformában nevez meg egy felkínált toolt (`"name": "<tool>"`, `<function=<tool>`, `<tool_call>`) | heurisztikus (szöveges forma), szabály (SDK-jelzés) | A szöveges hívás értelmezése (javítás); grammar vagy séma-kényszerítés; jobb chat template |
+| `format_invalid` | A modell toolt próbált hívni, de a hívás nem lett felismerve | Nem fut tool; úgy látszik, mintha a modell figyelmen kívül hagyta volna a toolokat | Az SDK értelmezhetetlen hívást jelzett; vagy egy tool-hívás nélküli válasz hívásformában nevez meg egy felkínált toolt (`"name": "<tool>"`, `<function=<tool>`, `<tool_call>`, egy `<tool ...>` XML-elem) | heurisztikus (szöveges forma), szabály (SDK-jelzés) | A szöveges hívás értelmezése (javítás); grammar vagy séma-kényszerítés; jobb chat template |
 | `no_tool_when_needed` | A modell egy szükséges tool hívása nélkül válaszolt | Kitalált válasz vagy visszakérdezés | Nincs értelmezett hívás, pedig a feladat hívást vár | szabály | Erősebb tool-utasítás a system promptban; kötelező toolválasztás |
 | `wrong_tool` | Nem létező, csali vagy tiltott tool hívása | Rossz adat; tiltott toolnál nem kívánt művelet | Hívás ismeretlen toolra; hívás egy `forbidden_tools` bejegyzésre; a várt hívásokon kívüli tool, miközben a várt lánc nem teljes | szabály | Világosabb tool-leírások; kevesebb felkínált tool; megerősítés romboló toolok előtt |
 | `wrong_arguments` | Jó tool, rossz argumentumokkal | Tool-hiba vagy rossz adat | A sémaellenőrzés elbukott (hiányzó, rossz típusú, enumon kívüli vagy ismeretlen argumentum); vagy a következő várt hívás nem illeszkedő argumentumokkal történt | szabály | Séma-kényszerítés; példák a tool-leírásban; típuskonverzió a toolban |
@@ -81,6 +81,7 @@ Az ellenintézkedések lehetséges ellenintézkedések, **nem mértük** őket (
 | `ignored_tool_error` | `fabricated` | A tiltólista egy értéke a válaszban |
 | | `not_reported` | A hibát nem említi |
 | `wrong_result` | `empty_answer` | Nincs válasz |
+| | `gave_up` | Az utolsó tool-eredmény hiba volt, és a válasz ezt jelzi, egy sikeres újrapróbálás nélkül (őszinte és hangos, de a feladat nem teljesült) |
 | | `partial` | A várt tények egy része hiányzik |
 | | `wrong_value` | Más módon buknak a válaszellenőrzések |
 

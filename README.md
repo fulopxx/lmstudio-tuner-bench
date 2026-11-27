@@ -102,6 +102,9 @@ Behaviour:
 | `.\bench agent run --model qwen3-8b` | Runs the example tasks (`tasks\examples.json`) on one model and checks the answers |
 | `.\bench agent run --model qwen3-8b --repeats 3 --only file-marker` | Selected tasks, several attempts each |
 | `.\bench agent run --model qwen3-8b --tasks <file> --context 16384` | Another task file, another context length |
+| `.\bench agent run --models qwen3-8b,qwen3.5-4b-mtp --tasks tasks\m1.json` | The M1 task set (20 tasks) on several models, one after another |
+| `.\bench agent report` | Report of the latest run: pass rates with intervals, failure categories, longest reliable chain (offline) |
+| `.\bench agent show <run> chain-3a-2` | The steps of one attempt, with the trace event that decided its category marked (offline) |
 
 A task file lists tasks with a prompt, the tools the model may use (`read_file`, `mock_lookup`), an optional folder of
 files copied into the task's sandbox, the answers of the mock tool (result, error or delay per id) and the checks, for

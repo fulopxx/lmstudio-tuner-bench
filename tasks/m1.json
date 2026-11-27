@@ -1,0 +1,304 @@
+{
+  "schema_version": 2,
+  "comment": "M1 task set (requirements FA-01 to FA-08, task list in section 3). Every value a correct answer needs is a unique token that appears only in a tool result or a fixture file (FA-05); in chains the next argument comes from the previous result. chain_length groups the tasks for the longest reliable chain (FA-44). Reference solutions: tests/m1_reference.json; failing replies per expected category: tests/m1_failures.json.",
+  "fixtures": "fixtures",
+  "limits": { "maxRounds": 6, "toolTimeoutMs": 10000, "wallTimeMs": 180000, "maxToolResultChars": 8000, "maxTokensPerRound": 2048 },
+  "toolsets": {
+    "get_order_status": {
+      "description": "Get the current status of an order: state, carrier, tracking number, expected delivery date.",
+      "parameters": { "type": "object", "properties": { "order_id": { "type": "string", "description": "Order id such as A-1042" } }, "required": ["order_id"] },
+      "rules": [
+        { "when": { "order_id": { "equals": "A-1042" } }, "result": "order A-1042: shipped; carrier DHL; tracking TRK-4Q1C; expected delivery 2026-12-01" },
+        { "when": { "order_id": { "equals": "A-2201" } }, "result": "order A-2201: delivered on 2026-11-20; signature code SIG-7Q4X" },
+        { "when": { "order_id": { "equals": "A-3310" } }, "result": "order A-3310: processing" },
+        { "when": { "order_id": { "equals": "A-9061" } }, "result": "order A-9061: in transit; tracking TRK-31X8" },
+        { "when": { "order_id": { "equals": "A-7770" } }, "result": "order A-7770: shipped; tracking TRK-90QZ" },
+        { "when": { "order_id": { "equals": "A-8123" } }, "result": "order A-8123: shipped; tracking TRK-6M2D" },
+        { "when": { "order_id": { "equals": "A-6120" } }, "result": "order A-6120: returned; refund id RF-2Q7" },
+        { "when": { "order_id": { "equals": "B-7" } }, "error": "order service unavailable (HTTP 503)" },
+        { "when": { "order_id": { "equals": "A-5005" } }, "sequence": [
+          { "error": "order service temporarily unavailable (HTTP 503), retry in a moment" },
+          { "result": "order A-5005: shipped; shipment reference SHP-61T; expected delivery 2026-12-04" } ] },
+        { "when": { "order_id": { "equals": "C-55" } }, "result": "order C-55: delivered", "delayMs": 8000 }
+      ],
+      "default": { "error": "order not found", "errorKind": "not_found" }
+    },
+    "get_order_history": {
+      "description": "Get the event history of an order: created, paid, packed, shipped, with dates and payment references.",
+      "parameters": { "type": "object", "properties": { "order_id": { "type": "string" } }, "required": ["order_id"] },
+      "rules": [
+        { "when": { "order_id": { "equals": "A-2201" } }, "result": "A-2201: created 2026-11-11; paid 2026-11-12 (ref PAY-19HB); packed 2026-11-14" },
+        { "when": { "order_id": { "equals": "A-3310" } }, "result": "A-3310: created 2026-10-13; paid 2026-10-14 (ref PAY-55KD)" }
+      ],
+      "default": { "error": "order not found", "errorKind": "not_found" }
+    },
+    "cancel_order": {
+      "description": "Cancel an order. This cannot be undone.",
+      "parameters": { "type": "object", "properties": { "order_id": { "type": "string" } }, "required": ["order_id"] },
+      "default": { "result": "order cancelled" }
+    },
+    "convert_currency": {
+      "description": "Convert an amount of money between currencies at today's rate.",
+      "parameters": { "type": "object", "properties": {
+        "amount": { "type": "number", "description": "The amount as a number, for example 12.5" },
+        "from": { "type": "string", "enum": ["EUR", "USD", "HUF"] },
+        "to": { "type": "string", "enum": ["EUR", "USD", "HUF"] } }, "required": ["amount", "from", "to"] },
+      "rules": [
+        { "when": { "amount": { "equals": 249.9 }, "from": { "equals": "EUR" }, "to": { "equals": "HUF" } }, "result": "97461 HUF at rate 390.0 (quote Q-8812)" }
+      ],
+      "default": { "error": "no rate available for this request", "errorKind": "not_found" }
+    },
+    "get_invoice": {
+      "description": "Get an invoice by its id: amount, due date, purchase order and the related order.",
+      "parameters": { "type": "object", "properties": { "invoice_id": { "type": "string" } }, "required": ["invoice_id"] },
+      "rules": [
+        { "when": { "invoice_id": { "equals": "INV-2026-000417-Bx" } }, "result": "invoice INV-2026-000417-Bx: 1284.50 EUR; due 2026-12-15; purchase order PO-77231" },
+        { "when": { "invoice_id": { "equals": "INV-2026-000902-Kp" } }, "result": "invoice INV-2026-000902-Kp: 880.00 USD; order A-6120" }
+      ],
+      "default": { "error": "invoice not found", "errorKind": "not_found" }
+    },
+    "lookup_customer": {
+      "description": "Find a customer by e-mail address; returns the customer id and loyalty tier.",
+      "parameters": { "type": "object", "properties": { "email": { "type": "string" } }, "required": ["email"] },
+      "rules": [
+        { "when": { "email": { "equals": "mira.k@example.test" } }, "result": "customer CUST-4471; loyalty tier GOLD-ZETA" },
+        { "when": { "email": { "equals": "olaf.b@example.test" } }, "result": "customer CUST-5082; loyalty tier SILVER" },
+        { "when": { "email": { "equals": "ines.v@example.test" } }, "result": "customer CUST-6390; loyalty tier BRONZE" }
+      ],
+      "default": { "error": "customer not found", "errorKind": "not_found" }
+    },
+    "get_latest_order": {
+      "description": "Get the id of a customer's most recent order.",
+      "parameters": { "type": "object", "properties": { "customer_id": { "type": "string" } }, "required": ["customer_id"] },
+      "rules": [
+        { "when": { "customer_id": { "equals": "CUST-5082" } }, "result": "latest order of CUST-5082: A-9061" },
+        { "when": { "customer_id": { "equals": "CUST-6390" } }, "result": "latest order of CUST-6390: A-8123" }
+      ],
+      "default": { "error": "customer not found", "errorKind": "not_found" }
+    },
+    "get_shipment": {
+      "description": "Get the current location of a parcel by its tracking number.",
+      "parameters": { "type": "object", "properties": { "tracking_number": { "type": "string" } }, "required": ["tracking_number"] },
+      "rules": [
+        { "when": { "tracking_number": { "equals": "TRK-90QZ" } }, "result": "TRK-90QZ: held at depot DEPOT-SZ04, awaiting customs papers" },
+        { "when": { "tracking_number": { "equals": "TRK-6M2D" } }, "result": "TRK-6M2D: delivered to parcel locker LKR-5521" }
+      ],
+      "default": { "error": "tracking number not found", "errorKind": "not_found" }
+    },
+    "get_refund": {
+      "description": "Get the state of a refund by its refund id.",
+      "parameters": { "type": "object", "properties": { "refund_id": { "type": "string" } }, "required": ["refund_id"] },
+      "rules": [
+        { "when": { "refund_id": { "equals": "RF-2Q7" } }, "result": "refund RF-2Q7: paid out 2026-11-25; 812.40 EUR; transfer reference TX-88VN" }
+      ],
+      "default": { "error": "refund not found", "errorKind": "not_found" }
+    },
+    "check_job": {
+      "description": "Check whether a background export job has finished.",
+      "parameters": { "type": "object", "properties": { "job_id": { "type": "string" } }, "required": ["job_id"] },
+      "rules": [
+        { "when": { "job_id": { "equals": "JOB-77" } }, "sequence": [ { "result": "JOB-77: pending, check again later" } ] }
+      ],
+      "default": { "error": "job not found", "errorKind": "not_found" }
+    }
+  },
+  "tasks": [
+    {
+      "id": "direct-file",
+      "comment": "Direct, one tool: read a file",
+      "chain_length": 1,
+      "prompt": "What is the marker written in the file notes.txt?",
+      "fixtures": "notes",
+      "tools": ["read_file", "get_order_status"],
+      "expected_calls": [{ "name": "read_file", "arguments": { "path": { "equals": "notes.txt" } } }],
+      "checks": { "answer_contains": ["BLUE-HERON-17"] }
+    },
+    {
+      "id": "direct-lookup",
+      "comment": "Direct, one tool: order lookup",
+      "chain_length": 1,
+      "prompt": "Where is my order A-1042 and when will it arrive?",
+      "tools": ["read_file", "get_order_status"],
+      "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "A-1042" } } }],
+      "checks": { "answer_contains": ["shipped"], "answer_contains_any": ["2026-12-01", "december 1", "dec 1", "1 december", "12/01", "01.12"] }
+    },
+    {
+      "id": "choice-status",
+      "comment": "Tool choice: status, not history; cancel is forbidden",
+      "prompt": "Has my order A-2201 been delivered? Please give me the signature code as proof.",
+      "tools": ["get_order_history", "cancel_order", "get_order_status"],
+      "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "A-2201" } } }],
+      "forbidden_tools": ["cancel_order"],
+      "checks": { "answer_contains": ["SIG-7Q4X"] }
+    },
+    {
+      "id": "choice-history",
+      "comment": "Tool choice: history, not status; cancel is forbidden",
+      "prompt": "On which day was my order A-3310 paid, and what is the payment reference?",
+      "tools": ["get_order_status", "cancel_order", "get_order_history"],
+      "expected_calls": [{ "name": "get_order_history", "arguments": { "order_id": { "equals": "A-3310" } } }],
+      "forbidden_tools": ["cancel_order"],
+      "checks": { "answer_contains": ["PAY-55KD"], "answer_contains_any": ["2026-10-14", "october 14", "oct 14", "14 october", "10/14", "14.10"] }
+    },
+    {
+      "id": "args-typed",
+      "comment": "Exact arguments: a number and two enums",
+      "prompt": "How much is 249.90 euros in Hungarian forints today? Give me the quote number too.",
+      "tools": ["convert_currency", "get_order_status"],
+      "expected_calls": [{ "name": "convert_currency", "arguments": { "amount": { "equals": 249.9 }, "from": { "equals": "EUR" }, "to": { "equals": "HUF" } } }],
+      "checks": { "answer_contains": ["Q-8812"], "answer_contains_any": ["97461", "97 461", "97,461", "97.461"] }
+    },
+    {
+      "id": "args-identifier",
+      "comment": "Exact arguments: a long identifier copied verbatim",
+      "prompt": "Which purchase order belongs to invoice INV-2026-000417-Bx, and when is the invoice due?",
+      "tools": ["get_invoice", "get_order_status"],
+      "expected_calls": [{ "name": "get_invoice", "arguments": { "invoice_id": { "equals": "INV-2026-000417-Bx" } } }],
+      "checks": { "answer_contains": ["PO-77231"], "answer_contains_any": ["2026-12-15", "december 15", "dec 15", "15 december", "12/15", "15.12"] }
+    },
+    {
+      "id": "args-missing",
+      "comment": "Missing required parameter: the right move is to ask which order, not to call a tool",
+      "prompt": "Please cancel my order.",
+      "tools": ["get_order_status", "cancel_order"],
+      "no_tool_needed": true,
+      "checks": { "answer_contains_any": ["order number", "order id", "which order", "order ID", "order no"] }
+    },
+    {
+      "id": "chain-2",
+      "comment": "Chain of 2: file -> customer lookup",
+      "chain_length": 2,
+      "prompt": "The file customer.txt names a customer. Which loyalty tier does that customer have?",
+      "fixtures": "customer",
+      "tools": ["read_file", "lookup_customer", "get_latest_order"],
+      "expected_calls": [
+        { "name": "read_file", "arguments": { "path": { "equals": "customer.txt" } } },
+        { "name": "lookup_customer", "arguments": { "email": { "equals": "mira.k@example.test" } } }],
+      "checks": { "answer_contains": ["GOLD-ZETA"] }
+    },
+    {
+      "id": "chain-3a",
+      "comment": "Chain of 3: customer -> latest order -> status",
+      "chain_length": 3,
+      "prompt": "Where is the most recent order of the customer olaf.b@example.test? I need its tracking number.",
+      "tools": ["lookup_customer", "get_latest_order", "get_order_status", "get_shipment"],
+      "expected_calls": [
+        { "name": "lookup_customer", "arguments": { "email": { "equals": "olaf.b@example.test" } } },
+        { "name": "get_latest_order", "arguments": { "customer_id": { "equals": "CUST-5082" } } },
+        { "name": "get_order_status", "arguments": { "order_id": { "equals": "A-9061" } } }],
+      "checks": { "answer_contains": ["TRK-31X8"] }
+    },
+    {
+      "id": "chain-3b",
+      "comment": "Chain of 3: file -> status -> shipment",
+      "chain_length": 3,
+      "prompt": "The support ticket in ticket.txt is about an order. Where is the parcel of that order right now?",
+      "fixtures": "ticket",
+      "tools": ["read_file", "get_order_status", "get_shipment", "lookup_customer"],
+      "expected_calls": [
+        { "name": "read_file", "arguments": { "path": { "equals": "ticket.txt" } } },
+        { "name": "get_order_status", "arguments": { "order_id": { "equals": "A-7770" } } },
+        { "name": "get_shipment", "arguments": { "tracking_number": { "equals": "TRK-90QZ" } } }],
+      "checks": { "answer_contains": ["DEPOT-SZ04"] }
+    },
+    {
+      "id": "chain-4a",
+      "comment": "Chain of 4: customer -> latest order -> status -> shipment",
+      "chain_length": 4,
+      "prompt": "Has the most recent order of ines.v@example.test arrived? If it is in a parcel locker, tell me which one.",
+      "tools": ["lookup_customer", "get_latest_order", "get_order_status", "get_shipment", "get_order_history"],
+      "expected_calls": [
+        { "name": "lookup_customer", "arguments": { "email": { "equals": "ines.v@example.test" } } },
+        { "name": "get_latest_order", "arguments": { "customer_id": { "equals": "CUST-6390" } } },
+        { "name": "get_order_status", "arguments": { "order_id": { "equals": "A-8123" } } },
+        { "name": "get_shipment", "arguments": { "tracking_number": { "equals": "TRK-6M2D" } } }],
+      "checks": { "answer_contains": ["LKR-5521"] }
+    },
+    {
+      "id": "chain-4b",
+      "comment": "Chain of 4: file -> invoice -> status -> refund",
+      "chain_length": 4,
+      "prompt": "refund.txt mentions an invoice. Was the refund for the order on that invoice paid out? Give me the transfer reference.",
+      "fixtures": "refund",
+      "tools": ["read_file", "get_invoice", "get_order_status", "get_refund", "convert_currency"],
+      "expected_calls": [
+        { "name": "read_file", "arguments": { "path": { "equals": "refund.txt" } } },
+        { "name": "get_invoice", "arguments": { "invoice_id": { "equals": "INV-2026-000902-Kp" } } },
+        { "name": "get_order_status", "arguments": { "order_id": { "equals": "A-6120" } } },
+        { "name": "get_refund", "arguments": { "refund_id": { "equals": "RF-2Q7" } } }],
+      "checks": { "answer_contains": ["TX-88VN"] }
+    },
+    {
+      "id": "error-service",
+      "comment": "Tool error: the service fails; the answer must say so and must not invent a state",
+      "prompt": "What is the status of my order B-7?",
+      "tools": ["get_order_status", "get_order_history"],
+      "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "B-7" } } }],
+      "checks": { "mentions_failure": ["unavailable", "error", "could not", "couldn't", "unable", "not available", "failed", "503", "down"],
+                  "answer_not_contains": ["shipped", "delivered", "in transit", "processing"] }
+    },
+    {
+      "id": "error-missing-file",
+      "comment": "Tool error: the file does not exist; the answer must say so and must not invent a period",
+      "prompt": "What notice period does the file contract.txt give for termination?",
+      "tools": ["read_file", "get_invoice"],
+      "expected_calls": [{ "name": "read_file", "arguments": { "path": { "equals": "contract.txt" } } }],
+      "checks": { "mentions_failure": ["not found", "be found", "does not exist", "doesn't exist", "couldn't find", "could not find", "no such", "missing", "unable", "not exist"],
+                  "answer_not_contains": ["30 days", "60 days", "90 days", "one month", "two months", "three months", "1 month", "3 months"] }
+    },
+    {
+      "id": "error-transient",
+      "comment": "Transient error: the first call fails, a retry succeeds; one retry is justified",
+      "prompt": "Has my order A-5005 shipped? I need the shipment reference.",
+      "tools": ["get_order_status", "get_order_history"],
+      "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "A-5005" } } }],
+      "max_tool_calls": 3,
+      "checks": { "answer_contains": ["SHP-61T"] }
+    },
+    {
+      "id": "timeout",
+      "comment": "Timeout: the lookup does not answer within the tool time limit; the late result must not appear",
+      "prompt": "Check the status of order C-55 for me.",
+      "tools": ["get_order_status", "get_order_history"],
+      "limits": { "toolTimeoutMs": 2000 },
+      "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "C-55" } } }],
+      "checks": { "mentions_failure": ["did not answer", "didn't answer", "timed out", "timeout", "time out", "could not", "couldn't", "unable", "not respond", "try again", "failed", "did not return", "not complete", "allotted time", "issue", "delay"],
+                  "answer_not_contains": ["delivered"] }
+    },
+    {
+      "id": "none-knowledge",
+      "comment": "No tool needed: arithmetic",
+      "prompt": "What is 17 multiplied by 23? Reply with the number only.",
+      "tools": ["get_order_status", "read_file"],
+      "no_tool_needed": true,
+      "checks": { "answer_contains": ["391"] }
+    },
+    {
+      "id": "none-in-prompt",
+      "comment": "No tool needed: the answer is already in the prompt, although a tool is tempting",
+      "prompt": "My order A-4040 shipped yesterday with tracking number TRK-8A2M. Can you repeat my tracking number?",
+      "tools": ["get_order_status", "get_shipment"],
+      "no_tool_needed": true,
+      "checks": { "answer_contains": ["TRK-8A2M"] }
+    },
+    {
+      "id": "none-not-offered",
+      "comment": "The needed tool is not offered: the answer must say that it cannot get the data",
+      "prompt": "What will the weather be in Szeged tomorrow?",
+      "tools": ["get_order_status", "read_file"],
+      "no_tool_needed": true,
+      "checks": { "mentions_failure": ["can't", "cannot", "unable", "don't have", "do not have", "no access", "not able", "not available", "no tool"],
+                  "answer_not_contains": ["°", "sunny", "rain", "cloudy", "degrees"] }
+    },
+    {
+      "id": "pending",
+      "comment": "A job that stays pending: success means stopping on its own within the call budget and saying it is not finished",
+      "prompt": "Is my export job JOB-77 finished? If it is, tell me; if not, tell me that as well.",
+      "tools": ["check_job", "read_file"],
+      "expected_calls": [{ "name": "check_job", "arguments": { "job_id": { "equals": "JOB-77" } } }],
+      "max_tool_calls": 4,
+      "loop_threshold": 5,
+      "checks": { "mentions_failure": ["pending", "not finished", "not yet", "not complete", "still running", "in progress", "check again"] }
+    }
+  ]
+}

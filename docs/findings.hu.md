@@ -33,3 +33,15 @@ Ugyanaz a gép, 4k context, egyszeri próbafutások a LM Studio alapértelmezett
   megtakarít.
 - A beépített MTP-fejek három modellen gyorsítottak (+4% és +33% között), VRAM-többlet nélkül.
 - A spekuláció csak a loadnál kapcsolható; a REST chat végpont visszaadja a draft számlálókat.
+
+## Agent-feladatok, az M1 készlet első élő futása, 2026-11-27
+
+Ugyanaz a gép, 20 feladat, mindegyik öt próbálkozással, mintavétel a modellkártyák szerint; részletek a
+[követelményekben](requirements.hu.md), 3. pont, és a [hibataxonómiában](failure_taxonomy.hu.md).
+
+- A toolt hívó három modell a próbálkozások 90–96%-át teljesítette; öt ismétlésnél az intervallumaik átfednek.
+- Egy 7B-s kódmodell 83 bukásából 74-ben szövegként írta ki a hívást; egy ilyen modellnél a feladatkészlet csak a
+  formátumhibát méri.
+- Egy átmeneti tool-hibát szinte egyik modell sem próbált újra: helyette jelezték a hibát a felhasználónak.
+- A bukások kézi átnézése négy rést talált a kulcsszó-alapú szabályokban; egy ilyen kategorizálóhoz minden új
+  feladatkészlet után kell ilyen átnézés.

@@ -217,6 +217,26 @@ szerint a profil minden mintavételi értéke és a `stopAtLimit` érvényesült
 négy bukása `format_invalid/text_tool_call` besorolást kapott.
 Az 5b-re nyitott: FA-08 (a feladatkészlettel), FA-37, FA-39, FA-40, a FA-42 számolt időkorlátja, FA-43, FA-44, FA-46, FA-47.
 
+**Az 5b állapota (2026-11-27).** Megvalósítva, offline tesztekkel lefedve: a 20 feladatos `tasks/m1.json` készlet,
+feladatonként egy átmenő referenciamegoldással és egy hibás válasszal, amely a várt kategóriát kapja (FA-08,
+`tests/m1_reference.json`, `tests/m1_failures.json`), FA-39, FA-40, a FA-42 számolt időkorlátja, FA-43, FA-44,
+FA-46 és FA-47 (`bench agent run --models`, `bench agent report`, `bench agent show`). Nyitott: az élő futások, a
+FA-37 szerinti kézi átnézés a bukásaikon, és a tíz ismétléses publikált tábla (FA-45). A tulajdonos az első élő
+futás előtt átnézi a feladatkészletet.
+
+**Az M1 készlet első élő futása (2026-11-27)**, négy modell, öt ismétlés, 400 próbálkozás, mind lefutott. A kb. 40
+bukás kézi átnézése (FA-37, részleges: a toolt hívó három modell minden bukása, és a hívásokat szövegként író
+modell 83 bukásából egy minta) négy szabályrést talált; mindet javítottuk, és a rögzített trace-ekből újraértékeltük
+a `bench agent report --tasks` paranccsal: két feladat kulcsszólistájából hiányoztak őszinte megfogalmazások
+(„could not be found”, „did not return a response within the allotted time”); az általános problémaszavakból
+hiányzott az „issue”, a „delay” és hasonlók, ezért két homályos, de őszinte válasz csendesnek jelölődött; a szöveges
+tool-hívás szabálya nem ismerte fel az XML-elemként írt hívást. Egy átmeneti hibás feladatban, ahol szinte minden
+modell jelezte a hibát ahelyett, hogy újrapróbálta volna, a besorolás `wrong_result/wrong_value` volt; a taxonómia 2.
+verziója erre a `wrong_result/gave_up` alkódot vezeti be. Eredmények az újraértékelés után, sikerarány 95%-os
+Wilson-intervallummal: 8B-s gondolkodó modell 90% (83–94%), 4B-s modell MTP-vel 92% (85–96%), 9B-s finomhangolt
+modell MTP-vel 96% (90–98%), 7B-s kódmodell 17% (11–26%; a 83 bukásból 74 szöveges tool-hívás, így a többi
+képessége nem volt mérhető). Az első három intervalluma átfed; rangsoroláshoz tíz ismétlés kell (FA-45).
+
 **Feladatkészlet (5b), 20 feladat:** közvetlen, egy tool (2); toolválasztás közeli csalik között, köztük egy romboló
 (2); pontos argumentumok: típusok, nehéz azonosító, hiányzó kötelező paraméter, ahol a visszakérdezés a helyes (3);
 2, 3 és 4 lépéses láncok (1 + 2 + 2); tool-hiba, hiányzó fájl és egy átmeneti hiba, amely egy újrapróbálást indokol

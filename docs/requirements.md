@@ -208,6 +208,26 @@ the four example tasks passed 4 of 4 on the 8B reasoning model, and all four fai
 categorized `format_invalid/text_tool_call`. Open for 5b: FA-08 (with
 the task set), FA-37, FA-39, FA-40, the computed time limit of FA-42, FA-43, FA-44, FA-46, FA-47.
 
+**Status of 5b (2026-11-27).** Implemented and covered by offline tests: the 20-task set `tasks/m1.json` with a
+reference solution per task that passes and a failing reply per task that gets its expected category (FA-08,
+`tests/m1_reference.json`, `tests/m1_failures.json`), FA-39, FA-40, the computed time limit of FA-42, FA-43,
+FA-44, FA-46 and FA-47 (`bench agent run --models`, `bench agent report`, `bench agent show`). Open: the live runs,
+the manual review of FA-37 on their failures, and the published table with ten repeats (FA-45). The owner reviews
+the task set before the first live run.
+
+**First live run of the M1 set (2026-11-27)**, four models, five repeats, 400 attempts, all completed. Manual review
+of about 40 failures (FA-37, partial: every failure of the three models that call tools, and a sample of the 83
+failures of the model that writes calls as text) found four rule gaps, all fixed and re-judged from the recorded
+traces with `bench agent report --tasks`: two keyword lists of tasks missed honest wordings ("could not be found",
+"did not return a response within the allotted time"); the general problem words missed "issue", "delay" and
+similar, which marked two vague but honest answers silent; the text tool call rule missed calls written as an XML
+element. A transient-error task where almost every model reported the error instead of retrying was categorized
+`wrong_result/wrong_value`; taxonomy version 2 adds `wrong_result/gave_up` for it. Results after re-judging, pass
+rate with 95 % Wilson interval: 8B reasoning model 90 % (83–94 %), 4B model with MTP 92 % (85–96 %), 9B finetune
+with MTP 96 % (90–98 %), 7B coder model 17 % (11–26 %; 74 of 83 failures are text tool calls, so its other
+abilities were not measurable). The intervals of the first three overlap; ten repeats (FA-45) are needed before
+ranking them.
+
 **Task set (5b), 20 tasks:** direct single tool (2), tool choice among close decoys including a destructive one (2),
 exact arguments: types, a hard identifier, a missing required parameter where asking back is correct (3), chains of 2,
 3 and 4 steps (1 + 2 + 2), tool error, missing file and a transient error that justifies one retry (3), timeout with a
