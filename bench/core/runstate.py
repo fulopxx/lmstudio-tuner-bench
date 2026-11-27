@@ -7,6 +7,10 @@ Every run has its own folder state/runs/<id>/ with
 These files stay after the run ends; a new run never touches them. state/active.json names the run that holds the
 GPU (run, kind, pid, pid_created). A lock whose process no longer exists counts as free. The shared
 state/status.json of older versions is only read, for runs that have no status file of their own.
+
+Every JSON file of the run state (plan.json, status.json, control.json, active.json) carries `schema_version`
+(IF-23). A file without it was written before step D2e and counts as version 0, which reads like version 1; a newer
+version stops the reading with the file name.
 """
 import contextlib
 import ctypes
@@ -25,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 STATE = ROOT / "state"  # read at call time, so tests can point it to a temporary folder
 ACTIVE_STATES = ("starting", "running", "paused")
 HEARTBEAT_LATE_S = 20  # an older heartbeat is reported, and trusted only if the process still exists
+STATE_SCHEMA_VERSION = 1  # plan, status, control and lock files (IF-23)
 
 
 # ---------------------------------------------------------------- files
@@ -51,6 +56,28 @@ def read_json(path, default=None):
         except (PermissionError, json.JSONDecodeError):
             time.sleep(0.1)
     return default
+
+
+def check_version(data, path, known=STATE_SCHEMA_VERSION):
+    """IF-23: returns the data, or raises CoreError when it was written in a format newer than this bench knows.
+    A file without `schema_version` is version 0 (written before step D2e)."""
+    if isinstance(data, dict):
+        version = data.get("schema_version", 0)
+        if not isinstance(version, int) or version > known:
+            raise CoreError(f"{path}: format version {version} is newer than this version of bench knows ({known}); "
+                            "update bench to read it")
+    return data
+
+
+def read_state(path, default=None):
+    """A run state file (plan, status, control, lock), version checked."""
+    return check_version(read_json(path, default), path)
+
+
+def write_state(path, obj):
+    """A run state file with the current `schema_version` first."""
+    write_json(path, {"schema_version": STATE_SCHEMA_VERSION,
+                      **{k: v for k, v in obj.items() if k != "schema_version"}})
 
 
 def run_dir(run_id):
@@ -117,9 +144,9 @@ def read_status(run_id):
     """The run's own status file; for runs written before per-run state, the shared file if it names this run."""
     if not run_id:
         return None
-    st = read_json(status_path(run_id))
+    st = read_state(status_path(run_id))
     if st is None:
-        legacy = read_json(legacy_status_path())
+        legacy = read_state(legacy_status_path())
         if legacy and legacy.get("run") == run_id:
             return legacy
     return st
@@ -133,11 +160,11 @@ def send(run_id, cmd, now=False, source="runner"):
     """Writes a request to the run (IF-14: with its source and time; the last request wins)."""
     if source not in SOURCES:
         raise CoreError(f"unknown request source {source!r}; expected one of {', '.join(SOURCES)}")
-    write_json(control_path(run_id), {"cmd": cmd, "now": now, "source": source, "ts": time.time()})
+    write_state(control_path(run_id), {"cmd": cmd, "now": now, "source": source, "ts": time.time()})
 
 
 def control(run_id):
-    return read_json(control_path(run_id), {"cmd": "run", "now": False})
+    return read_state(control_path(run_id), {"cmd": "run", "now": False})
 
 
 # ---------------------------------------------------------------- processes
@@ -185,7 +212,7 @@ def runner_alive(st):
 def active():
     """The run holding the GPU lock ({run, kind, pid, pid_created, started}), or None. A lock whose process is gone
     counts as free."""
-    lock = read_json(active_path())
+    lock = read_state(active_path())
     return lock if lock and same_process_alive(lock) else None
 
 
@@ -193,8 +220,8 @@ def acquire(run_id, kind):
     """Takes the GPU lock for this process; raises CoreError naming the active run if another one holds it."""
     path = active_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    me = {"run": run_id, "kind": kind, "pid": os.getpid(), "pid_created": process_created(os.getpid()),
-          "started": time.time()}
+    me = {"schema_version": STATE_SCHEMA_VERSION, "run": run_id, "kind": kind, "pid": os.getpid(),
+          "pid_created": process_created(os.getpid()), "started": time.time()}
     for _ in range(20):
         try:
             fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -234,8 +261,8 @@ class Status:
 
     def __init__(self, run_id, base):
         self.path = status_path(run_id)
-        self.data = dict(base, run=run_id, heartbeat=time.time(), pid=os.getpid(),
-                         pid_created=process_created(os.getpid()))
+        self.data = dict({"schema_version": STATE_SCHEMA_VERSION}, **base, run=run_id, heartbeat=time.time(),
+                         pid=os.getpid(), pid_created=process_created(os.getpid()))
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self.update()

@@ -168,7 +168,7 @@ indul. A `configs/*.local.json` fájlok a felhasználó saját, nem követett r�
 
 | Fájl | Tartalom |
 |---|---|
-| `state/active.json` | A GPU-t foglaló futás: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; induláskor kizárólagosan jön létre, a végén törlődik; az a zár, amelynek folyamata már nem él, szabadnak számít |
+| `state/active.json` | `schema_version` (az alábbi JSON-fájlokban is; 10. pont). A GPU-t foglaló futás: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; induláskor kizárólagosan jön létre, a végén törlődik; az a zár, amelynek folyamata már nem él, szabadnak számít |
 | `state/runs/<run>/status.json` | `run`, `kind`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (sweep: `n`, `model`, `config`; agent: `n`, `model`), `heartbeat` (2 s-onként íródik), `pid`, `pid_created`, `warning`; agent-futásnál `scripted` is |
 | `state/runs/<run>/control.json` | Az utolsó kérés: `cmd` (`run` / `pause` / `stop`), `now`, `source` (`cli` / `web` a felhasználótól, `runner` magától a futástól: indulás, automatikus szünet és folytatás), `ts`; ha a futtató nyugtázza a felhasználó `resume` kérését, a forrás megmarad |
 | `state/runs/<run>/progress.log` | A futás minden előrehaladás-sora úgy, ahogy a parancssor mutatja, `HH:MM:SS` időbélyeggel (a dátum a futás azonosítójában van), a harness soraival együtt; csak a futás saját processze fűz hozzá |
@@ -360,7 +360,7 @@ A parancssor és az API ugyanazokat a core függvényeket hívja; egy core függ
 | Harness futásleíró | a `run-tasks.ts` stdin-je | 2 | A core-tól a harnessnek |
 | Mintavételi profilok | `configs/sampling.json` | 1 | |
 | Modellregiszter | `state/models.json` | 2 | Az 1-es formátum (két pillanatkép) olvasáskor átalakul |
-| Agent-riport | `report/agent_<run>.json` | nincs, `taxonomy_version` 2 | Az IF-23 szerint verziót kap, ha a felület olvassa |
+| Agent-riport | `report/agent_<run>.json` | `schema_version` 1 (a D2e lépés óta), `taxonomy_version` 2 | A dashboard olvassa |
 | Parancskimenet | `--json` a standard outputon | `schema_version` 1 | 6. pont; az API ugyanezt a dokumentumot adja vissza |
 | Rácsfájl | `configs/*.json` | nincs | Felhasználói bemenet; a formátum a 4.1 pont |
-| Futásterv, futásállapot, vezérlés | `state/` | nincs | A D2 lépésben kap verziót (IF-23) |
+| Futásterv, futásállapot, vezérlés, zár | `state/runs/<id>/plan.json`, `status.json`, `control.json`, `state/active.json` | `schema_version` 1 (a D2e lépés óta) | A verzió nélküli fájlt a D2e előtt írták: 0-s verzió, úgy olvasható, mint az 1-es, és nem íródik át (a `resume` a tervét a verzióval írja vissza). Újabb verziónál az olvasás a fájl nevével megáll |

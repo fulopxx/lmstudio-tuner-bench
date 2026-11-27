@@ -365,7 +365,7 @@ class Runner:
 def execute(run_id, redo_failed=False):
     """Runs the jobs of a planned sweep in this process. The caller holds the GPU lock (runstate.acquire)."""
     run_dir = runstate.run_dir(run_id)
-    plan = read_json(run_dir / "plan.json")
+    plan = runstate.read_state(run_dir / "plan.json")
     if not plan:
         log(f"no plan for run {run_id}")
         return 2
@@ -387,7 +387,7 @@ def execute(run_id, redo_failed=False):
                 raise Fatal(f"runtime/driver changed: plan {plan['env']} vs now {env}; "
                             "use --allow-env-change to continue anyway")
             plan["env"] = env
-            write_json(run_dir / "plan.json", plan)
+            runstate.write_state(run_dir / "plan.json", plan)
         meta = model_catalog()
         todo = todo_jobs(jobs, latest_results(results_path), redo_failed)
         log(f"run {run_id}: {len(todo)} of {len(jobs)} jobs to do")
@@ -468,7 +468,7 @@ def run_status(show_jobs=False):
         out.update(total=(st or {}).get("total"), current=c and {
             "n": c["n"], "model": c["model"], "phase": st.get("phase"), "elapsed_s": now - st.get("job_started", now)})
         return out
-    plan = read_json(runstate.run_dir(run_id) / "plan.json", {"jobs": []})
+    plan = runstate.read_state(runstate.run_dir(run_id) / "plan.json", {"jobs": []})
     results = latest_results(ROOT / "results" / f"sweep_{run_id}.jsonl")
     jobs = plan["jobs"]
     rows = [results[j["id"]] for j in jobs if j["id"] in results and results[j["id"]]["status"] != "invalidated"]
@@ -493,7 +493,7 @@ def run_status(show_jobs=False):
 
 def last_request(run_id):
     """IF-14: the last request to a run with its source and time, or None if the run has no control file."""
-    c = read_json(runstate.control_path(run_id))
+    c = runstate.read_state(runstate.control_path(run_id))
     return c and {"cmd": c.get("cmd"), "now": bool(c.get("now")), "source": c.get("source"), "ts": c.get("ts")}
 
 
@@ -529,7 +529,7 @@ def start_run(grid_path, models, options, where=None):
     runstate.acquire(run_id, "sweep")
     try:
         runstate.new_run_dir(run_id)
-        write_json(runstate.run_dir(run_id) / "plan.json",
+        runstate.write_state(runstate.run_dir(run_id) / "plan.json",
                    {"grid": grid_path, "jobs": jobs, "options": {k: options[k] for k in RUN_OPTIONS},
                     "env": environment()})
         latest_path().write_text(run_id)
@@ -555,13 +555,13 @@ def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=Fals
     if (runstate.read_status(run_id) or {}).get("state") == "closed":  # IF-22: a closed run is never resumed
         raise CoreError(f"nothing to resume: run {run_id} is closed" + ("" if run else " (the latest sweep)"))
     run_dir = runstate.run_dir(run_id)
-    plan = read_json(run_dir / "plan.json")
+    plan = runstate.read_state(run_dir / "plan.json")
     if not plan:
         raise CoreError("nothing to resume")
     runstate.acquire(run_id, "sweep")
     try:
         plan["options"]["allow_env_change"] = allow_env_change
-        write_json(run_dir / "plan.json", plan)
+        runstate.write_state(run_dir / "plan.json", plan)
         if from_job:
             path = ROOT / "results" / f"sweep_{run_id}.jsonl"
             have = latest_results(path)

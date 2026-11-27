@@ -14,6 +14,7 @@ from . import failures, results
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
 REPORTS = ROOT / "report"
+REPORT_SCHEMA_VERSION = 1  # report/agent_<run>.json, read by the interfaces (IF-23)
 FORMAT_STUCK_SHARE = 0.8  # FA-39: this share of failures being format_invalid means the rest was not measurable
 
 
@@ -232,6 +233,7 @@ def write(run_ids, models, meta):
     stem = "agent_" + "+".join(run_ids)
     md = REPORTS / f"{stem}.md"
     md.write_text(markdown(run_ids, models, meta), encoding="utf-8")
-    (REPORTS / f"{stem}.json").write_text(json.dumps({"runs": run_ids, "taxonomy_version": failures.TAXONOMY_VERSION,
+    (REPORTS / f"{stem}.json").write_text(json.dumps({"schema_version": REPORT_SCHEMA_VERSION, "runs": run_ids,
+                                                      "taxonomy_version": failures.TAXONOMY_VERSION,
                                                       **meta, "models": models}, indent=1), encoding="utf-8")
     return md

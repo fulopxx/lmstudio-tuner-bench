@@ -43,7 +43,7 @@ def _ids():
 def describe(run_id, kind_hint=None):
     """One run: id, kind, state, start time, finished jobs (sweep) or judged attempts (agent)."""
     st = runstate.read_status(run_id)
-    plan = runstate.read_json(runstate.run_dir(run_id) / "plan.json")
+    plan = runstate.read_state(runstate.run_dir(run_id) / "plan.json")
     kind = (st or {}).get("kind") or kind_hint or ("sweep" if plan else "agent")
     item = {"run": run_id, "kind": kind, "state": None, "alive": False, "started": _started(run_id),
             "done": 0, "total": None, "closed_from": (st or {}).get("closed_from")}
@@ -92,7 +92,7 @@ def close_run(run_id, reason=None):
         raise CoreError(f"run {run_id} is {item['state']}; only an unfinished run ({', '.join(CLOSABLE)}) can be "
                         "closed")
     st = runstate.read_status(run_id) or {}
-    runstate.write_json(runstate.status_path(run_id), {
+    runstate.write_state(runstate.status_path(run_id), {
         **st, "run": run_id, "kind": item["kind"], "state": "closed", "phase": "closed", "closed_at": time.time(),
         "closed_from": item["state"], "reason": reason or "closed by the user"})
     return {"run": run_id, "state": "closed", "already_closed": False, "closed_from": item["state"]}

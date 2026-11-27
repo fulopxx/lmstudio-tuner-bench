@@ -167,7 +167,7 @@ from 1. `configs/*.local.json` files are the user's own grids and are not tracke
 
 | File | Content |
 |---|---|
-| `state/active.json` | The run that holds the GPU: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; created exclusively at the start, removed at the end; a lock whose process no longer exists counts as free |
+| `state/active.json` | `schema_version` (also in every JSON file below; section 10). The run that holds the GPU: `run`, `kind` (`sweep` / `agent`), `pid`, `pid_created`, `started`; created exclusively at the start, removed at the end; a lock whose process no longer exists counts as free |
 | `state/runs/<run>/status.json` | `run`, `kind`, `state`, `phase`, `phase_since`, `reason`, `total`, `started`, `job_started`, `current` (sweep: `n`, `model`, `config`; agent: `n`, `model`), `heartbeat` (written every 2 s), `pid`, `pid_created`, `warning`; agent runs also `scripted` |
 | `state/runs/<run>/control.json` | The last request: `cmd` (`run` / `pause` / `stop`), `now`, `source` (`cli` / `web` from a user, `runner` from the run itself: start, automatic pause and resume), `ts`; when the runner acknowledges a user's `resume`, the source is kept |
 | `state/runs/<run>/progress.log` | Every progress line of the run as the command line shows it, with the time `HH:MM:SS` (the date is in the run id), harness lines included; appended only by the run's own process |
@@ -356,7 +356,7 @@ Implemented in roadmap step D2, before the web work.
 | Harness run spec | stdin of `run-tasks.ts` | 2 | Core to harness |
 | Sampling profiles | `configs/sampling.json` | 1 | |
 | Model registry | `state/models.json` | 2 | Format 1 (two snapshots) converted when read |
-| Agent report | `report/agent_<run>.json` | none, `taxonomy_version` 2 | Gets a version with IF-23 if the interface reads it |
+| Agent report | `report/agent_<run>.json` | `schema_version` 1 (since step D2e), `taxonomy_version` 2 | The dashboard reads it |
 | Command output | `--json` on standard output | `schema_version` 1 | Section 6; the API returns the same document |
 | Grid file | `configs/*.json` | none | User input; the format is section 4.1 |
-| Run plan, run state, control | `state/` | none | Get a version in step D2 (IF-23) |
+| Run plan, run state, control, lock | `state/runs/<id>/plan.json`, `status.json`, `control.json`, `state/active.json` | `schema_version` 1 (since step D2e) | A file without a version was written before D2e: version 0, reads like 1 and is not rewritten (a `resume` writes its plan back with the version). A newer version stops the reading with the file name |
