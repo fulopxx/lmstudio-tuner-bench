@@ -6,7 +6,7 @@ Utolsó frissítés: 2026-11-27. Cél: a letöltött helyi modellek optimalizál
 a saját felhasználási esetekre, LM Studióval.
 
 Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesztelés, agent harness, speculative decoding,
-bias-vizsgálat, feladatkészletek) és [mérési megállapítások](findings.hu.md).
+bias-vizsgálat, feladatkészletek, core és eredményformátum) és [mérési megállapítások](findings.hu.md).
 
 ## 1. Feladatok
 
@@ -75,7 +75,7 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 |---|---|---|
 | A | Próbasweep kiértékelése, döntő kör | ✅ kész (a próbasweep és a tiszta sweepek kiértékelve) |
 | B | Repó előkészítése, dokumentumok angol és magyar változata | ✅ kész (kétnyelvű dokumentumok; 2026-11-27 óta publikus) |
-| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | ⚪ nyitott |
+| C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | 🔵 folyamatban (a terv 2026-11-27-én elfogadva: [követelmények](requirements.hu.md), 7. pont, CR-01–CR-24; a C1–C4 rész nyitott) |
 | D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | 🟡 részben (vázlat kész) |
 | E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
 | F | Webes vezérlőfelület | ⚪ nyitott |

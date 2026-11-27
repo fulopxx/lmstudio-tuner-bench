@@ -266,6 +266,8 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 
 ## 8. Tervezett formátumváltozások
 
+Az első három pont és a modellregiszter a C lépésben tervezett ([követelmények](requirements.hu.md), 7. pont).
+
 - `schema_version` minden tervben és eredménysorban.
 - Teljesebb hardver-ujjlenyomat: a rögzített runtime-választás, driver, loader és alkalmazásverzió mellett a GPU neve,
   a teljes VRAM és a modellenként ténylegesen használt runtime.
@@ -280,4 +282,5 @@ A futtató Windows-specifikus (`lms.exe` útvonala, process-ellenőrzés).
 - A megosztott GPU-memóriába csordulás felismerése.
 - Tesztrétegek véglegesítése (pytest, Vitest, Playwright).
 - Kell-e második inferencia-backend (`llama-server`) a további speculative decoding módszerekhez.
-- A gépfüggő beállítások konfigurációs fájljának helye és formátuma.
+- A gépfüggő beállítások konfigurációs fájljának helye és formátuma: a C lépésben `configs/machine.local.json` fájlként
+  tervezett (CR-15).

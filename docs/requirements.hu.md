@@ -469,3 +469,46 @@ Rögzítve 2026-11-27-én, a minőségcsomagok tervezése előtt. Egy riport csa
 
 Nyitott: a 3D-tervezési és a kiberbiztonsági készletekhez saját toolok, sandbox és ellenőrzők kellenek (pl.
 mesh-érvényesség, izolált célkörnyezet); a shell sandbox döntése még nyitott (3. pont).
+
+## 7. Core, eredményformátum és modellregiszter (C lépés, tervezett)
+
+Elfogadva 2026-11-27-én. Cél: a mérési és kiértékelő logika importálható, adatot visszaadó core függvényekként legyen
+elérhető, az eredmények önleírók és verziózottak legyenek, és legyen modellregiszter képesség-címkékkel. Nem része: API
+és webes felület (D–F lépés), új külső függőség, a mérés módjának változása, a speculative decoding a gridben (a 24.
+feladat 1. fázisa, közvetlenül a C után). Négy rész, mindegyik saját commit: C1 csomagszerkezet, C2 core függvények, C3
+eredményformátum és gépfüggő beállítások, C4 modellregiszter. A C1 és a C2 viselkedésváltozás nélküli refaktorálás; a
+C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl verzióját hordozza.
+
+**Csomag és core függvények (C1, C2)**
+
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| CR-01 | A Python-kódnak egy csomagban kell lennie, `core` és `cli` résszel | Egy API-nak vagy dashboardnak a parancssori kód nélkül kell importálnia a core-t (architektúra, 3. pont) | átnézés | ⚪ |
+| CR-02 | A `cli` rész nem tartalmazhat mérési, kiértékelési vagy állapotkezelési logikát, csak argumentumfeldolgozást és kimenetformázást | A felületek vékonyak maradnak; a CLI-paritás ellenőrizhető | átnézés | ⚪ |
+| CR-03 | Minden CLI-parancsnak egy olyan core függvénytől kell kapnia az eredményét, amely adatot ad vissza (dict vagy lista), és semmit nem nyomtat | Ugyanaz az adat szolgálja ki a CLI-t, egy későbbi API-t és a dashboardot | teszt | ⚪ |
+| CR-04 | A csomagszerkezet változásakor (C1) minden parancs kimenetének és minden írt eredményfájlnak változatlannak kell maradnia, az üzenetekben szereplő fájlútvonalak kivételével | A kód mozgatása nem változtathat a viselkedésen; a refaktorálás elkülönül a funkcióbővítéstől | teszt | ⚪ |
+
+**Eredményformátum és gépfüggő beállítások (C3)**
+
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| CR-10 | Minden eredménysornak tartalmaznia kell a `schema_version` mezőt, az eredményformátum verzióját, a feladatfájl verziójától függetlenül | A sweep-soroknak ma nincs verziója; az agent-sorok a feladatfájl verzióját hordozzák | teszt | ⚪ |
+| CR-11 | Minden eredménysornak tartalmaznia kell a `kind` mezőt `sweep` vagy `agent` értékkel | Különböző futások sorai egy olvasóval olvashatók | teszt | ⚪ |
+| CR-12 | Minden eredménysornak tartalmaznia kell egy `env` objektumot a következőkkel: GPU-név, teljes VRAM, driververzió, LM Studio-alkalmazásverzió, kiválasztott runtime, SDK-verzió, harness-verzió (agent-soroknál), operációsrendszer-verzió, Python-verzió és Node.js-verzió; a ki nem olvasható érték `null`, soha nem becsült | Különböző gépek és verziók eredményei összehasonlíthatók maradjanak (tervezett formátumváltozás, architektúra 8. pont) | teszt | ⚪ |
+| CR-13 | Ha a core régebbi formátumú sorokat tartalmazó eredményfájlt olvas, a memóriában a mostani formátumra kell alakítania őket, és a fájlt nem írhatja át | A nyers mérés változatlan marad; minden korábbi futás olvasható marad | teszt | ⚪ |
+| CR-14 | Ha egy eredménysor `schema_version` értéke újabb, mint amit a core ismer, a core-nak a fájlt és a verziót megnevező üzenettel le kell állnia az olvasással | Nincs csendes félreolvasás | teszt | ⚪ |
+| CR-15 | A LM Studio mappáját, az `lms` futtatható fájlt és az API-port fájlt egy nem követett `configs/machine.local.json` fájlból kell olvasni, ha létezik, különben beépített alapértékekből, egyetlen core modulon keresztül | Ugyanez az útvonal ma nyolc helyen készül; más telepítésnél más hely kell (architektúra, nyitott kérdés) | teszt | ⚪ |
+
+**Modellregiszter (C4)**
+
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| CR-20 | A `bench models refresh` parancsnak a telepített modellekről pillanatképet kell írnia a `state/models.json` fájlba, modellenként ezekkel a mezőkkel: kulcs, vision, tool use-ra tanítva, architektúra, paraméterszám, kvantálás, maximális context, méret | Modelladatok futásonkénti új `lms ls` hívás nélkül; a képesség szerinti szűréshez kell (5. feladat) | teszt | ⚪ |
+| CR-21 | Egy nem követett `configs/models.local.json` címkéit be kell fésülni a regiszterbe, és felül kell írniuk az azonos nevű generált értékeket | A LM Studio nem jelez minden képességet (pl. MTP vagy reasoning) | teszt | ⚪ |
+| CR-22 | A `bench models new` parancsnak fel kell sorolnia azokat a modelleket, amelyek a mostani pillanatképben megvannak, az előzőben nincsenek | Új letöltések kezelése (4. feladat) | teszt | ⚪ |
+| CR-23 | A `bench models list` parancsnak minden modellt ki kell írnia a kulcsával és a képesség-címkéivel | Egy helyen látszik, mi van telepítve, és mire képes | teszt | ⚪ |
+| CR-24 | Ha egy futás képességszűrőt kap, azokat a modelleket kell kiválasztania, amelyek címkéi illeszkednek rá; üres kiválasztásnál a futásnak üzenettel le kell állnia | Tesztcsomagok szűrése modellképesség szerint (5. feladat) | teszt | ⚪ |
+
+Ellenőrzés: minden rész után az offline Python- és TypeScript-tesztek átmennek; a C1 után a dry run, egy scriptelt
+agent-futás és a meglévő eredményfájlok riportjai ugyanazt a kimenetet adják, mint előtte. Rövid élő ellenőrzés (egy
+sweep-job és egy kis agent-futás az új formátummal) csak jóváhagyás után fut.

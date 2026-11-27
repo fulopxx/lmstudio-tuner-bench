@@ -264,6 +264,8 @@ The runner is Windows specific (`lms.exe` path, process check).
 
 ## 8. Planned format changes
 
+The first three items and the model registry are planned in step C ([requirements](requirements.md), section 7).
+
 - `schema_version` in every plan and result row.
 - Fuller hardware fingerprint: GPU name, total VRAM and the runtime each model actually used, in addition to the
   recorded runtime selection, driver, loader and application version.
@@ -278,4 +280,4 @@ The runner is Windows specific (`lms.exe` path, process check).
 - Detecting spill into shared GPU memory.
 - Final choice of test layers (pytest, Vitest, Playwright).
 - Whether a second inference backend (`llama-server`) is needed for further speculative decoding methods.
-- Location and format of the machine-specific config file.
+- Location and format of the machine-specific config file: planned as `configs/machine.local.json` in step C (CR-15).

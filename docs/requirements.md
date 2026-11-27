@@ -450,3 +450,46 @@ Recorded on 2026-11-27 before the quality suites are designed. A report may only
 
 Open: sets for 3D design and cybersecurity need their own tools, sandbox and checks (for example mesh validity, an
 isolated target environment); the shell sandbox decision is still open (section 3).
+
+## 7. Core, result format and model registry (step C, planned)
+
+Agreed on 2026-11-27. Goal: measurement and evaluation logic reachable as importable core functions that return data,
+self-describing versioned results, and a model registry with capability tags. Out of scope: API and web interface
+(steps D to F), new external dependencies, changes to how measurements are made, speculative decoding in the grid
+(task 24, phase 1, right after C). Four parts, each its own commit: C1 package layout, C2 core functions, C3 result
+format and machine settings, C4 model registry. C1 and C2 are refactoring without a change in behaviour; C3 also fixes
+the agent rows that carry the task file version as their `schema_version`.
+
+**Package and core functions (C1, C2)**
+
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| CR-01 | The Python code must live in one package with a `core` part and a `cli` part | An API or dashboard must import the core without the command line code (architecture, section 3) | review | ⚪ |
+| CR-02 | The `cli` part must contain no measurement, evaluation or state logic, only argument parsing and output formatting | Interfaces stay thin; CLI parity is checkable | review | ⚪ |
+| CR-03 | Every CLI command must get its result from one core function that returns data (dict or list) and prints nothing | The same data serves the CLI, a later API and the dashboard | test | ⚪ |
+| CR-04 | When the package layout changes (C1), the output of every command and every written result file must stay the same, apart from file paths in messages | Moving code must not change behaviour; refactoring is kept apart from feature work | test | ⚪ |
+
+**Result format and machine settings (C3)**
+
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| CR-10 | Every result row must carry `schema_version`, the version of the result format, independent of the task file version | Sweep rows have no version today; agent rows carry the task file version | test | ⚪ |
+| CR-11 | Every result row must carry `kind` with the value `sweep` or `agent` | Rows of different runs can be read by one reader | test | ⚪ |
+| CR-12 | Every result row must carry an `env` object with: GPU name, total VRAM, driver version, LM Studio application version, selected runtime, SDK version, harness version (agent rows), operating system version, Python version and Node.js version; a value that cannot be read is `null`, never guessed | Results from different machines and versions must stay comparable (planned format change, architecture section 8) | test | ⚪ |
+| CR-13 | When the core reads a result file with rows of an older format, it must convert them to the current format in memory and must not rewrite the file | Raw measurements stay unchanged; every earlier run stays readable | test | ⚪ |
+| CR-14 | When a result row has a `schema_version` newer than the core knows, the core must stop reading with a message that names the file and the version | No silent misreading | test | ⚪ |
+| CR-15 | The LM Studio folder, the `lms` executable and the API port file must be read from an untracked `configs/machine.local.json` when it exists, otherwise from built-in defaults, through one core module | The same path is built in eight places today; other installations need another location (architecture, open question) | test | ⚪ |
+
+**Model registry (C4)**
+
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| CR-20 | `bench models refresh` must write a snapshot of the installed models into `state/models.json` with these fields per model: key, vision, trained for tool use, architecture, parameter count, quantization, maximum context, size | Model data without a new `lms ls` call per run; capability filtering needs it (task 5) | test | ⚪ |
+| CR-21 | Tags from an untracked `configs/models.local.json` must be merged into the registry and must override generated values of the same name | LM Studio does not report every capability (for example MTP or reasoning) | test | ⚪ |
+| CR-22 | `bench models new` must list the models present in the current snapshot and missing from the previous one | Handling of new downloads (task 4) | test | ⚪ |
+| CR-23 | `bench models list` must print every model with its key and capability tags | One place to see what is installed and what it can do | test | ⚪ |
+| CR-24 | When a run is given a capability filter, it must select the models whose tags match it; an empty selection must stop the run with a message | Test suites filtered by model capability (task 5) | test | ⚪ |
+
+Checks: after every part the offline Python and TypeScript tests pass; after C1 the dry run, a scripted agent run and
+the reports of existing result files give the same output as before. A short live check (one sweep job and a small
+agent run in the new format) runs only after approval.
