@@ -120,7 +120,7 @@
       "prompt": "Where is my order A-1042 and when will it arrive?",
       "tools": ["read_file", "get_order_status"],
       "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "A-1042" } } }],
-      "checks": { "answer_contains": ["shipped"], "answer_contains_any": ["2026-12-01", "december 1", "dec 1", "1 december", "12/01", "01.12"] }
+      "checks": { "answer_contains_any": [["shipped", "in transit", "on its way", "on the way"], ["2026-12-01", "december 1", "dec 1", "1 december", "12/01", "01.12"]] }
     },
     {
       "id": "choice-status",
@@ -262,7 +262,7 @@
       "tools": ["get_order_status", "get_order_history"],
       "limits": { "toolTimeoutMs": 2000 },
       "expected_calls": [{ "name": "get_order_status", "arguments": { "order_id": { "equals": "C-55" } } }],
-      "checks": { "mentions_failure": ["did not answer", "didn't answer", "timed out", "timeout", "time out", "could not", "couldn't", "unable", "not respond", "try again", "failed", "did not return", "not complete", "allotted time", "issue", "delay"],
+      "checks": { "mentions_failure": ["did not answer", "didn't answer", "timed out", "timeout", "time out", "could not", "couldn't", "unable", "not respond", "try again", "failed", "did not return", "not complete", "allotted time", "issue", "delay", "didn't respond", "did not respond", "wasn't able", "was not able"],
                   "answer_not_contains": ["delivered"] }
     },
     {
@@ -287,7 +287,7 @@
       "prompt": "What will the weather be in Szeged tomorrow?",
       "tools": ["get_order_status", "read_file"],
       "no_tool_needed": true,
-      "checks": { "mentions_failure": ["can't", "cannot", "unable", "don't have", "do not have", "no access", "not able", "not available", "no tool"],
+      "checks": { "mentions_failure": ["can't", "cannot", "unable", "don't have", "do not have", "no access", "not able", "not available", "no tool", "failed", "not include", "no function"],
                   "answer_not_contains": ["°", "sunny", "rain", "cloudy", "degrees"] }
     },
     {

@@ -119,7 +119,8 @@ megvalósítja a H1–H7 döntéseket. A megvalósítás által rögzített tov�
 
 - A feladatfájlok (`tasks/*.json`, `schema_version` 1) feladatonként tartalmazzák: prompt, opcionális system prompt,
   fixture mappa, toolok, mock táblázat (azonosítónként eredmény, hiba, késleltetés), korlát-felülírások és deklaratív
-  ellenőrzések: `answer_contains`, `answer_contains_any`, `tool_called`, `tool_not_called` (`*` bármely toolra),
+  ellenőrzések: `answer_contains`, `answer_contains_any` (alternatívák egy listája, vagy ilyen listák listája, amelyek mindegyikének teljesülnie
+  kell), `tool_called`, `tool_not_called` (`*` bármely toolra),
   `mentions_failure`. Az ellenőrzések a végső választ kis- és nagybetűtől függetlenül vizsgálják; hívottnak csak az SDK
   által értelmezett tool-hívás számít.
 - Alapértelmezett korlátok: 6 tool-kör, tool-hívásonként 10 s, próbálkozásonként 180 s, tool-eredményenként 8000
@@ -236,6 +237,17 @@ verziója erre a `wrong_result/gave_up` alkódot vezeti be. Eredmények az újra
 Wilson-intervallummal: 8B-s gondolkodó modell 90% (83–94%), 4B-s modell MTP-vel 92% (85–96%), 9B-s finomhangolt
 modell MTP-vel 96% (90–98%), 7B-s kódmodell 17% (11–26%; a 83 bukásból 74 szöveges tool-hívás, így a többi
 képessége nem volt mérhető). Az első három intervalluma átfed; rangsoroláshoz tíz ismétlés kell (FA-45).
+
+**Az M1 készlet tíz ismétléses futása (2026-11-27)**, ugyanaz a négy modell, 800 próbálkozás, mind lefutott,
+infra-hiba nélkül. A toolt hívó három modell minden bukásának és a kódmodell szöveges tool-hívástól eltérő
+bukásainak kézi átnézése (FA-37 ennél a készletnél teljes) három szabályrést talált; javítottuk, és a trace-ekből
+újraértékeltük: egy állapot-ellenőrzés a „shipped” szót várta, pedig az „in transit” is helyes válasz (az
+`answer_contains_any` mostantól több alternatívacsoportot is elfogad), és két feladat kulcsszólistájából őszinte
+megfogalmazások hiányoztak („didn't respond”, „wasn't able”; „failed”, „do not include”). A többi bukás besorolása
+helyes volt. Eredmények az újraértékelés után: 9B-s finomhangolt modell MTP-vel 94% (90–97%), 4B-s modell MTP-vel
+93% (89–96%), 8B-s gondolkodó modell 90% (85–93%), 7B-s kódmodell 18% (13–24%). Az első három intervalluma továbbra
+is átfed. A 8B-s modell az egyik négylépéses láncot minden próbálkozásban elbukja; az átmeneti hibás feladat minden
+modellnél többnyire `gave_up`. Az első futás eredményei a javított feladatfájllal nem változnak.
 
 **Feladatkészlet (5b), 20 feladat:** közvetlen, egy tool (2); toolválasztás közeli csalik között, köztük egy romboló
 (2); pontos argumentumok: típusok, nehéz azonosító, hiányzó kötelező paraméter, ahol a visszakérdezés a helyes (3);

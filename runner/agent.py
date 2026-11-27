@@ -85,6 +85,11 @@ def load_tasks(path):
             for arg, m in e.get("arguments", {}).items():
                 if not isinstance(m, dict) or len(m) != 1 or next(iter(m)) not in ("equals", "one_of", "any"):
                     problems.append(f"task {tid}: matcher of '{arg}' must be one of equals, one_of, any")
+        groups = t.get("checks", {}).get("answer_contains_any")
+        if groups is not None and not (all(isinstance(s, str) for s in groups) or
+                                       all(isinstance(g, list) and g and all(isinstance(s, str) for s in g)
+                                           for g in groups)):
+            problems.append(f"task {tid}: answer_contains_any must be a list of strings or a list of string lists")
         if t.get("no_tool_needed") and t.get("expected_calls"):
             problems.append(f"task {tid}: no_tool_needed together with expected_calls")
     if not ids:
@@ -124,6 +129,12 @@ def read_events(trace_path):
     return events
 
 
+def answer_groups(value):
+    """`answer_contains_any` is one group of alternatives (a list of strings) or several groups (a list of lists);
+    every group must match at least one of its strings."""
+    return value if value and all(isinstance(g, list) for g in value) else [value]
+
+
 def evaluate_attempt(task, attempt, events):
     """Pass/fail of one attempt from its outcome and trace: checks, expected calls (ordered subsequence, extra calls
     allowed, FA-04), forbidden tools, call budget. Status `limit` fails unless the task accepts it (FA-07)."""
@@ -135,7 +146,8 @@ def evaluate_attempt(task, attempt, events):
     if "answer_contains" in checks:
         results["answer_contains"] = all(s.lower() in answer for s in checks["answer_contains"])
     if "answer_contains_any" in checks:
-        results["answer_contains_any"] = any(s.lower() in answer for s in checks["answer_contains_any"])
+        results["answer_contains_any"] = all(any(s.lower() in answer for s in g)
+                                             for g in answer_groups(checks["answer_contains_any"]))
     if "answer_not_contains" in checks:
         results["answer_not_contains"] = not any(s.lower() in answer for s in checks["answer_not_contains"])
     if "mentions_failure" in checks:

@@ -45,3 +45,7 @@ Ugyanaz a gép, 20 feladat, mindegyik öt próbálkozással, mintavétel a model
 - Egy átmeneti tool-hibát szinte egyik modell sem próbált újra: helyette jelezték a hibát a felhasználónak.
 - A bukások kézi átnézése négy rést talált a kulcsszó-alapú szabályokban; egy ilyen kategorizálóhoz minden új
   feladatkészlet után kell ilyen átnézés.
+- A tíz ismétlés (ugyanaznap, 800 próbálkozás) megerősítette a képet: a toolt hívó három modell 90–94%, átfedő
+  intervallumokkal; az átnézés további három szabályrést talált. Egy 8B-s gondolkodó modell ugyanazt a négylépéses
+  láncot mind a tíz próbálkozásban elbukta, vagyis egyetlen feladat is szétválaszthat olyan modelleket, amelyek
+  összesített aránya nem különbözik.

@@ -34,7 +34,7 @@ Available now:
 - **Probes (advanced).** Small scripts that check what the installed LM Studio really supports, for example
   speculative decoding (draft models, MTP) or tool calls through the SDK.
 
-Planned ([roadmap](docs/roadmap.md)): a fixed task set with a failure category report per model, quality test suites
+Planned ([roadmap](docs/roadmap.md)): quality test suites
 (coding, Hungarian, vision, tool use), speculative decoding as a sweep dimension and a web dashboard.
 
 ## Requirements
@@ -131,6 +131,27 @@ Behaviour:
   answer gives the user no sign of the problem ([failure taxonomy](docs/failure_taxonomy.md)).
 - Results: one JSON line per attempt in `results\agent_<run>.jsonl`; the trace of every attempt (each prediction, tool
   call and result) and its sandbox below `results\agent\<run>\`.
+
+### Results: M1 agent task set
+
+20 tasks (direct and chained tool calls, argument handling, tool errors, limits, tasks that need no tool), ten
+attempts each, run on 2026-11-27 with LM Studio 1.2.0 on one RTX 2070 (8 GB), context 8192, sampling per model card.
+Rate with 95 % Wilson interval; pass^10 is the estimated chance that a task passes in all ten attempts, averaged over
+the tasks; a chain length counts as reliable at 80 % or more. Full report: `bench agent report`.
+
+| Model | Passed | Rate (95 % CI) | pass^10 | Silent failures | Longest reliable chain |
+|---|---|---|---|---|---|
+| `qwen3.5-9b-deepseek-v4-flash-mtp` | 189/200 | 94 % (90–97 %) | 0.85 | 0 | 4 |
+| `qwen3.5-4b-mtp` | 186/200 | 93 % (89–96 %) | 0.85 | 3 | 4 |
+| `qwen3-8b` | 180/200 | 90 % (85–93 %) | 0.90 | 0 | 3 |
+| `qwen2.5-coder-7b-instruct` | 36/200 | 18 % (13–24 %) | 0.15 | 14 | 0 |
+
+- The intervals of the first three models overlap: this set does not rank them.
+- `qwen3-8b` never finished one of the four-step chains (0/10); every model mostly reported a transient tool error to
+  the user instead of retrying it.
+- `qwen2.5-coder-7b-instruct` failed 164 attempts, 149 of them because it wrote the tool call as plain text, so the
+  set measures mainly this format problem for it, not its other abilities.
+- One machine, one task set, local settings: the numbers describe this setup, not the models in general.
 
 ### Probes (advanced)
 

@@ -78,6 +78,16 @@ class EvaluateTest(unittest.TestCase):
                                     "max_tool_calls": 0}, {"status": "done", "answer": "Delivered."}, t.events)
         self.assertEqual(v["checks"], {"answer_not_contains": False, "forbidden_tools": False, "max_tool_calls": False})
 
+    def test_answer_contains_any_groups(self):
+        def check(value, answer):
+            v = agent.evaluate_attempt({"checks": {"answer_contains_any": value}}, {"status": "done", "answer": answer},
+                                       [])
+            return v["checks"]["answer_contains_any"]
+        self.assertTrue(check(["a", "b"], "only B"))
+        groups = [["shipped", "in transit"], ["dec 1", "2026-12-01"]]
+        self.assertTrue(check(groups, "In transit, arrives Dec 1"))
+        self.assertFalse(check(groups, "In transit, arrives soon"))
+
     def test_matchers_are_type_strict(self):
         self.assertTrue(failures.arg_matches({"equals": "A-1"}, " a-1 "))
         self.assertFalse(failures.arg_matches({"equals": 3}, "3"))
@@ -95,11 +105,12 @@ class EvaluateTest(unittest.TestCase):
             p = Path(d) / "t.json"
             p.write_text(json.dumps({"schema_version": 2, "tasks": [
                 {"id": "a", "prompt": "p", "tools": ["shell"], "expected_calls": [{"name": "x"}], "checks": {"bad": 1},
-                 "oops": 1}]}), encoding="utf-8")
+                 "oops": 1},
+                {"id": "b", "prompt": "p", "checks": {"answer_contains_any": [["x"], "y"]}}]}), encoding="utf-8")
             with self.assertRaises(agent.StepError) as e:
                 agent.load_tasks(p)
             for part in ("unknown key 'oops'", "unknown check 'bad'", "'shell' is not declared",
-                         "expected call to 'x'"):
+                         "expected call to 'x'", "task b: answer_contains_any must be"):
                 self.assertIn(part, str(e.exception))
 
 

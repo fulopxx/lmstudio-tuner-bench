@@ -35,7 +35,7 @@ Már elérhető:
 - **Próbák (haladó).** Kis scriptek, amelyek kiderítik, mit tud valójában a telepített LM Studio, például a
   speculative decodingot (draft modellek, MTP) vagy a tool-hívásokat az SDK-n át.
 
-Tervben ([roadmap](docs/roadmap.hu.md)): rögzített feladatkészlet modellenkénti hibakategória-riporttal, minőségi
+Tervben ([roadmap](docs/roadmap.hu.md)): minőségi
 tesztcsomagok (kódolás, magyar nyelv, képfelismerés, tool-használat), speculative decoding mint sweep-dimenzió és
 webes dashboard.
 
@@ -135,6 +135,28 @@ Viselkedés:
   jelölődik, ha a válasz semmilyen jelét nem adja a hibának ([hibataxonómia](docs/failure_taxonomy.hu.md)).
 - Eredmények: próbálkozásonként egy JSON sor a `results\agent_<run>.jsonl` fájlban; minden próbálkozás trace-e (minden
   predikció, tool-hívás és eredmény) és sandboxa a `results\agent\<run>\` mappában.
+
+### Eredmények: az M1 agent-feladatkészlet
+
+20 feladat (közvetlen és láncolt tool-hívás, argumentumkezelés, tool-hibák, korlátok, toolt nem igénylő feladatok),
+mindegyik tíz próbálkozással, 2026-11-27-én, LM Studio 1.2.0-val, egy RTX 2070-en (8 GB), 8192-es contexttel,
+mintavétel a modellkártyák szerint. Sikerarány 95%-os Wilson-intervallummal; a pass^10 annak becsült esélye, hogy egy
+feladat mind a tíz próbálkozásban sikerül, a feladatokra átlagolva; egy lánchossz 80%-tól számít megbízhatónak. A
+teljes riport: `bench agent report`.
+
+| Modell | Sikeres | Arány (95% CI) | pass^10 | Csendes bukás | Leghosszabb megbízható lánc |
+|---|---|---|---|---|---|
+| `qwen3.5-9b-deepseek-v4-flash-mtp` | 189/200 | 94% (90–97%) | 0,85 | 0 | 4 |
+| `qwen3.5-4b-mtp` | 186/200 | 93% (89–96%) | 0,85 | 3 | 4 |
+| `qwen3-8b` | 180/200 | 90% (85–93%) | 0,90 | 0 | 3 |
+| `qwen2.5-coder-7b-instruct` | 36/200 | 18% (13–24%) | 0,15 | 14 | 0 |
+
+- Az első három modell intervalluma átfed: ez a készlet nem rangsorolja őket.
+- A `qwen3-8b` az egyik négylépéses láncot egyszer sem fejezte be (0/10); egy átmeneti tool-hibát mindegyik modell
+  többnyire jelzett a felhasználónak ahelyett, hogy újrapróbálta volna.
+- A `qwen2.5-coder-7b-instruct` 164 bukásából 149-ben sima szövegként írta ki a tool-hívást, így nála a készlet főleg
+  ezt a formátumhibát méri, a többi képességét nem.
+- Egy gép, egy feladatkészlet, helyi beállítások: a számok ezt a környezetet írják le, nem általában a modelleket.
 
 ### Próbák (haladó)
 

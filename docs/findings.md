@@ -44,3 +44,6 @@ Same machine, 20 tasks, five attempts each, sampling per model card; details in 
 - A transient tool error was retried by almost no model: they reported the error to the user instead.
 - The manual review of the failures found four gaps in the keyword-based rules; a categorizer of this kind needs
   such a review after every new task set.
+- Ten repeats (same day, 800 attempts) confirmed the picture: 90 to 94 % for the three models that call tools, with
+  overlapping intervals; the review found three more rule gaps. One 8B reasoning model failed the same four-step
+  chain in all ten attempts, so a single task can separate models whose overall rates do not differ.

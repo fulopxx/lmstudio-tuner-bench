@@ -114,7 +114,8 @@ implements H1–H7. Further details fixed by the implementation:
 
 - Task files (`tasks/*.json`, `schema_version` 1) hold per task: prompt, optional system prompt, fixture folder, tools,
   mock table (result, error, delay per id), limit overrides and declarative checks: `answer_contains`,
-  `answer_contains_any`, `tool_called`, `tool_not_called` (`*` for any tool), `mentions_failure`. Checks compare the
+  `answer_contains_any` (one list of alternatives, or a list of such lists, each of which must match),
+  `tool_called`, `tool_not_called` (`*` for any tool), `mentions_failure`. Checks compare the
   final answer case-insensitively; only tool calls the SDK parsed count as called.
 - Default limits: 6 tool rounds, 10 s per tool call, 180 s per attempt, 8000 characters per tool result, 2048 tokens
   per round. When the round limit is hit, the model gets one more round without tools and a note to answer the user;
@@ -227,6 +228,17 @@ rate with 95 % Wilson interval: 8B reasoning model 90 % (83–94 %), 4B model wi
 with MTP 96 % (90–98 %), 7B coder model 17 % (11–26 %; 74 of 83 failures are text tool calls, so its other
 abilities were not measurable). The intervals of the first three overlap; ten repeats (FA-45) are needed before
 ranking them.
+
+**Ten-repeat run of the M1 set (2026-11-27)**, same four models, 800 attempts, all completed, no infra errors.
+Manual review of every failure of the three models that call tools and of the coder model's failures other than
+text tool calls (FA-37 complete for this set) found three rule gaps, fixed and re-judged from the traces: a status
+check required the word "shipped" although "in transit" is a correct answer (`answer_contains_any` now accepts
+several groups of alternatives), and two task keyword lists missed honest wordings ("didn't respond", "wasn't
+able"; "failed", "do not include"). The other failures were categorized correctly. Results after re-judging:
+9B finetune with MTP 94 % (90–97 %), 4B model with MTP 93 % (89–96 %), 8B reasoning model 90 % (85–93 %), 7B coder
+model 18 % (13–24 %). The intervals of the first three still overlap. The 8B model fails one four-step chain in
+every attempt; the transient-error task is mostly `gave_up` for all models. The results of the first run do not
+change with the fixed task file.
 
 **Task set (5b), 20 tasks:** direct single tool (2), tool choice among close decoys including a destructive one (2),
 exact arguments: types, a hard identifier, a missing required parameter where asking back is correct (3), chains of 2,
