@@ -38,6 +38,8 @@ frissül.
 | `bench/core/machine.py` | Gépfüggő útvonalak (`configs/machine.local.json`, minta: `configs/machine.example.json`) és az eredménysorok környezet-ujjlenyomata |
 | `bench/core/models.py` | Modellregiszter a `state/models.json` fájlban: a telepített modellek az első észlelés dátumával, az eltűnt modellek, saját címkék a `configs/models.local.json`-ból, az „új” jelzés, képesség szerinti kiválasztás (`--where`, futás előtt frissítve) |
 | `bench/core/runstate.py` | Futásonkénti állapotfájlok (`state/runs/<id>/`: állapot, vezérlés, előrehaladás-napló) és a `state/active.json` zár, amely egyszerre egy GPU-futást enged, sweep- és agent-futásnál is |
+| `bench/core/check.py` | Egy futás gépellenőrzése megállapításokként (`ok`, `warn`, `fail`): betöltött modellek, szabad VRAM, GPU-terhelés, runtime, harness, aktív futás; a `bench check` számára csak olvasó, a sweep- és az agent-futtató ugyanezeket a szabályokat használja |
+| `bench/core/runs.py` | Minden sweep- és agent-futás az állapotával (`bench runs`) és egy befejezetlen futás lezárása (`bench close`) |
 | `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, szünet és folytatás kezelése, táblázatos riport |
 | `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
 | `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
@@ -231,6 +233,7 @@ figyelmeztet, ha a loadok előtti VRAM-foglalás 500 MiB-nál többet ingadozott
 | `stopped` | A felhasználó leállította (`stop` vagy Ctrl+C) | `resume` új processt indít |
 | `done` | Minden job lefutott | `resume --from` / `--redo-failed` új processt indít |
 | `aborted` | Hiba vagy két egymást követő timeout | `resume` új processt indít |
+| `closed` | A `bench close` félretette (`stopped`, `aborted`, halott process vagy ismeretlen állapotú régi futás után); a fájlok megmaradnak, a futás olvasható és kiértékelhető marad | nincs: a `resume` elutasítja |
 
 - **Pause és stop** az aktuális job után hat; `--now` esetén a következő ellenőrzési ponton, és a félbehagyott job
   újramérésre kerül. A folyamatban lévő modellbetöltést megvárja.
@@ -251,6 +254,7 @@ figyelmeztet, ha a loadok előtti VRAM-foglalás 500 MiB-nál többet ingadozott
 - **Meghalt process:** ha végállapot nélkül ér véget (kill, újraindítás), ezt a `status` mutatja, és a `resume` új
   processt indít, amely először eltávolítja a megszakadt futás után bent maradt modellt.
 - A `status --watch` két egymást követő, aktív futás nélküli olvasás után lép ki.
+- A **process gone** nem tárolt állapot: a `bench runs` és a `bench status` abból következteti ki, hogy az állapot aktív, de a process már nem él. Befejezett (`done`) vagy élő futás nem zárható le; a lezárás csak a futás `status.json` fájlját írja (`closed_at`, `closed_from`, `reason`).
 
 A gráfot a `tools/make_diagrams.py` generálja.
 
@@ -271,6 +275,9 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | `bench agent report [--run ...] [--k] [--reliable]` | `GET /agent-runs/{id}/report` |
 | `bench agent show <run> <task-attempt> [--model]` | `GET /agent-runs/{id}/attempts/{task-attempt}` |
 | `bench models refresh` / `list [--where] [--new] [--refresh]` | `POST /models/refresh`, `GET /models` |
+| `bench check [--min-free-mib] [--max-util]` (kilépési kód 1, ha egy futás nem indulhatna) | `GET /machine/check` |
+| `bench runs` | `GET /runs` |
+| `bench close <run> [--reason]` | `POST /runs/{id}/close` |
 
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
 használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.

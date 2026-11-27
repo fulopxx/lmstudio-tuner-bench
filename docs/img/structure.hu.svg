@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620" width="800" height="620" role="img" aria-label="A program felépítése" font-family="Segoe UI, Arial, sans-serif">
-<rect width="800" height="620" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 690" width="800" height="690" role="img" aria-label="A program felépítése" font-family="Segoe UI, Arial, sans-serif">
+<rect width="800" height="690" fill="#ffffff"/>
 <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>
 <rect x="40" y="20" width="180" height="44" rx="8" fill="#e9ecef" stroke="#868e96" stroke-width="1.5"/>
 <text x="130.0" y="47.0" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">bench.cmd</text>
@@ -12,7 +12,7 @@
 <path d="M220,42 H276" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
 <path d="M390,64 V96" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
 <path d="M660,64 V96" fill="none" stroke="#495057" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a)"/>
-<rect x="40" y="100" width="720" height="240" rx="12" fill="#f1f8ff" stroke="#1c7ed6" stroke-width="1.5"/>
+<rect x="40" y="100" width="720" height="310" rx="12" fill="#f1f8ff" stroke="#1c7ed6" stroke-width="1.5"/>
 <text x="56" y="122" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#1c7ed6">bench/core</text>
 <rect x="56" y="136" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
 <text x="136.0" y="153" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">sweep.py</text>
@@ -47,36 +47,42 @@
 <rect x="400" y="276" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
 <text x="480.0" y="293" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">runstate.py</text>
 <text x="480.0" y="311" text-anchor="middle" font-size="11" fill="#495057">futásállapot, GPU-zár</text>
-<rect x="40" y="370" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
-<text x="122.5" y="387" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">harness (Node)</text>
-<text x="122.5" y="405" text-anchor="middle" font-size="11" fill="#495057">load-model, run-tasks</text>
-<path d="M122,340 V366" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M122,418 V446" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="225" y="370" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
-<text x="307.5" y="387" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">lms.exe</text>
-<text x="307.5" y="405" text-anchor="middle" font-size="11" fill="#495057">lista, ps, unload, szerver</text>
-<path d="M307,340 V366" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M307,418 V446" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="410" y="370" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
-<text x="492.5" y="387" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">REST szerver</text>
-<text x="492.5" y="405" text-anchor="middle" font-size="11" fill="#495057">generálás, mérés</text>
-<path d="M492,340 V366" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M492,418 V446" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="595" y="370" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
-<text x="677.5" y="387" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">nvidia-smi</text>
-<text x="677.5" y="405" text-anchor="middle" font-size="11" fill="#495057">VRAM, GPU-terhelés</text>
-<path d="M677,340 V366" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M677,418 V446" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="40" y="450" width="535" height="44" rx="8" fill="#e9ecef" stroke="#868e96" stroke-width="1.5"/>
-<text x="307.5" y="477.0" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">LM Studio (alkalmazás, SDK, modellek)</text>
-<rect x="595" y="450" width="165" height="44" rx="8" fill="#e9ecef" stroke="#868e96" stroke-width="1.5"/>
-<text x="677.5" y="477.0" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">GPU</text>
-<rect x="40" y="530" width="350" height="44" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="1.5"/>
-<text x="215.0" y="557.0" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">configs/, tasks/ (bemenet)</text>
-<rect x="410" y="530" width="350" height="44" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="1.5"/>
-<text x="585.0" y="557.0" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">state/, results/, report/ (kimenet)</text>
-<path d="M40,552 H24 V185 H36" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<path d="M760,185 H780 V552 H764" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
-<rect x="40" y="592" width="30" height="16" rx="4" fill="#ffffff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="5 4"/>
-<text x="78" y="604" font-size="12" fill="#495057">szaggatott doboz: tervezett</text>
+<rect x="572" y="276" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
+<text x="652.0" y="293" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">check.py</text>
+<text x="652.0" y="311" text-anchor="middle" font-size="11" fill="#495057">gépellenőrzés</text>
+<rect x="56" y="346" width="160" height="48" rx="8" fill="#ffffff" stroke="#4dabf7" stroke-width="1.5"/>
+<text x="136.0" y="363" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">runs.py</text>
+<text x="136.0" y="381" text-anchor="middle" font-size="11" fill="#495057">futáslista, lezárás</text>
+<rect x="40" y="440" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
+<text x="122.5" y="457" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">harness (Node)</text>
+<text x="122.5" y="475" text-anchor="middle" font-size="11" fill="#495057">load-model, run-tasks</text>
+<path d="M122,410 V436" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M122,488 V516" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="225" y="440" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
+<text x="307.5" y="457" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">lms.exe</text>
+<text x="307.5" y="475" text-anchor="middle" font-size="11" fill="#495057">lista, ps, unload, szerver</text>
+<path d="M307,410 V436" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M307,488 V516" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="410" y="440" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
+<text x="492.5" y="457" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">REST szerver</text>
+<text x="492.5" y="475" text-anchor="middle" font-size="11" fill="#495057">generálás, mérés</text>
+<path d="M492,410 V436" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M492,488 V516" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="595" y="440" width="165" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
+<text x="677.5" y="457" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">nvidia-smi</text>
+<text x="677.5" y="475" text-anchor="middle" font-size="11" fill="#495057">VRAM, GPU-terhelés</text>
+<path d="M677,410 V436" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M677,488 V516" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="520" width="535" height="44" rx="8" fill="#e9ecef" stroke="#868e96" stroke-width="1.5"/>
+<text x="307.5" y="547.0" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">LM Studio (alkalmazás, SDK, modellek)</text>
+<rect x="595" y="520" width="165" height="44" rx="8" fill="#e9ecef" stroke="#868e96" stroke-width="1.5"/>
+<text x="677.5" y="547.0" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">GPU</text>
+<rect x="40" y="600" width="350" height="44" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="1.5"/>
+<text x="215.0" y="627.0" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">configs/, tasks/ (bemenet)</text>
+<rect x="410" y="600" width="350" height="44" rx="8" fill="#d3f9d8" stroke="#2f9e44" stroke-width="1.5"/>
+<text x="585.0" y="627.0" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">state/, results/, report/ (kimenet)</text>
+<path d="M40,622 H24 V185 H36" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M760,185 H780 V622 H764" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="662" width="30" height="16" rx="4" fill="#ffffff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="78" y="674" font-size="12" fill="#495057">szaggatott doboz: tervezett</text>
 </svg>

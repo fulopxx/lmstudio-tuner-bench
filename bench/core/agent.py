@@ -16,14 +16,13 @@ import hashlib
 import json
 import re
 import shutil
-import statistics
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
 
-from . import failures, machine, progress, results, runstate, sweep
+from . import check, failures, machine, progress, results, runstate, sweep
 from . import models as registry
 from .progress import CoreError
 from .smoke import LMS, StepError, sh
@@ -301,13 +300,11 @@ def machine_ready(min_free_mib, max_util):
         sh([LMS, "unload", IDENTIFIER], 60)
         time.sleep(2)
         rc, ps = sh([LMS, "ps"], 30)
-    if "No models are currently loaded" not in ps:
-        raise StepError("fail", "a model is loaded that this run did not load; unload it in LM Studio")
-    samples = [sweep.gpu_state() for _ in range(3)]
-    used, total = samples[-1][0], samples[-1][1]
-    util = statistics.median(s[2] for s in samples)
-    if total - used < min_free_mib or util > max_util:
-        raise StepError("fail", f"GPU not idle: {total - used} MiB free, {util}% busy")
+    samples = [] if check.loaded_from_text(ps) else [sweep.gpu_state() for _ in range(3)]
+    bad = check.first_failure(check.assess(check.loaded_from_text(ps), samples or [[0, 0, 0]], min_free_mib,
+                                           max_util, leftover_ok=False))
+    if bad:
+        raise StepError("fail", bad["detail"])
 
 
 # ---------------------------------------------------------------- the run command

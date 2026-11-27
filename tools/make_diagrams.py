@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generate the SVG diagrams of the documentation (English and Hungarian) into docs/img/.
 
-Source of truth for the run state graph: bench/core/sweep.py (execute, Runner.wait_paused, cmd_resume).
+Source of truth for the run state graph: bench/core/sweep.py (execute, Runner.wait_paused, resume_run) and
+bench/core/runs.py (close_run, the `closed` state agreed 2026-11-27).
   python tools/make_diagrams.py
 """
 from pathlib import Path
@@ -16,7 +17,9 @@ NODES = {  # state: (x, y, fill, stroke)
     "stopped": (620, 190, "#e9ecef", "#868e96"),
     "done": (620, 330, "#d3f9d8", "#2f9e44"),
     "aborted": (330, 330, "#ffe3e3", "#e03131"),
+    "closed": (580, 460, "#e5dbff", "#7048e8"),
 }
+GONE = (60, 460)  # not a stored state: an active state whose process no longer exists
 W, H = 140, 48
 
 # (path, dashed, label_x, label_y, anchor, label key)
@@ -35,6 +38,11 @@ EDGES = [
     ("M690,378 V420 H80 V240", True, 560, 412, "middle", "resume_done"),
     ("M400,378 V420", True, 240, 412, "middle", "resume_aborted"),
 ]
+CLOSE_EDGES = [  # bench close: from stopped, aborted and a gone process into closed
+    "M760,226 H790 V484 H722",
+    "M440,378 V440 H620 V458",
+    "M200,484 H578",
+]
 
 TEXT = {
     "en": {"start": "run", "checks_ok": "checks ok", "pause": "pause / GPU busy", "resume": "resume / GPU free",
@@ -42,22 +50,24 @@ TEXT = {
            "error_timeouts": "error / 2 timeouts", "error": "error", "resume_new": "resume (new process)",
            "resume_done": "resume --from / --redo-failed", "resume_aborted": "resume",
            "legend_solid": "same process", "legend_dashed": "resume starts a new process",
-           "title": "Run states"},
+           "legend_close": "bench close (files stay, never resumed)", "gone": "process gone",
+           "gone_sub": "active state, dead process", "title": "Run states"},
     "hu": {"start": "run", "checks_ok": "ellenőrzés ok", "pause": "pause / foglalt GPU", "resume": "resume / szabad GPU",
            "stop_ctrlc": "stop / Ctrl+C", "stop": "stop", "all_done": "minden job kész",
            "error_timeouts": "hiba / 2 timeout", "error": "hiba", "resume_new": "resume (új process)",
            "resume_done": "resume --from / --redo-failed", "resume_aborted": "resume",
            "legend_solid": "ugyanaz a process", "legend_dashed": "a resume új processt indít",
-           "title": "Futási állapotok"},
+           "legend_close": "bench close (a fájlok maradnak, nincs resume)", "gone": "process gone",
+           "gone_sub": "aktív állapot, halott process", "title": "Futási állapotok"},
 }
 
 
 def run_states(lang):
     t = TEXT[lang]
     out = [
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470" width="800" height="470" '
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 570" width="800" height="570" '
         f'role="img" aria-label="{escape(t["title"])}" font-family="Segoe UI, Arial, sans-serif">',
-        '<rect width="800" height="470" fill="#ffffff"/>',
+        '<rect width="800" height="570" fill="#ffffff"/>',
         '<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" '
         'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>',
         '<circle cx="16" cy="214" r="6" fill="#212529"/>',
@@ -69,16 +79,27 @@ def run_states(lang):
         out.append(f'<path d="{path}" fill="none" stroke="#495057" stroke-width="1.5"{dash}{arrow}/>')
         out.append(f'<text x="{lx}" y="{ly}" text-anchor="{anchor}" font-size="12" fill="#343a40">'
                    f'{escape(t[key])}</text>')
+    for path in CLOSE_EDGES:
+        out.append(f'<path d="{path}" fill="none" stroke="#7048e8" stroke-width="1.5" marker-end="url(#a)"/>')
+    gx, gy = GONE
+    out.append(f'<rect x="{gx}" y="{gy}" width="{W}" height="{H}" rx="10" fill="#fff9db" stroke="#f08c00" '
+               'stroke-width="1.5" stroke-dasharray="5 4"/>')
+    out.append(f'<text x="{gx + W / 2}" y="{gy + 20}" text-anchor="middle" font-size="14" font-weight="600" '
+               f'font-family="Consolas, monospace" fill="#212529">{escape(t["gone"])}</text>')
+    out.append(f'<text x="{gx + W / 2}" y="{gy + 37}" text-anchor="middle" font-size="10.5" fill="#495057">'
+               f'{escape(t["gone_sub"])}</text>')
     for name, (x, y, fill, stroke) in NODES.items():
         out.append(f'<rect x="{x}" y="{y}" width="{W}" height="{H}" rx="10" fill="{fill}" '
                    f'stroke="{stroke}" stroke-width="2"/>')
         out.append(f'<text x="{x + W / 2}" y="{y + H / 2 + 5}" text-anchor="middle" font-size="15" '
                    f'font-weight="600" font-family="Consolas, monospace" fill="#212529">{name}</text>')
     out += [
-        '<path d="M60,450 H100" stroke="#495057" stroke-width="1.5"/>',
-        f'<text x="108" y="454" font-size="12" fill="#495057">{escape(t["legend_solid"])}</text>',
-        '<path d="M300,450 H340" stroke="#495057" stroke-width="1.5" stroke-dasharray="5 4"/>',
-        f'<text x="348" y="454" font-size="12" fill="#495057">{escape(t["legend_dashed"])}</text>',
+        '<path d="M20,550 H60" stroke="#495057" stroke-width="1.5"/>',
+        f'<text x="68" y="554" font-size="12" fill="#495057">{escape(t["legend_solid"])}</text>',
+        '<path d="M200,550 H240" stroke="#495057" stroke-width="1.5" stroke-dasharray="5 4"/>',
+        f'<text x="248" y="554" font-size="12" fill="#495057">{escape(t["legend_dashed"])}</text>',
+        '<path d="M470,550 H510" stroke="#7048e8" stroke-width="1.5"/>',
+        f'<text x="518" y="554" font-size="12" fill="#495057">{escape(t["legend_close"])}</text>',
         "</svg>",
     ]
     return "\n".join(out) + "\n"
@@ -94,7 +115,8 @@ STRUCT_TEXT = {
                        ("agent.py", "agent runs, checks"), ("agent_report.py", "agent report"),
                        ("failures.py", "taxonomy, categorizer"),
                        ("results.py", "result format, migration"), ("machine.py", "paths, env fingerprint"),
-                       ("models.py", "model registry"), ("runstate.py", "run state, GPU lock")],
+                       ("models.py", "model registry"), ("runstate.py", "run state, GPU lock"),
+                       ("check.py", "machine check"), ("runs.py", "run list, close")],
            "ext": [("harness (Node)", "load-model, run-tasks"), ("lms.exe", "list, ps, unload, server"),
                    ("REST server", "generation, measurement"), ("nvidia-smi", "VRAM, GPU load")],
            "lms": "LM Studio (application, SDK, models)", "gpu": "GPU",
@@ -107,7 +129,8 @@ STRUCT_TEXT = {
                        ("agent.py", "agent-futás, ellenőrzés"), ("agent_report.py", "agent riport"),
                        ("failures.py", "taxonómia, kategorizáló"),
                        ("results.py", "eredményformátum, migráció"), ("machine.py", "útvonalak, ujjlenyomat"),
-                       ("models.py", "modellregiszter"), ("runstate.py", "futásállapot, GPU-zár")],
+                       ("models.py", "modellregiszter"), ("runstate.py", "futásállapot, GPU-zár"),
+                       ("check.py", "gépellenőrzés"), ("runs.py", "futáslista, lezárás")],
            "ext": [("harness (Node)", "load-model, run-tasks"), ("lms.exe", "lista, ps, unload, szerver"),
                    ("REST szerver", "generálás, mérés"), ("nvidia-smi", "VRAM, GPU-terhelés")],
            "lms": "LM Studio (alkalmazás, SDK, modellek)", "gpu": "GPU",

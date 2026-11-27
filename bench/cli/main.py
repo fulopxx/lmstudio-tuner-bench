@@ -8,6 +8,9 @@
   bench resume --redo-failed
   bench stop [--now]       exit; can be resumed later, also after a reboot
   bench evaluate [--run]   rank the configurations of a finished sweep (offline)
+  bench check              the machine check of a run, without measuring (exit code 1 if a run could not start)
+  bench runs               every sweep and agent run with its state
+  bench close <run>        mark an unfinished run as closed; it stays readable, it is never resumed
   bench agent run | report | show
   bench models refresh | list [--new] [--refresh] [--where]   the model registry (installed models, capability tags)
 
@@ -24,7 +27,7 @@ import sys
 import time
 from pathlib import Path
 
-from bench.core import agent, progress, sweep
+from bench.core import agent, check, progress, runs, sweep
 from bench.core import models as registry
 from bench.core.progress import CoreError
 from bench.core.smoke import StepError
@@ -217,6 +220,41 @@ def cmd_evaluate(a):
     return 0
 
 
+def cmd_check(a):
+    result = check.machine_check(a.min_free_mib, a.max_util)
+    code = 0 if result["ready"] else 1
+    if a.json:
+        return out_json(result, code)
+    for f in result["findings"]:
+        print(f"{f['level'].upper():5s} {f['check']:<14} {f['detail']}")
+    print("ready for a run" if result["ready"] else "NOT ready for a run")
+    return code
+
+
+def cmd_runs(a):
+    result = runs.list_runs()
+    if a.json:
+        return out_json(result)
+    print(f"{'run':<16} {'kind':<6} {'state':<9} {'started':<20} done")
+    for r in result["runs"]:
+        done = f"{r['done']}/{r['total']}" if r["total"] else str(r["done"])
+        unit = "jobs" if r["kind"] == "sweep" else "attempts"
+        print(f"{r['run']:<16} {r['kind']:<6} {r['state']:<9} {(r['started'] or '-'):<20} {done} {unit}")
+    print(f"{len(result['runs'])} run(s)")
+    return 0
+
+
+def cmd_close(a):
+    result = runs.close_run(a.run, a.reason)
+    if a.json:
+        return out_json(result)
+    if result["already_closed"]:
+        print(f"run {a.run} was already closed")
+    else:
+        print(f"run {a.run} closed (was {result['closed_from']}); its files stay, it is never resumed")
+    return 0
+
+
 def sweep_parser():
     ap = argparse.ArgumentParser(prog="bench")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -250,6 +288,13 @@ def sweep_parser():
     e.add_argument("--run")
     e.add_argument("--in-tokens", type=int, default=2000)
     e.add_argument("--out-tokens", type=int, default=500)
+    c = sub.add_parser("check", help="the machine check of a run, without measuring (IF-20)")
+    c.add_argument("--min-free-mib", type=int, default=3500)
+    c.add_argument("--max-util", type=int, default=30)
+    sub.add_parser("runs", help="every sweep and agent run with its state (IF-21)")
+    x = sub.add_parser("close", help="mark an unfinished run as closed (IF-22)")
+    x.add_argument("run", help="run id (see `bench runs`)")
+    x.add_argument("--reason", help="why the run is closed (kept in its status)")
     add_json(sub)
     return ap
 
@@ -470,7 +515,7 @@ def main(argv=None):
     a = sweep_parser().parse_args(argv)
     json_mode(a)
     commands = {"run": cmd_run, "resume": cmd_resume, "status": cmd_status, "evaluate": cmd_evaluate,
-                "pause": cmd_control, "stop": cmd_control}
+                "pause": cmd_control, "stop": cmd_control, "check": cmd_check, "runs": cmd_runs, "close": cmd_close}
     try:
         return commands[a.cmd](a)
     except CoreError as e:

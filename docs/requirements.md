@@ -524,7 +524,7 @@ it (roadmap step D2).
 
 | ID | Requirement | Reason | Verification | State |
 |---|---|---|---|---|
-| IF-20 | `bench check` must run the machine check of a run (no foreign model loaded, free VRAM, GPU load) without measuring and report every finding | The interface shows whether the machine is ready before a start (C1) | test | ⚪ |
-| IF-21 | `bench runs` must list every sweep and agent run with id, kind, state, start time and the number of finished jobs or attempts | Overview of runs (C10) | test | ⚪ |
-| IF-22 | `bench close <run>` must mark an unfinished run as closed; a closed run must stay readable and evaluable, and its files must not be deleted | Unfinished runs can be put aside without losing data (C9); a change of the state machine, made by the agreed state machine change process | test | ⚪ |
+| IF-20 | `bench check` must run the machine check of a run (no foreign model loaded, free VRAM, GPU load) without measuring and report every finding | The interface shows whether the machine is ready before a start (C1) | test | ✅ (D2d, 2026-11-27; offline tests and a live `bench check` on the machine) |
+| IF-21 | `bench runs` must list every sweep and agent run with id, kind, state, start time and the number of finished jobs or attempts | Overview of runs (C10) | test | ✅ (D2d, 2026-11-27; offline tests, checked on the real run list) |
+| IF-22 | `bench close <run>` must mark an unfinished run as closed; a closed run must stay readable and evaluable, and its files must not be deleted | Unfinished runs can be put aside without losing data (C9); a change of the state machine, made by the agreed state machine change process | test | ✅ (D2d, 2026-11-27; offline tests; the new `closed` state was shown to the owner and agreed first) |
 | IF-23 | Every data file the interface reads (plan, run state, run list, registry snapshot) must carry a `schema_version` | The interface must detect files it cannot read (planned format change) | test | ⚪ |

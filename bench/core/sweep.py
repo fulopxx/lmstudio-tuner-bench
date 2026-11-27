@@ -29,7 +29,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import evaluate, machine, progress, results, runstate, smoke
+from . import check, evaluate, machine, progress, results, runstate, smoke
 from . import models as registry
 from .progress import CoreError
 from .smoke import LMS, StepError, sh
@@ -212,19 +212,17 @@ class Runner:
             sh([LMS, "unload", IDENTIFIER], 60)
             time.sleep(2)
             rc, ps = sh([LMS, "ps"], 30)
-        if "No models are currently loaded" not in ps:
-            raise Blocked("a model is loaded that this run did not load; unload it in LM Studio")
         samples = []
+        if check.loaded_from_text(ps):  # same message as before: no GPU sampling while a model is loaded
+            raise Blocked(check.first_failure(check.assess(check.loaded_from_text(ps), [[0, 0, 0]], 0, 100,
+                                                           leftover_ok=False))["detail"])
         for _ in range(3):
             samples.append(gpu_state())
             time.sleep(0.7)
-        used, total = samples[-1][0], samples[-1][1]
-        util = statistics.median(s[2] for s in samples)
-        if total - used < self.o["min_free_mib"]:
-            raise Blocked(f"only {total - used} MiB VRAM free (< {self.o['min_free_mib']}): game or GPU app running?")
-        if util > self.o["max_util"]:
-            raise Blocked(f"GPU {util}% busy (> {self.o['max_util']}%): close GPU-heavy apps")
-        return used, total
+        bad = check.first_failure(check.assess([], samples, self.o["min_free_mib"], self.o["max_util"]))
+        if bad:
+            raise Blocked(bad["detail"])
+        return samples[-1][0], samples[-1][1]
 
     def ensure_server(self):
         rc, st = sh([LMS, "server", "status"], 30)
@@ -554,6 +552,8 @@ def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=Fals
         return {"run": lock["run"], "exit_code": 0, "message":
                 "resume requested" if st.get("state") == "paused" else "run is active; pending pause/stop cancelled"}
     run_id = run or latest_run()
+    if (runstate.read_status(run_id) or {}).get("state") == "closed":  # IF-22: a closed run is never resumed
+        raise CoreError(f"nothing to resume: run {run_id} is closed" + ("" if run else " (the latest sweep)"))
     run_dir = runstate.run_dir(run_id)
     plan = read_json(run_dir / "plan.json")
     if not plan:
