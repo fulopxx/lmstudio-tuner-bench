@@ -73,6 +73,7 @@ class TaskSetTest(unittest.TestCase):
                 self.assertNotIn(token.lower(), t["prompt"].lower(), t["id"])
 
 
+@unittest.skipIf(agent.harness_problem(), f"agent harness: {agent.harness_problem()}")
 class ScriptedM1Test(unittest.TestCase):
     def test_reference_solutions_pass(self):
         rows, run_id, _ = run_scripted(REFERENCE)
@@ -160,7 +161,8 @@ class MultiModelTest(unittest.TestCase):
             return [], {"attempts": [], "stopped": False}, {"model": model}
 
         out = io.StringIO()
-        with mock.patch.object(agent, "run_model", fake_run_model), redirect_stdout(out):
+        with mock.patch.object(agent, "run_model", fake_run_model), \
+                mock.patch.object(agent, "harness_problem", lambda: None), redirect_stdout(out):
             code = agent.main(["run", "--tasks", str(TASKS), "--models", "bad,good"])
         text = out.getvalue()
         run_id = next(ln for ln in text.splitlines() if ln.startswith("results: ")).rsplit("agent_", 1)[1][:-6]

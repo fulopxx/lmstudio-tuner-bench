@@ -206,14 +206,26 @@ def send_stop(p):
     return time.time()
 
 
+def harness_problem():
+    """Why the harness cannot start here (no Node.js, or its packages are not installed), or None."""
+    if not shutil.which("node"):
+        return "Node.js was not found on PATH (needed for the agent harness)"
+    if not (HARNESS / "node_modules" / "@lmstudio" / "sdk").is_dir():
+        return "the harness packages are not installed: run `npm.cmd ci --ignore-scripts` in harness\\"
+    return None
+
+
 def run_harness(spec, timeout_s):
     """Starts the harness, streams its progress, sends stop on Ctrl+C. Returns the RESULT summary, or None when the
     harness ended without one (killed, crashed); raises if the harness reported an unusable spec."""
     p = subprocess.Popen([shutil.which("node") or "node", "run-tasks.ts"], cwd=HARNESS, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
                          errors="replace")
-    p.stdin.write(json.dumps(spec) + "\n")
-    p.stdin.flush()
+    try:
+        p.stdin.write(json.dumps(spec) + "\n")
+        p.stdin.flush()
+    except OSError:  # the harness ended before reading its spec; its stderr is reported below
+        pass
     lines, errors = [], []
 
     def pump(stream, sink, echo):
@@ -340,6 +352,9 @@ def run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s):
 
 def cmd_run(a):
     data, task_hash = load_tasks(a.tasks)
+    problem = harness_problem()
+    if problem:
+        raise StepError("fail", problem)
     tasks = data["tasks"]
     if a.only:
         wanted = set(a.only.split(","))

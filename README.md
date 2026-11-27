@@ -42,7 +42,7 @@ Planned ([roadmap](docs/roadmap.md)): quality test suites
 - Windows, NVIDIA GPU (`nvidia-smi`)
 - LM Studio with the `lms` CLI (tested with 1.2.0)
 - Python (tested with 3.15.2), no external packages
-- Node.js 24 or newer (tested with 26.13.0) and the LM Studio SDK: run `npm.cmd install --ignore-scripts` in `harness\`
+- Node.js 24 or newer (tested with 26.13.0) and the LM Studio SDK: run `npm.cmd ci --ignore-scripts` in `harness\`
 - Microsoft Edge, only for the PDF export of the documents
 
 **Known limitation:** models are loaded through the official LM Studio SDK, and the SDK's API port is read from an
@@ -54,11 +54,25 @@ installations (override with the `LMS_API_FILE` environment variable). The appli
 
 In PowerShell, from the project folder.
 
+### Install from a fresh clone
+
+The Python part uses the standard library only, so there is no `requirements.txt` and no virtual environment to set
+up. The harness packages are pinned in `harness\package-lock.json`; `npm ci` installs exactly those versions.
+
+```powershell
+git clone https://github.com/fulopxx/lmstudio-tuner-bench.git
+cd lmstudio-tuner-bench
+cd harness; npm.cmd ci --ignore-scripts; cd ..
+python -m unittest discover -s tests
+```
+
+The last line runs the offline tests (no GPU, no LM Studio). Without the harness packages, the tests that start the
+harness are skipped with a message, and `bench agent run` stops with the command to run.
+
 ### Quick start
 
 | Command | What it does |
 |---|---|
-| `cd harness; npm.cmd install --ignore-scripts; cd ..` | Installs the LM Studio SDK and the TypeScript tools (once) |
 | `.\bench agent run --scripted tests\agent_scripted.json` | Runs the example agent tasks with scripted model replies: no GPU and no LM Studio needed, shows the whole path (one scripted reply fails its checks on purpose) |
 | `.\bench run --dry-run` | Lists the jobs of the quick sweep without starting anything |
 
@@ -193,6 +207,7 @@ Created while running, not tracked by git:
 ## Tests
 
 ```
+python -m unittest discover -s tests   # all offline Python tests at once
 cd harness; npm.cmd test; npm.cmd run typecheck; cd ..   # offline (TypeScript tests and type check)
 python tests\test_agent.py           # offline (also runs the harness with scripted model replies)
 python tests\test_sweep_logic.py      # offline

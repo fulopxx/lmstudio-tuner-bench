@@ -321,6 +321,7 @@ class RebuildTest(unittest.TestCase):
         self.assertEqual(rows[0]["answer"], "ok")
 
 
+@unittest.skipIf(agent.harness_problem(), f"agent harness: {agent.harness_problem()}")
 class ScriptedRunTest(unittest.TestCase):
     def test_example_tasks_through_the_harness(self):
         out = io.StringIO()

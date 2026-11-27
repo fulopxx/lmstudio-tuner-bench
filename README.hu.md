@@ -45,7 +45,7 @@ webes dashboard.
 - LM Studio az `lms` CLI-vel (1.2.0-val tesztelve)
 - Python (3.15.2-vel tesztelve), külső csomag nélkül
 - Node.js 24 vagy újabb (26.13.0-val tesztelve) és a LM Studio SDK: futtasd a `harness\` mappában az
-  `npm.cmd install --ignore-scripts` parancsot
+  `npm.cmd ci --ignore-scripts` parancsot
 - Microsoft Edge, csak a dokumentumok PDF-exportjához
 
 **Ismert korlát:** a modellek a hivatalos LM Studio SDK-val töltődnek be, az SDK API-portját pedig egy belső LM Studio
@@ -57,11 +57,26 @@ fájlból olvassuk (`~\.lmstudio\apps\bionic\.internal\http-server.json`), ami m
 
 PowerShellben, a projekt mappájából.
 
+### Telepítés friss klónból
+
+A Python-rész csak a standard könyvtárat használja, ezért nincs `requirements.txt`, és nem kell virtuális környezet.
+A harness csomagjai pontos verzióval rögzítve vannak a `harness\package-lock.json` fájlban; az `npm ci` pontosan
+ezeket telepíti.
+
+```powershell
+git clone https://github.com/fulopxx/lmstudio-tuner-bench.git
+cd lmstudio-tuner-bench
+cd harness; npm.cmd ci --ignore-scripts; cd ..
+python -m unittest discover -s tests
+```
+
+Az utolsó sor az offline teszteket futtatja (nem kell hozzá GPU és LM Studio). A harness csomagjai nélkül a harnesst
+indító tesztek üzenettel kimaradnak, a `bench agent run` pedig leáll, és kiírja a futtatandó parancsot.
+
 ### Gyors kezdés
 
 | Parancs | Mit csinál |
 |---|---|
-| `cd harness; npm.cmd install --ignore-scripts; cd ..` | Telepíti a LM Studio SDK-t és a TypeScript eszközöket (egyszer kell) |
 | `.\bench agent run --scripted tests\agent_scripted.json` | A példa agent-feladatokat scriptelt modellválaszokkal futtatja: nem kell hozzá GPU és LM Studio, a teljes utat megmutatja (az egyik scriptelt válasz szándékosan elbukik) |
 | `.\bench run --dry-run` | Listázza a gyors sweep jobjait, nem indít semmit |
 
@@ -199,6 +214,7 @@ Futás közben keletkeznek, a git nem követi őket:
 ## Tesztek
 
 ```
+python -m unittest discover -s tests   # az összes offline Python-teszt egyszerre
 cd harness; npm.cmd test; npm.cmd run typecheck; cd ..   # offline (TypeScript tesztek és típusellenőrzés)
 python tests\test_agent.py           # offline (a harnesst is futtatja scriptelt modellválaszokkal)
 python tests\test_sweep_logic.py      # offline
