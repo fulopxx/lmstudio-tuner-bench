@@ -11,6 +11,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bench.cli import main as cli  # noqa: E402
 from bench.core import agent, failures  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -325,7 +326,7 @@ class ScriptedRunTest(unittest.TestCase):
     def test_example_tasks_through_the_harness(self):
         out = io.StringIO()
         with redirect_stdout(out):
-            code = agent.main(["run", "--repeats", "1", "--scripted", str(ROOT / "tests" / "agent_scripted.json")])
+            code = cli.main(["agent", "run", "--repeats", "1", "--scripted", str(ROOT / "tests" / "agent_scripted.json")])
         self.assertEqual(code, 0, out.getvalue())
         text = out.getvalue()
         results = Path(next(ln for ln in text.splitlines() if ln.startswith("results: "))[len("results: "):])

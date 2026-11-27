@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bench.cli import main as cli  # noqa: E402
 from bench.core import agent, agent_report, failures  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -22,7 +23,7 @@ def run_scripted(replies_file, extra=()):
     """Runs the M1 task set with scripted replies; returns the result rows, the run id and the output."""
     out = io.StringIO()
     with redirect_stdout(out):
-        code = agent.main(["run", "--tasks", str(TASKS), "--repeats", "1", "--scripted", str(replies_file), *extra])
+        code = cli.main(["agent", "run", "--tasks", str(TASKS), "--repeats", "1", "--scripted", str(replies_file), *extra])
     text = out.getvalue()
     assert code == 0, text
     path = Path(next(ln for ln in text.splitlines() if ln.startswith("results: "))[len("results: "):])
@@ -94,8 +95,8 @@ class ScriptedM1Test(unittest.TestCase):
             # report and show on the same run (FA-43, FA-47)
             out = io.StringIO()
             with redirect_stdout(out):
-                self.assertEqual(agent.main(["report", "--run", run_id, "--k", "1", "--tasks", str(TASKS)]), 0)
-                self.assertEqual(agent.main(["show", run_id, "chain-3b-1"]), 0)
+                self.assertEqual(cli.main(["agent", "report", "--run", run_id, "--k", "1", "--tasks", str(TASKS)]), 0)
+                self.assertEqual(cli.main(["agent", "show", run_id, "chain-3b-1"]), 0)
             text = out.getvalue()
             self.assertIn("| scripted | 20 | 0 |", text)
             self.assertIn("re-judged with", text)
@@ -161,7 +162,7 @@ class MultiModelTest(unittest.TestCase):
         out = io.StringIO()
         with mock.patch.object(agent, "run_model", fake_run_model), \
                 mock.patch.object(agent, "harness_problem", lambda: None), redirect_stdout(out):
-            code = agent.main(["run", "--tasks", str(TASKS), "--models", "bad,good"])
+            code = cli.main(["agent", "run", "--tasks", str(TASKS), "--models", "bad,good"])
         text = out.getvalue()
         run_id = next(ln for ln in text.splitlines() if ln.startswith("results: ")).rsplit("agent_", 1)[1][:-6]
         try:
@@ -172,6 +173,30 @@ class MultiModelTest(unittest.TestCase):
             self.assertEqual([(r["model"], r["task"], r["primary"]) for r in rows], [("bad", "*", "infra_error")])
         finally:
             cleanup(run_id)
+
+
+@unittest.skipIf(agent.harness_problem(), f"agent harness: {agent.harness_problem()}")
+class CoreIsSilentTest(unittest.TestCase):
+    """CR-03: core functions print nothing; progress lines go only to the progress sink."""
+
+    def test_core_functions_print_nothing(self):
+        from bench.core import progress, sweep
+        options = cli.agent_parser().parse_args(
+            ["run", "--tasks", str(TASKS), "--only", "direct-file", "--repeats", "1", "--scripted", str(REFERENCE)])
+        lines = []
+        out = io.StringIO()
+        try:
+            progress.set_sink(lines.append)
+            with redirect_stdout(out):
+                result = agent.run_tasks(options)
+                agent.report([result["run"]], None, 1, 0.8)
+                agent.show_attempt(result["run"], "direct-file-1")
+                sweep.run_status()
+        finally:
+            progress.set_sink(None)
+            cleanup(result["run"])
+        self.assertEqual(out.getvalue(), "")
+        self.assertTrue(any(line.startswith(f"run {result['run']}") for line in lines))
 
 
 if __name__ == "__main__":

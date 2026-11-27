@@ -31,8 +31,9 @@ frissül.
 | Fájl | Szerep |
 |---|---|
 | `bench.cmd` | Rövid parancs: a projektmappát a Python útvonalára teszi, és a `python -m bench.cli` parancsot futtatja |
-| `bench/cli/__main__.py` | A `bench` parancs belépési pontja; egyelőre a `bench/core/sweep.py`-nak adja tovább az argumentumokat (a parancssor feldolgozása a C2 lépésben kerül ide) |
-| `bench/core/sweep.py` | Parancsfeldolgozás, futtató, állapot- és vezérléskezelés, táblázatos riport |
+| `bench/cli/main.py` | A `bench` parancssor: csak argumentumfeldolgozás és kimenetformázás; minden eredmény egy core függvényből jön (a `bench/cli/__main__.py` indítja) |
+| `bench/core/progress.py` | A hosszú műveletek előrehaladás-kimenete (a CLI kiírja a sorokat, egy API összegyűjtheti őket) és a `CoreError` a core által elutasított kérésekhez |
+| `bench/core/sweep.py` | Adatot visszaadó sweep-műveletek (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), futtató, állapot- és vezérléskezelés, táblázatos riport |
 | `bench/core/evaluate.py` | A sweep eredményeinek kiértékelése: becsült válaszidő, figyelmeztetések, ajánlások |
 | `bench/core/smoke.py` | A futtató által használt közös segédfüggvények (parancsfuttatás, HTTP, streamelt mérés, VRAM-mintavétel) és egy önálló smoke teszt |
 | `harness/load-model.ts` | Egy modellt tölt be az SDK-val, majd kilép; a futtató hívja |
@@ -43,7 +44,7 @@ frissül.
 | `harness/spec-probe.ts` | Speculative decoding próba (24. feladat, 0. fázis): load draft modellel és MTP-vel, visszaolvasás, draft számlálók, REST-mezők, beragadás; a terv mintája a `configs/spec-probe.example.json` (saját példány: `spec-probe.local.json`) |
 | `harness/tools-probe.ts` | Az egykörös tool-hívás próbája `respond()` és `rawTools` használatával: callbackek, a tool eredményének visszaküldése, tool nélküli eset, megszakítás |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | A próba tiszta részei (tervellenőrzés, módonkénti load config, draft arányok) és offline tesztjük |
-| `bench/core/agent.py` | `bench agent run`: betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel értékel |
+| `bench/core/agent.py` | Adatot visszaadó agent-műveletek (`run_tasks`, `report`, `show_attempt`): betölt egy modellt, elindítja a harnesst, továbbítja a leállítást, és minden próbálkozást a trace-e alapján, a feladat ellenőrzéseivel ítél meg |
 | `bench/core/failures.py` | Hibataxonómia (az egyetlen gépileg olvasható forrás) és az agent-próbálkozások szabályalapú kategorizálója; tiszta függvények |
 | `bench/core/agent_report.py` | Az agent-futások riportja: a trace-ekből újraszámolja az eredményt és a kategóriákat, modellenként és feladatonként összesít (Wilson-intervallum, pass^k, lánchosszak, csendes arány), Markdownt és JSON-t ír |
 | `configs/sampling.json` | Modellcsaládonkénti mintavételi profilok az agent-futásokhoz, forrással |

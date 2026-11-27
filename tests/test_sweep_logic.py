@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bench.cli import main as cli  # noqa: E402
 from bench.core import sweep  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -79,11 +80,12 @@ class RunnerAliveTest(unittest.TestCase):
         self.assertFalse(sweep.runner_alive(self.status(600, pid=child.pid, pid_created=created)))
 
     def test_watch_ends_only_after_two_finished_readings(self):
-        readings = [("a", False), ("b", True), ("c", False), ("d", True), ("e", True)]
-        with mock.patch.object(sweep, "status_text", side_effect=readings) as read, \
-                mock.patch.object(sweep.os, "system"), mock.patch.object(sweep.time, "sleep"), \
+        readings = [{"finished": f} for f in (False, True, False, True, True)]
+        with mock.patch.object(sweep, "run_status", side_effect=readings) as read, \
+                mock.patch.object(cli, "status_text", return_value="text"), \
+                mock.patch.object(cli.os, "system"), mock.patch.object(cli.time, "sleep"), \
                 mock.patch("builtins.print"):
-            self.assertEqual(sweep.main(["status", "--watch"]), 0)
+            self.assertEqual(cli.main(["status", "--watch"]), 0)
         self.assertEqual(read.call_count, 5)
 
 

@@ -18,7 +18,6 @@ itself once the machine is free (--busy-retry; a manual pause stays); only the r
 instance is unloaded. Models are loaded through the LM Studio SDK (harness/load-model.ts), so LM Studio's
 per-model config files are not touched; generation and measurement use the HTTP server.
 """
-import argparse
 import ctypes
 import json
 import os
@@ -33,7 +32,8 @@ from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 
-from . import evaluate, smoke
+from . import evaluate, progress, smoke
+from .progress import CoreError
 from .smoke import LMS, StepError, sh
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,8 +48,12 @@ BUSY_RETRY_S = 90  # re-check interval while paused because the machine was not 
 HEARTBEAT_LATE_S = 20  # an older heartbeat is reported, and trusted only if the process still exists
 
 
+def stamp(m):
+    return f"{datetime.now():%H:%M:%S} {m}"
+
+
 def log(m):
-    print(f"{datetime.now():%H:%M:%S} {m}", flush=True)
+    progress.emit(stamp(m))
 
 
 # ---------------------------------------------------------------- files, control channel
@@ -525,63 +529,44 @@ def execute(run_id, redo_failed=False):
     return code
 
 
-# ---------------------------------------------------------------- commands
-def fmt_dur(s):
-    s = int(max(0, s))
-    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
-
-
-def status_text(show_jobs=False):
+# ---------------------------------------------------------------- operations (called by the CLI, later by the API)
+def run_status(show_jobs=False):
+    """State of the latest (or running) sweep as data; `finished` is true when no runner is alive."""
     st = read_json(STATUS)
     run_id = (st or {}).get("run") or (LATEST.read_text().strip() if LATEST.exists() else None)
     if not run_id:
-        return "no run yet", True
+        return {"run": None, "finished": True}
     plan = read_json(STATE / "runs" / run_id / "plan.json", {"jobs": []})
     results = latest_results(ROOT / "results" / f"sweep_{run_id}.jsonl")
     jobs = plan["jobs"]
     rows = [results[j["id"]] for j in jobs if j["id"] in results and results[j["id"]]["status"] != "invalidated"]
     ok = [r for r in rows if r["status"] == "ok"]
-    state = (st or {}).get("state", "?")
     alive = runner_alive(st)
-    if state in ACTIVE and not alive:
-        state = "NOT RUNNING (process gone) -> `bench resume`"
-    bar_n = int(30 * len(rows) / len(jobs)) if jobs else 0
-    out = [f"run {run_id}   state: {state.upper() if alive else state}",
-           f"[{'#' * bar_n}{'.' * (30 - bar_n)}] {len(rows)}/{len(jobs)} jobs   failed: {len(rows) - len(ok)}"]
-    if ok:
-        mean = statistics.mean(r["job_s"] for r in ok)
-        out.append(f"estimated remaining: {fmt_dur(mean * (len(jobs) - len(rows)))} (from {len(ok)} finished jobs)")
+    now = time.time()
+    out = {"run": run_id, "state": (st or {}).get("state", "?"), "alive": alive, "gone": False,
+           "total": len(jobs), "finished_jobs": len(rows), "failed": len(rows) - len(ok), "ok_jobs": len(ok),
+           "remaining_s": statistics.mean(r["job_s"] for r in ok) * (len(jobs) - len(rows)) if ok else None,
+           "current": None, "reason": (st or {}).get("reason"), "warning": (st or {}).get("warning"),
+           "heartbeat_late_s": None, "pid": (st or {}).get("pid"), "requested": None, "finished": not alive}
+    if out["state"] in ACTIVE and not alive:
+        out["gone"] = True
     if alive and st.get("current") and st["state"] == "running":
         c = st["current"]
-        out.append(f"now: #{c['n']} {c['model']} / {c['config']} - {st.get('phase')} "
-                   f"({fmt_dur(time.time() - st.get('job_started', time.time()))})")
-    if st and st.get("reason"):
-        out.append(f"reason: {st['reason']}")
-    if st and st.get("warning"):
-        out.append(f"warning: {st['warning']}")
-    late = time.time() - st.get("heartbeat", 0) if alive else 0
+        out["current"] = {"n": c["n"], "model": c["model"], "config": c["config"], "phase": st.get("phase"),
+                          "elapsed_s": now - st.get("job_started", now)}
+    late = now - st.get("heartbeat", 0) if alive else 0
     if late >= HEARTBEAT_LATE_S:
-        out.append(f"warning: no heartbeat for {fmt_dur(late)}, but the runner process (PID {st.get('pid')}) "
-                   "is still there; if it stays like this, check the runner's window")
+        out["heartbeat_late_s"] = late
     if alive:
         cmd = control()
         if cmd["cmd"] != "run" and st["state"] == "running":
-            out.append(f"requested: {cmd['cmd']}{' --now' if cmd.get('now') else ' after the current job'}")
+            out["requested"] = {"cmd": cmd["cmd"], "now": bool(cmd.get("now"))}
     if show_jobs:
-        out.append("")
-        for j in jobs:
-            r = results.get(j["id"])
-            out.append(f"{j['n']:3d} {(r['status'] if r else '-'):12s} {j['model']} / {j['config']}")
-    elif rows:
-        out.append("")
-        out.append("last results:")
-        for r in sorted(rows, key=lambda r: r.get("finished", ""))[-6:]:
-            out.append(f"  {r['model'][:34]:34s} {r['config']:12s} {r['status']:7s} "
-                       f"vram+{r.get('vram_delta_mib', '-')}  decode {r.get('decode_tok_s', '-')} t/s"
-                       + ("  NEAR VRAM LIMIT" if r.get("near_vram_limit") else ""))
-    out.append("")
-    out.append("commands: bench pause [--now] | bench resume | bench stop [--now] | bench status --jobs")
-    return "\n".join(out), not alive
+        out["jobs"] = [{"n": j["n"], "model": j["model"], "config": j["config"],
+                        "status": results[j["id"]]["status"] if j["id"] in results else None} for j in jobs]
+    else:
+        out["last_results"] = sorted(rows, key=lambda r: r.get("finished", ""))[-6:]
+    return out
 
 
 def default_grid():
@@ -590,141 +575,77 @@ def default_grid():
     return str(local if local.exists() else ROOT / "configs" / "quick.json")
 
 
-def cmd_run(a):
-    log(f"grid: {a.grid}")
-    grid = json.loads(Path(a.grid).read_text(encoding="utf-8"))
-    keys = [k.strip() for k in a.models.split(",")] if a.models else grid.get("models", [])
+def plan_run(grid_path, models=None):
+    """The jobs a run would measure, without starting anything; raises CoreError for unknown models."""
+    grid = json.loads(Path(grid_path).read_text(encoding="utf-8"))
+    keys = [k.strip() for k in models.split(",")] if models else grid.get("models", [])
     meta = model_catalog()
     missing = [k for k in keys if k not in meta]
     if not keys or missing:
-        log(f"no models selected or unknown model keys: {missing}")
-        return 2
+        raise CoreError(f"no models selected or unknown model keys: {missing}")
     jobs = build_jobs(grid, keys, meta)
-    if a.dry_run:
-        for j in jobs:
-            print(f"{j['n']:3d} {j['model']} / {j['config']}")
-        print(f"{len(jobs)} jobs (dry run, nothing started)")
-        warning = runtime_warning(environment()["runtime"], jobs)
-        if warning:
-            log(f"WARNING: {warning}")
-        return 0
+    return {"grid": grid_path, "jobs": jobs, "warning": runtime_warning(environment()["runtime"], jobs)}
+
+
+RUN_OPTIONS = ("repeats", "gen_tokens", "prompt_lines", "load_timeout", "gen_timeout", "min_free_mib", "max_util",
+               "busy_retry_s")
+
+
+def start_run(grid_path, models, options):
+    """Starts a sweep and runs it to the end in this process; progress goes to the progress sink."""
+    jobs = plan_run(grid_path, models)["jobs"]
     if runner_alive(read_json(STATUS)):
-        log("another run is active; use `bench status`, or `bench stop` first")
-        return 2
+        raise CoreError("another run is active; use `bench status`, or `bench stop` first")
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    options = {k: getattr(a, k) for k in ("repeats", "gen_tokens", "prompt_lines", "load_timeout",
-                                          "gen_timeout", "min_free_mib", "max_util", "busy_retry_s")}
     write_json(STATE / "runs" / run_id / "plan.json",
-               {"grid": a.grid, "jobs": jobs, "options": options, "env": environment()})
+               {"grid": grid_path, "jobs": jobs, "options": {k: options[k] for k in RUN_OPTIONS},
+                "env": environment()})
     LATEST.write_text(run_id)
-    return execute(run_id)
+    return {"run": run_id, "exit_code": execute(run_id)}
 
 
-def cmd_resume(a):
+def resume_run(run=None, from_job=None, redo_failed=False, allow_env_change=False):
+    """Resumes a run: asks a living runner to continue, or restarts a stopped one from disk in this process."""
     st = read_json(STATUS)
     if runner_alive(st):
-        if a.from_job or a.redo_failed or a.run or a.allow_env_change:
-            log("the run is still active; `bench stop` first, then resume with these options")
-            return 2
+        if from_job or redo_failed or run or allow_env_change:
+            raise CoreError("the run is still active; `bench stop` first, then resume with these options")
         send("run")
-        log("resume requested" if st["state"] == "paused" else "run is active; pending pause/stop cancelled")
-        return 0
-    run_id = a.run or (LATEST.read_text().strip() if LATEST.exists() else None)
+        return {"run": st.get("run"), "exit_code": 0, "message":
+                "resume requested" if st["state"] == "paused" else "run is active; pending pause/stop cancelled"}
+    run_id = run or (LATEST.read_text().strip() if LATEST.exists() else None)
     run_dir = STATE / "runs" / str(run_id)
     plan = read_json(run_dir / "plan.json")
     if not plan:
-        log("nothing to resume")
-        return 2
-    plan["options"]["allow_env_change"] = a.allow_env_change
+        raise CoreError("nothing to resume")
+    plan["options"]["allow_env_change"] = allow_env_change
     write_json(run_dir / "plan.json", plan)
-    if a.from_job:
+    if from_job:
         path = ROOT / "results" / f"sweep_{run_id}.jsonl"
         have = latest_results(path)
         for j in plan["jobs"]:
-            if j["n"] >= a.from_job and j["id"] in have:
+            if j["n"] >= from_job and j["id"] in have:
                 append_row(path, {"job_id": j["id"], "status": "invalidated"})
     LATEST.write_text(run_id)
-    return execute(run_id, redo_failed=a.redo_failed)
+    return {"run": run_id, "exit_code": execute(run_id, redo_failed=redo_failed), "message": None}
 
 
-def cmd_evaluate(a):
-    run_id = a.run or (LATEST.read_text().strip() if LATEST.exists() else None)
+def request_control(cmd, now=False):
+    """Asks the running sweep to pause or stop."""
+    if not runner_alive(read_json(STATUS)):
+        raise CoreError("no active run")
+    send(cmd, now)
+    return {"cmd": cmd, "now": now}
+
+
+def evaluate_run(run=None, in_tokens=2000, out_tokens=500):
+    """Writes the evaluation report of a sweep; returns its text and path."""
+    run_id = run or (LATEST.read_text().strip() if LATEST.exists() else None)
     path = ROOT / "results" / f"sweep_{run_id}.jsonl"
     if not run_id or not path.exists():
-        log("no results to evaluate")
-        return 2
-    text = evaluate.report(evaluate.load_rows(path), run_id, a.in_tokens, a.out_tokens)
+        raise CoreError("no results to evaluate")
+    text = evaluate.report(evaluate.load_rows(path), run_id, in_tokens, out_tokens)
     out = ROOT / "report" / f"eval_{run_id}.md"
     out.parent.mkdir(exist_ok=True)
     out.write_text(text, encoding="utf-8")
-    print(text.split("\n## ", 2)[0])
-    print("## " + text.split("\n## ", 2)[1])
-    print(f"full report: {out}")
-    return 0
-
-
-def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
-    if argv[:1] == ["agent"]:  # agent task runs live in their own module
-        from . import agent
-        return agent.main(argv[1:])
-    ap = argparse.ArgumentParser(prog="bench")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run")
-    r.add_argument("--grid", default=default_grid(),
-                   help="grid file (default: configs/quick.local.json if present, else configs/quick.json)")
-    r.add_argument("--models", help="comma separated model keys (default: the grid's list)")
-    r.add_argument("--dry-run", action="store_true")
-    r.add_argument("--repeats", type=int, default=2)
-    r.add_argument("--gen-tokens", type=int, default=200)
-    r.add_argument("--prompt-lines", type=int, default=60)
-    r.add_argument("--load-timeout", type=int, default=240)
-    r.add_argument("--gen-timeout", type=int, default=180)
-    r.add_argument("--min-free-mib", type=int, default=3500)
-    r.add_argument("--max-util", type=int, default=30)
-    r.add_argument("--busy-retry", dest="busy_retry_s", type=int, default=BUSY_RETRY_S,
-                   help="seconds between automatic re-checks while paused for a busy GPU (0: wait for resume)")
-    s = sub.add_parser("status")
-    s.add_argument("--watch", action="store_true")
-    s.add_argument("--jobs", action="store_true")
-    for name in ("pause", "stop"):
-        p = sub.add_parser(name)
-        p.add_argument("--now", action="store_true")
-    m = sub.add_parser("resume")
-    m.add_argument("--run")
-    m.add_argument("--from", dest="from_job", type=int)
-    m.add_argument("--redo-failed", action="store_true")
-    m.add_argument("--allow-env-change", action="store_true")
-    e = sub.add_parser("evaluate", help="rank configurations of a finished sweep (offline)")
-    e.add_argument("--run")
-    e.add_argument("--in-tokens", type=int, default=2000)
-    e.add_argument("--out-tokens", type=int, default=500)
-    a = ap.parse_args(argv)
-
-    if a.cmd == "evaluate":
-        return cmd_evaluate(a)
-    if a.cmd == "run":
-        return cmd_run(a)
-    if a.cmd == "resume":
-        return cmd_resume(a)
-    if a.cmd == "status":
-        try:
-            finished_reads = 0
-            while True:
-                text, finished = status_text(a.jobs)
-                if a.watch:
-                    os.system("cls" if os.name == "nt" else "clear")
-                print(text, flush=True)
-                finished_reads = finished_reads + 1 if finished else 0
-                if not a.watch or finished_reads >= 2:  # one odd reading must not end the view
-                    return 0
-                time.sleep(3)
-        except KeyboardInterrupt:
-            return 0
-    if not runner_alive(read_json(STATUS)):
-        print("no active run")
-        return 2
-    send(a.cmd, a.now)
-    print(f"{a.cmd} requested ({'now' if a.now else 'after the current job'})")
-    return 0
-
+    return {"run": run_id, "text": text, "path": out}

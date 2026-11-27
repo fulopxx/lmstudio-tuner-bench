@@ -12,7 +12,6 @@ the task's checks and expected calls, and gives every failed attempt a category 
 results/agent_<run>.jsonl; traces, sandboxes and a copy of the task file below results/agent/<run>/. Only the model
 instance loaded here ("bench-agent") is unloaded.
 """
-import argparse
 import hashlib
 import json
 import re
@@ -25,7 +24,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import failures, sweep
+from . import failures, progress, sweep
 from .smoke import LMS, StepError, sh
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,7 +44,7 @@ HARNESS_TASK_KEYS = ("id", "prompt", "system", "fixtures", "tools", "limits")
 
 
 def log(m):
-    print(m, flush=True)
+    progress.emit(m)
 
 
 def load_settings(context):
@@ -348,7 +347,10 @@ def run_model(a, model, data, task_hash, tasks, run_id, run_dir, timeout_s):
     return attempts, summary, meta
 
 
-def cmd_run(a):
+def run_tasks(a, on_model_done=None):
+    """Runs a task set on the models of `a` (an options object with the fields of `bench agent run`). After the
+    attempts of a model are judged, on_model_done(model, rows, stopped) is called. Returns the run id, the results
+    file and the rows."""
     data, task_hash = load_tasks(a.tasks)
     problem = harness_problem()
     if problem:
@@ -397,31 +399,19 @@ def cmd_run(a):
                    "sandbox": at.get("sandbox"), "rebuilt_from_traces": summary is None}
             sweep.append_row(results_file, row)
             rows.append(row)
-        print_summary(model, rows, summary.get("stopped") if summary else True)
+        if on_model_done:
+            on_model_done(model, rows, summary.get("stopped") if summary else True)
         all_rows += rows
-    log(f"results: {results_file}")
-    log(f"report:  bench agent report --run {run_id}")
-    return 0
-
-
-def print_summary(model, rows, stopped):
-    log("")
-    log(f"{model}")
-    log(f"{'task':<22} {'try':>3}  {'status':<8} {'pass':<5} {'rounds':>6} {'tools':>5}  category")
-    for r in rows:
-        cat = "" if r["passed"] else f"{r['primary']}" + (f"/{r['subcode']}" if r["subcode"] else "") + \
-            (" (silent)" if r["silent"] else "")
-        log(f"{r['task']:<22} {r['attempt']:>3}  {r['status']:<8} {'yes' if r['passed'] else 'no':<5} "
-            f"{r['rounds'] or 0:>6} {r['tool_calls'] or 0:>5}  {cat}")
-    passed = sum(r["passed"] for r in rows)
-    log(f"passed {passed}/{len(rows)}" + (" (stopped early)" if stopped else ""))
+    return {"run": run_id, "results_file": results_file, "rows": all_rows}
 
 
 # ---------------------------------------------------------------- report and show
 
-def cmd_report(a):
+def report(runs=None, tasks_file=None, k=5, reliable=0.8):
+    """Recomputes verdicts and categories of one or more runs from their traces and writes the report (Markdown
+    and JSON); returns its text and path."""
     from . import agent_report
-    run_ids = a.run or [agent_report.latest_run()]
+    run_ids = runs or [agent_report.latest_run()]
     rows, tasks, meta = [], {}, {}
     for rid in run_ids:
         r, t = agent_report.load_rows(rid)
@@ -429,111 +419,31 @@ def cmd_report(a):
         tasks.update(t)
         if r:
             meta.setdefault("tasks_hash", r[0].get("tasks_hash"))
-    if a.tasks:  # re-judge with a newer task file, e.g. after fixing a check; the traces stay as recorded
-        data, digest = load_tasks(a.tasks)
+    if tasks_file:  # re-judge with a newer task file, e.g. after fixing a check; the traces stay as recorded
+        data, digest = load_tasks(tasks_file)
         tasks = {t["id"]: t for t in data["tasks"]}
-        meta.update(tasks_hash=digest, rejudged_with=str(a.tasks))
+        meta.update(tasks_hash=digest, rejudged_with=str(tasks_file))
     rows = agent_report.rejudge(rows, tasks, read_events, evaluate_attempt)
-    models = agent_report.summarize(rows, tasks, k=a.k, reliable=a.reliable)
+    models = agent_report.summarize(rows, tasks, k=k, reliable=reliable)
     path = agent_report.write(run_ids, models, meta)
-    text = path.read_text(encoding="utf-8")
-    print(text.split("\n## Pass rate per task", 1)[0])
-    log(f"full report: {path} (and .json)")
-    return 0
+    return {"runs": run_ids, "text": path.read_text(encoding="utf-8"), "path": path}
 
 
-def _short(value, n=160):
-    s = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
-    s = s.replace("\n", " ")
-    return s if len(s) <= n else s[:n] + "…"
-
-
-def describe(e):
-    kind = e.get("event")
-    if kind == "task_start":
-        return f"task {e.get('task')} attempt {e.get('attempt')}, model {e.get('model')}, tools {e.get('tools')}"
-    if kind == "prediction":
-        shown = e.get("answer") or (f"[no answer; {e.get('reasoningChars')} reasoning chars] " + (e.get("text") or ""))
-        return (f"round {e.get('round')}: {e.get('stopReason')}, {e.get('toolCalls')} call(s), "
-                f"{e.get('duration_s')} s: {_short(shown)}")
-    if kind == "tool_call":
-        if not e.get("parsed"):
-            return f"unparsed call: {e.get('error')} raw={_short(e.get('raw'), 80)}"
-        extra = "" if e.get("valid", True) else f" INVALID {[p.get('code') for p in e.get('problems', [])]}"
-        return f"call #{e.get('call_seq')} {e.get('name')}({_short(e.get('arguments'), 100)}){extra}"
-    if kind == "tool_result":
-        state = "ok" if e.get("ok") else f"error {e.get('errorKind')}"
-        return f"result #{e.get('call_seq')} {state}: {_short(e.get('content'), 120)}"
-    if kind == "limit_hit":
-        return f"limit {e.get('limit')} ({e.get('value')})"
-    if kind == "task_end":
-        return f"status {e.get('status')}, answer: {_short(e.get('answer'))}"
-    return _short({k: v for k, v in e.items() if k not in ("schema_version", "t", "seq", "event")})
-
-
-def cmd_show(a):
-    """FA-47: an attempt's steps with sequence numbers; the evidence event of its category is marked with >>."""
+def show_attempt(run, attempt, model=None):
+    """FA-47: one attempt re-judged from its trace, with the events of the trace; `mark` is the sequence number of
+    the event that decided its category."""
     from . import agent_report
-    rows, tasks = agent_report.load_rows(a.run)
-    task_id, _, attempt = a.attempt.rpartition("-")
-    if not task_id or not attempt.isdigit():
+    rows, tasks = agent_report.load_rows(run)
+    task_id, _, number = attempt.rpartition("-")
+    if not task_id or not number.isdigit():
         raise StepError("fail", "give the attempt as <task>-<number>, e.g. chain-3a-2")
-    found = [r for r in rows if r.get("task") == task_id and r.get("attempt") == int(attempt)
-             and (not a.model or r.get("model") == a.model)]
+    found = [r for r in rows if r.get("task") == task_id and r.get("attempt") == int(number)
+             and (not model or r.get("model") == model)]
     if not found:
-        raise StepError("fail", f"no attempt {a.attempt} in run {a.run}" + (f" for {a.model}" if a.model else ""))
+        raise StepError("fail", f"no attempt {attempt} in run {run}" + (f" for {model}" if model else ""))
     if len(found) > 1:
         raise StepError("fail", "several models ran this attempt; choose one with --model: "
                         + ", ".join(r.get("model") for r in found))
     row = agent_report.rejudge(found, tasks, read_events, evaluate_attempt)[0]
-    mark = (row.get("evidence") or {}).get("seq")
-    verdict = "passed" if row.get("passed") else (f"failed: {row.get('primary')}" +
-                                                  (f"/{row.get('subcode')}" if row.get("subcode") else "") +
-                                                  (" (silent)" if row.get("silent") else ""))
-    log(f"{row.get('model')} {a.attempt}: {verdict}; rule {(row.get('evidence') or {}).get('rule')}")
-    if row.get("secondary"):
-        log("secondary: " + ", ".join(f"{s['category']}" + (f"/{s['subcode']}" if s.get("subcode") else "")
-                                      + f" @{s.get('seq')}" for s in row["secondary"]))
-    if row.get("flags"):
-        log("flags: " + ", ".join(row["flags"]))
-    log(f"checks: {row.get('checks')}")
-    log("")
-    for e in read_events(row["trace"]):
-        prefix = ">>" if e.get("seq") == mark else "  "
-        log(f"{prefix} {e.get('seq'):>3} {e.get('event'):<12} {describe(e)}")
-    log(f"\ntrace: {row['trace']}")
-    return 0
-
-
-def main(argv=None):
-    ap = argparse.ArgumentParser(prog="bench agent")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="run a task set on one or more models through the harness")
-    r.add_argument("--model", help="model key from `lms ls`")
-    r.add_argument("--models", help="comma separated model keys, run one after another (FA-40)")
-    r.add_argument("--tasks", default=str(ROOT / "tasks" / "examples.json"))
-    r.add_argument("--only", help="comma separated task ids")
-    r.add_argument("--repeats", type=int, default=5)
-    r.add_argument("--context", type=int, default=8192)
-    r.add_argument("--temperature", type=float, help="overrides the temperature of the model's sampling profile")
-    r.add_argument("--load-timeout", type=int, default=240)
-    r.add_argument("--run-timeout", type=int, help="seconds per model for the whole task set (default: computed)")
-    r.add_argument("--min-free-mib", type=int, default=3500)
-    r.add_argument("--max-util", type=int, default=30)
-    r.add_argument("--scripted", help="JSON file with scripted replies per task id (offline, no model)")
-    p = sub.add_parser("report", help="aggregate one or more runs: pass rates, categories, chains (offline)")
-    p.add_argument("--run", action="append", help="run id (repeatable; default: the latest run)")
-    p.add_argument("--tasks", help="judge with this task file instead of the copy in the run folder")
-    p.add_argument("--k", type=int, default=5, help="k of pass^k")
-    p.add_argument("--reliable", type=float, default=0.8, help="pass rate a chain length needs to count as reliable")
-    s = sub.add_parser("show", help="the steps of one attempt with the evidence of its category (offline)")
-    s.add_argument("run", help="run id")
-    s.add_argument("attempt", help="<task>-<number>, e.g. chain-3a-2")
-    s.add_argument("--model", help="model key, when the run has several models")
-    a = ap.parse_args(argv)
-    try:
-        return {"run": cmd_run, "report": cmd_report, "show": cmd_show}[a.cmd](a)
-    except StepError as e:
-        log(f"agent {a.cmd} failed: {e}")
-        return 3
-
+    return {"attempt": attempt, "row": row, "mark": (row.get("evidence") or {}).get("seq"),
+            "events": read_events(row["trace"])}

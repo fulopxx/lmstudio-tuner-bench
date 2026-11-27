@@ -87,21 +87,23 @@ def run_states(lang):
 # Program structure. Source of truth: the bench/ package, harness/ and the processes in docs/architecture.md.
 # Keep it current whenever modules, entry points or external processes change.
 STRUCT_TEXT = {
-    "en": {"title": "Program structure", "cmd": "bench.cmd", "cli": "bench/cli", "cli_sub": "entry point",
+    "en": {"title": "Program structure", "cmd": "bench.cmd", "cli": "bench/cli", "cli_sub": "parsing, formatting",
            "api": "API, web UI", "api_sub": "planned (steps D to F)", "core": "bench/core",
            "modules": [("sweep.py", "runner, status, control"), ("evaluate.py", "sweep evaluation"),
-                       ("smoke.py", "shared helpers, smoke test"), ("agent.py", "agent runs, checks"),
-                       ("agent_report.py", "agent report"), ("failures.py", "taxonomy, categorizer")],
+                       ("smoke.py", "helpers, smoke test"), ("progress.py", "progress sink, errors"),
+                       ("agent.py", "agent runs, checks"), ("agent_report.py", "agent report"),
+                       ("failures.py", "taxonomy, categorizer")],
            "ext": [("harness (Node)", "load-model, run-tasks"), ("lms.exe", "list, ps, unload, server"),
                    ("REST server", "generation, measurement"), ("nvidia-smi", "VRAM, GPU load")],
            "lms": "LM Studio (application, SDK, models)", "gpu": "GPU",
            "in": "configs/, tasks/ (input)", "outp": "state/, results/, report/ (output)",
            "legend": "dashed box: planned"},
-    "hu": {"title": "A program felépítése", "cmd": "bench.cmd", "cli": "bench/cli", "cli_sub": "belépési pont",
+    "hu": {"title": "A program felépítése", "cmd": "bench.cmd", "cli": "bench/cli", "cli_sub": "feldolgozás, formázás",
            "api": "API, webes felület", "api_sub": "tervezett (D–F lépés)", "core": "bench/core",
            "modules": [("sweep.py", "futtató, állapot, vezérlés"), ("evaluate.py", "sweep kiértékelése"),
-                       ("smoke.py", "közös segédek, smoke teszt"), ("agent.py", "agent-futás, ellenőrzés"),
-                       ("agent_report.py", "agent riport"), ("failures.py", "taxonómia, kategorizáló")],
+                       ("smoke.py", "segédek, smoke teszt"), ("progress.py", "előrehaladás, hibák"),
+                       ("agent.py", "agent-futás, ellenőrzés"), ("agent_report.py", "agent riport"),
+                       ("failures.py", "taxonómia, kategorizáló")],
            "ext": [("harness (Node)", "load-model, run-tasks"), ("lms.exe", "lista, ps, unload, szerver"),
                    ("REST szerver", "generálás, mérés"), ("nvidia-smi", "VRAM, GPU-terhelés")],
            "lms": "LM Studio (alkalmazás, SDK, modellek)", "gpu": "GPU",
@@ -146,8 +148,8 @@ def structure(lang):
     out.append(f'<text x="56" y="122" font-size="14" font-weight="600" font-family="Consolas, monospace" '
                f'fill="#1c7ed6">{escape(t["core"])}</text>')
     for i, (name, sub) in enumerate(t["modules"]):
-        x, y = (56, 292, 528)[i % 3], (136, 206)[i // 3]
-        out += _box(x, y, 216, 48, name, sub, fill="#ffffff", stroke="#4dabf7")
+        x, y = (56, 228, 400, 572)[i % 4], (136, 206)[i // 4]
+        out += _box(x, y, 160, 48, name, sub, fill="#ffffff", stroke="#4dabf7")
     for i, (name, sub) in enumerate(t["ext"]):
         x = 40 + i * 185
         out += _box(x, 300, 165, 48, name, sub, fill="#fff3bf", stroke="#f08c00", mono=False)

@@ -484,9 +484,9 @@ C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl 
 | Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
 |---|---|---|---|---|
 | CR-01 | A Python-kódnak egy csomagban kell lennie, `core` és `cli` résszel | Egy API-nak vagy dashboardnak a parancssori kód nélkül kell importálnia a core-t (architektúra, 3. pont) | átnézés | ✅ |
-| CR-02 | A `cli` rész nem tartalmazhat mérési, kiértékelési vagy állapotkezelési logikát, csak argumentumfeldolgozást és kimenetformázást | A felületek vékonyak maradnak; a CLI-paritás ellenőrizhető | átnézés | ⚪ |
-| CR-03 | Minden CLI-parancsnak egy olyan core függvénytől kell kapnia az eredményét, amely adatot ad vissza (dict vagy lista), és semmit nem nyomtat | Ugyanaz az adat szolgálja ki a CLI-t, egy későbbi API-t és a dashboardot | teszt | ⚪ |
-| CR-04 | A csomagszerkezet változásakor (C1) minden parancs kimenetének és minden írt eredményfájlnak változatlannak kell maradnia, az üzenetekben szereplő fájlútvonalak kivételével | A kód mozgatása nem változtathat a viselkedésen; a refaktorálás elkülönül a funkcióbővítéstől | teszt | ✅ C1: minden parancs kimenete összevetve az áthelyezés előtt és után |
+| CR-02 | A `cli` rész nem tartalmazhat mérési, kiértékelési vagy állapotkezelési logikát, csak argumentumfeldolgozást és kimenetformázást | A felületek vékonyak maradnak; a CLI-paritás ellenőrizhető | átnézés | ✅ az önálló smoke teszt (`bench/core/smoke.py`) saját kimenete megmarad |
+| CR-03 | Minden CLI-parancsnak egy olyan core függvénytől kell kapnia az eredményét, amely adatot ad vissza (dict vagy lista), és semmit nem nyomtat | Ugyanaz az adat szolgálja ki a CLI-t, egy későbbi API-t és a dashboardot | teszt | ✅ |
+| CR-04 | A csomagszerkezet változásakor (C1) minden parancs kimenetének és minden írt eredményfájlnak változatlannak kell maradnia, az üzenetekben szereplő fájlútvonalak kivételével | A kód mozgatása nem változtathat a viselkedésen; a refaktorálás elkülönül a funkcióbővítéstől | teszt | ✅ C1 és C2: minden parancs kimenete összevetve előtte és utána |
 
 **Eredményformátum és gépfüggő beállítások (C3)**
 

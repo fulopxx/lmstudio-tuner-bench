@@ -465,9 +465,9 @@ the agent rows that carry the task file version as their `schema_version`.
 | ID | Requirement | Reason | Verification | State |
 |---|---|---|---|---|
 | CR-01 | The Python code must live in one package with a `core` part and a `cli` part | An API or dashboard must import the core without the command line code (architecture, section 3) | review | ✅ |
-| CR-02 | The `cli` part must contain no measurement, evaluation or state logic, only argument parsing and output formatting | Interfaces stay thin; CLI parity is checkable | review | ⚪ |
-| CR-03 | Every CLI command must get its result from one core function that returns data (dict or list) and prints nothing | The same data serves the CLI, a later API and the dashboard | test | ⚪ |
-| CR-04 | When the package layout changes (C1), the output of every command and every written result file must stay the same, apart from file paths in messages | Moving code must not change behaviour; refactoring is kept apart from feature work | test | ✅ C1: outputs of every command compared before and after the move |
+| CR-02 | The `cli` part must contain no measurement, evaluation or state logic, only argument parsing and output formatting | Interfaces stay thin; CLI parity is checkable | review | ✅ the standalone smoke test (`bench/core/smoke.py`) keeps its own output |
+| CR-03 | Every CLI command must get its result from one core function that returns data (dict or list) and prints nothing | The same data serves the CLI, a later API and the dashboard | test | ✅ |
+| CR-04 | When the package layout changes (C1), the output of every command and every written result file must stay the same, apart from file paths in messages | Moving code must not change behaviour; refactoring is kept apart from feature work | test | ✅ C1 and C2: outputs of every command compared before and after |
 
 **Result format and machine settings (C3)**
 

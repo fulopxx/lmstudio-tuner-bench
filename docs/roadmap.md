@@ -75,7 +75,7 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 |---|---|---|
 | A | Evaluate the trial sweep, final round | ✅ done (trial and clean sweeps evaluated) |
 | B | Repository preparation, English and Hungarian documents | ✅ done (bilingual documents; public since 2026-11-27) |
-| C | Split core and CLI, versioned result format, model registry | 🔵 in progress (plan agreed 2026-11-27: [requirements](requirements.md), section 7, CR-01 to CR-24; C1 package layout done 2026-11-27; C2 to C4 open) |
+| C | Split core and CLI, versioned result format, model registry | 🔵 in progress (plan agreed 2026-11-27: [requirements](requirements.md), section 7, CR-01 to CR-24; C1 package layout and C2 core functions done 2026-11-27; C3 and C4 open) |
 | D | Finalize `docs/architecture.md`: data formats, control interface | 🟡 partial (draft exists) |
 | E | HTML dashboard and Excel export (after D) | ⚪ open |
 | F | Web control UI | ⚪ open |

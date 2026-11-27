@@ -31,8 +31,9 @@ processes change.
 | File | Role |
 |---|---|
 | `bench.cmd` | Short command: puts the project folder on the Python path and runs `python -m bench.cli` |
-| `bench/cli/__main__.py` | Entry point of the `bench` command; for now it hands the arguments to `bench/core/sweep.py` (the command line parsing moves here in step C2) |
-| `bench/core/sweep.py` | Command parsing, runner, status and control handling, table report |
+| `bench/cli/main.py` | The `bench` command line: argument parsing and output formatting only; every result comes from a core function (`bench/cli/__main__.py` starts it) |
+| `bench/core/progress.py` | Progress sink of long-running operations (the CLI prints the lines, an API can collect them) and `CoreError` for requests the core refuses |
+| `bench/core/sweep.py` | Sweep operations that return data (`plan_run`, `start_run`, `resume_run`, `run_status`, `request_control`, `evaluate_run`), runner, status and control handling, table report |
 | `bench/core/evaluate.py` | Evaluation of sweep results: estimated response time, warnings, recommendations |
 | `bench/core/smoke.py` | Shared helpers used by the runner (commands, HTTP, streamed measurement, VRAM sampling) and a stand-alone smoke test |
 | `harness/load-model.ts` | Loads one model through the SDK and exits; called by the runner |
@@ -43,7 +44,7 @@ processes change.
 | `harness/spec-probe.ts` | Speculative decoding probe (task 24, phase 0): draft model and MTP loads, read-back, draft counters, REST fields, persistence; plan from `configs/spec-probe.example.json` (own copy: `spec-probe.local.json`) |
 | `harness/tools-probe.ts` | Probe of single-round tool calls with `respond()` and `rawTools`: callbacks, tool result round trip, no-tool case, abort |
 | `harness/spec-probe-lib.ts`, `harness/spec-probe-lib.test.ts` | Pure parts of the probe (plan check, load configs per mode, draft ratios) and their offline test |
-| `bench/core/agent.py` | `bench agent run`: loads one model, starts the harness, passes a stop on, judges each attempt from its trace with the task's checks |
+| `bench/core/agent.py` | Agent operations that return data (`run_tasks`, `report`, `show_attempt`): loads one model, starts the harness, passes a stop on, judges each attempt from its trace with the task's checks |
 | `bench/core/failures.py` | Failure taxonomy (single machine-readable source) and the rule-based categorizer of agent attempts; pure functions |
 | `bench/core/agent_report.py` | Report of agent runs: recomputes verdicts and categories from the traces, aggregates per model and task (Wilson intervals, pass^k, chain lengths, silent share), writes Markdown and JSON |
 | `configs/sampling.json` | Sampling profiles per model family for agent runs, with sources |
