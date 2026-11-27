@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430" width="800" height="430" role="img" aria-label="Vezérlő interfész" font-family="Segoe UI, Arial, sans-serif">
+<rect width="800" height="430" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>
+<rect x="40" y="20" width="220" height="48" rx="8" fill="#d0ebff" stroke="#1c7ed6" stroke-width="1.5"/>
+<text x="150.0" y="37" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">bench CLI</text>
+<text x="150.0" y="55" text-anchor="middle" font-size="11" fill="#495057">szöveg vagy --json</text>
+<rect x="300" y="20" width="200" height="48" rx="8" fill="#ffffff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="400.0" y="37" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">Web (React)</text>
+<text x="400.0" y="55" text-anchor="middle" font-size="11" fill="#495057">E és F lépés</text>
+<rect x="560" y="20" width="200" height="48" rx="8" fill="#ffffff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="660.0" y="37" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">API (FastAPI)</text>
+<text x="660.0" y="55" text-anchor="middle" font-size="11" fill="#495057">127.0.0.1, /api/v1</text>
+<path d="M500,44 H556" fill="none" stroke="#495057" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<rect x="40" y="110" width="720" height="60" rx="8" fill="#f1f8ff" stroke="#1c7ed6" stroke-width="1.5"/>
+<text x="400.0" y="127" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">bench/core</text>
+<text x="400.0" y="145" text-anchor="middle" font-size="11" fill="#495057">egy függvény = egy CLI-parancs = egy API-útvonal, azonos JSON</text>
+<path d="M150,68 V106" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M660,68 V106" fill="none" stroke="#495057" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<rect x="40" y="220" width="340" height="48" rx="8" fill="#fff3bf" stroke="#f08c00" stroke-width="1.5"/>
+<text x="210.0" y="237" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">Futtató folyamat</text>
+<text x="210.0" y="255" text-anchor="middle" font-size="11" fill="#495057">python -m bench.cli run / agent run</text>
+<path d="M210,170 V216" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="440" y="210" width="320" height="150" rx="8" fill="#fff9db" stroke="#f08c00" stroke-width="1.5"/>
+<text x="600" y="232" text-anchor="middle" font-size="14" font-weight="600" font-family="Consolas, monospace" fill="#212529">state/runs/&lt;id&gt;/</text>
+<text x="458" y="258" font-size="12" fill="#495057">status.json: állapot, szívverés</text>
+<text x="458" y="280" font-size="12" fill="#495057">control.json: kérés, forrás</text>
+<text x="458" y="302" font-size="12" fill="#495057">progress.log: napló a felületnek</text>
+<text x="458" y="324" font-size="12" fill="#495057">terv, eredmények, riportok</text>
+<text x="458" y="346" font-size="12" fill="#495057">state/active.json: egy GPU-futás</text>
+<path d="M380,244 H436" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M600,170 V206" fill="none" stroke="#495057" stroke-width="1.5" stroke-dasharray="2 3" marker-end="url(#a)"/>
+<rect x="40" y="312" width="340" height="48" rx="8" fill="#e9ecef" stroke="#868e96" stroke-width="1.5"/>
+<text x="210.0" y="341.0" text-anchor="middle" font-size="14" font-weight="600" fill="#212529">harness, lms, LM Studio</text>
+<path d="M210,268 V308" fill="none" stroke="#495057" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="40" y="392" width="30" height="16" rx="4" fill="#ffffff" stroke="#868e96" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="78" y="404" font-size="12" fill="#495057">szaggatott: későbbi lépések</text>
+</svg>

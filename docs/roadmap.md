@@ -5,7 +5,7 @@
 Last updated: 2026-11-27. Goal: tune and compare downloaded local models on your own hardware, for your own use cases,
 using LM Studio.
 
-Related documents: [requirements](requirements.md) (interface, testing, agent harness, speculative decoding, bias investigation, task sets, core and result format) and
+Related documents: [requirements](requirements.md) (interface, testing, agent harness, speculative decoding, bias investigation, task sets, core and result format, control interface) and
 [measurement findings](findings.md).
 
 ## 1. Tasks
@@ -76,7 +76,8 @@ After M1: web dashboard, quality suites, context management measurements, NiceGU
 | A | Evaluate the trial sweep, final round | ✅ done (trial and clean sweeps evaluated) |
 | B | Repository preparation, English and Hungarian documents | ✅ done (bilingual documents; public since 2026-11-27) |
 | C | Split core and CLI, versioned result format, model registry | ✅ done (2026-11-27: [requirements](requirements.md), section 7: C1 package layout, C2 core functions, C3 result format and machine settings, C4 model registry) |
-| D | Finalize `docs/architecture.md`: data formats, control interface | 🟡 partial (draft exists) |
+| D | Finalize `docs/architecture.md`: data formats, control interface | ✅ done (2026-11-27: [architecture](architecture.md), section 10, control interface and data formats; [requirements](requirements.md), section 8) |
+| D2 | Control interface in the core and the CLI ([requirements](requirements.md), section 8, IF-01 to IF-23), before E | ⚪ open |
 | E | HTML dashboard and Excel export (after D) | ⚪ open |
 | F | Web control UI | ⚪ open |
 | G | Agent harness: tool loop, sandbox, trace log, CLI | 🟡 partial (M1 harness: tool loop, sandbox, trace, `bench agent`; search, git and shell tools open) |
@@ -146,6 +147,8 @@ with step C.
 | Speculative decoding | Phase 0 trial done on 2026-11-26 ([requirements](requirements.md), section 5): switched at load only, counters in the SDK and REST. Open for phase 1: compatibility check of draft pairs, max draft tokens, why greedy outputs differ from the baseline | ⚪ open |
 | Value provenance in agent traces | A graph of where each argument and answer value comes from (prompt, earlier tool results) could replace the text search behind `wrong_arguments/invented_value` and show how a tool error reaches the answer. Defining the edges is uncertain, since models rephrase values; to be tried after M1 | ⚪ open |
 | LLM judge for the heuristic rules | Keyword lists are never complete: the first live M1 run showed four gaps (2026-11-27). Proposal for after M1, next to task 10: a second opinion only for the heuristic decisions (did the answer report the error or the limit, did it invent a value), with a written scoring rubric and a judge model other than the measured one, run offline after a run. The rule stays the primary decision; the report shows where judge and rule disagree, and only those cases go to manual review. Before use, the judge is calibrated against manual labels (agreement such as Cohen's kappa); its own bias is a known risk | ⚪ open |
+| Sampling profile patterns | The Qwen3 pattern of `configs/sampling.json` misses decimal sizes (`qwen3-1.7b` got the fallback profile in a live run, 2026-11-27) and would give the non-thinking `Qwen3-4B-Instruct-2507` the thinking profile. Fix after the downloads: profiles from the model cards, and a test of model key → profile | ⚪ open |
+| Model registry: new models by date | Two snapshots make "new" disappear at the next refresh. Proposal (2026-11-27): a `first_seen` date per model instead of the previous snapshot, `bench models list --new` and `--refresh` instead of `bench models new`, a refresh before runs with `--where` when LM Studio is reachable (stored snapshot and a warning otherwise); `refresh` stays a separate writing operation for the API | ⚪ open |
 
 ### Stability and testing
 

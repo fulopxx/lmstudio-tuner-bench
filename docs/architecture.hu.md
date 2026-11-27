@@ -2,7 +2,8 @@
 
 [English](architecture.md)
 
-Utolsó frissítés: 2026-11-27. **Állapot: vázlat** (a véglegesítés a roadmap D lépése). A "Jelenlegi" részek a meglévő
+Utolsó frissítés: 2026-11-27. **Állapot:** a vezérlő interfész és az adatformátumok a roadmap D lépésében elfogadva
+(10. pont); a többi "Jelenlegi" rész a meglévő
 kódot írják le, a "Cél" és "Tervezett" részek még nincsenek megvalósítva. A feladatlista: `docs/roadmap.hu.md`.
 
 ## 1. Alapelvek
@@ -295,3 +296,36 @@ Az első két pont a C lépésben tervezett ([követelmények](requirements.hu.m
 - Kell-e második inferencia-backend (`llama-server`) a további speculative decoding módszerekhez.
 - Gépfüggő beállítások: a Python-kódban a C3 lépésben kész (`configs/machine.local.json`, CR-15); a `harness/` próbái
   még maguk állítják elő a LM Studio útvonalait.
+
+## 10. Vezérlő interfész (elfogadva 2026-11-27, D lépés)
+
+![Vezérlő interfész](img/control.hu.svg)
+
+A parancssor és az API ugyanazokat a core függvényeket hívja; egy core függvény egy CLI-parancs és egy API-útvonal, a
+`--json` pontosan azt írja ki, amit az API visszaad. Követelmények: [követelmények](requirements.hu.md), 8. pont
+(IF-01–IF-23). Megvalósítás a roadmap D2 lépésében, a webes munka előtt.
+
+| # | Téma | Döntés | Indok |
+|---|---|---|---|
+| 1 | Hosszú futások indítása az API-ból | A parancssor külön folyamataként (`python -m bench.cli run …`, `… agent run …`) | A futás túléli a böngésző vagy az API újraindítását; a szünet, a leállítás és a folytatás már fájlokon át működik |
+| 2 | Kimenet a felületeknek | `--json` minden eredményt adó parancson; az API ugyanezt az adatot adja | Egy adatforrás; a CLI-paritás tesztelhető |
+| 3 | Egy futás állapota | Futásonként `state/runs/<id>/` a `status.json`, `control.json`, `progress.log` fájlokkal, sweep- és agent-futásnál is; a `state/status.json` csak az aktív futásra mutat | Egy új futás már nem írja felül a régebbi állapotát; az agent-futás is kap állapotot |
+| 4 | Több futás egyszerre | Egyszerre egy GPU-futás, a `state/active.json` fájlon át, sweep- és agent-futás között is | A párhuzamos terhelés elrontja a mérést |
+| 5 | Élő napló | Futásonként `progress.log`; az API olvassa, később folyamatos stream is jöhet | A core előrehaladás-kimenetének csak egy fájl kell |
+| 6 | CLI- és webes vezérlés egyszerre | Az utolsó kérés nyer; a `control.json` rögzíti a forrását (`cli`, `web`) és idejét, és az állapot mutatja | Egyszerű, és látszik, ki kérte |
+| 7 | Agent-futás leállítása | A vezérlőfájlon át is, a stdin-leállítás mellett; szünet nincs, egy próbálkozás nem darabolható | A felület le tudja állítani az agent-futást |
+| 8 | Az API stílusa | REST és JSON a `/api/v1` alatt, csak `127.0.0.1` címen | Korábbi döntések: FastAPI, helyi használat |
+
+**Adatformátumok és verzióik** (2026-11-27-i állapot):
+
+| Formátum | Hol | Verzió | Megjegyzés |
+|---|---|---|---|
+| Eredménysor | `results/*.jsonl` | `schema_version` 1 | Boríték `kind` és `env` mezővel; a régebbi sorok olvasáskor átalakulnak (4.3 pont) |
+| Agent-trace | `results/agent/<run>/…/traces/*.jsonl` | 2 (harness) | Soronként egy esemény |
+| Feladatfájl | `tasks/*.json` | 2 | A követelmények 3. pontja szerinti formátum |
+| Harness futásleíró | a `run-tasks.ts` stdin-je | 2 | A core-tól a harnessnek |
+| Mintavételi profilok | `configs/sampling.json` | 1 | |
+| Modellregiszter-pillanatkép | `state/models.json` | 1 | |
+| Agent-riport | `report/agent_<run>.json` | nincs, `taxonomy_version` 2 | Az IF-23 szerint verziót kap, ha a felület olvassa |
+| Rácsfájl | `configs/*.json` | nincs | Felhasználói bemenet; a formátum a 4.1 pont |
+| Futásterv, futásállapot, vezérlés | `state/` | nincs | A D2 lépésben kap verziót (IF-23) |

@@ -178,10 +178,69 @@ def structure(lang):
     ]
     return "\n".join(out) + "\n"
 
+# Control interface (architecture section 10, agreed in step D). Keep it current with the decisions there.
+CONTROL_TEXT = {
+    "en": {"title": "Control interface", "cli": "bench CLI", "cli_sub": "text or --json", "web": "Web (React)",
+           "web_sub": "steps E and F", "api": "API (FastAPI)", "api_sub": "127.0.0.1, /api/v1",
+           "core": "bench/core", "core_sub": "one function = one CLI command = one API route, same JSON",
+           "runner": "Runner process", "runner_sub": "python -m bench.cli run / agent run",
+           "state": "state/runs/<id>/", "files": ["status.json: state, heartbeat", "control.json: request, source",
+                                                  "progress.log: log for the interface", "plan, results, reports",
+                                                  "state/active.json: one GPU run"],
+           "lms": "harness, lms, LM Studio", "legend": "dashed: later steps"},
+    "hu": {"title": "Vezérlő interfész", "cli": "bench CLI", "cli_sub": "szöveg vagy --json", "web": "Web (React)",
+           "web_sub": "E és F lépés", "api": "API (FastAPI)", "api_sub": "127.0.0.1, /api/v1",
+           "core": "bench/core", "core_sub": "egy függvény = egy CLI-parancs = egy API-útvonal, azonos JSON",
+           "runner": "Futtató folyamat", "runner_sub": "python -m bench.cli run / agent run",
+           "state": "state/runs/<id>/", "files": ["status.json: állapot, szívverés", "control.json: kérés, forrás",
+                                                  "progress.log: napló a felületnek", "terv, eredmények, riportok",
+                                                  "state/active.json: egy GPU-futás"],
+           "lms": "harness, lms, LM Studio", "legend": "szaggatott: későbbi lépések"},
+}
+
+
+def control(lang):
+    t = CONTROL_TEXT[lang]
+    line = 'fill="none" stroke="#495057" stroke-width="1.5"'
+    out = [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430" width="800" height="430" '
+        f'role="img" aria-label="{escape(t["title"])}" font-family="Segoe UI, Arial, sans-serif">',
+        '<rect width="800" height="430" fill="#ffffff"/>',
+        '<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" '
+        'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#495057"/></marker></defs>',
+    ]
+    out += _box(40, 20, 220, 48, t["cli"], t["cli_sub"], fill="#d0ebff", stroke="#1c7ed6")
+    out += _box(300, 20, 200, 48, t["web"], t["web_sub"], dashed=True, mono=False, stroke="#868e96")
+    out += _box(560, 20, 200, 48, t["api"], t["api_sub"], dashed=True, mono=False, stroke="#868e96")
+    out.append(f'<path d="M500,44 H556" {line} stroke-dasharray="5 4" marker-end="url(#a)"/>')
+    out += _box(40, 110, 720, 60, t["core"], t["core_sub"], fill="#f1f8ff", stroke="#1c7ed6")
+    out.append(f'<path d="M150,68 V106" {line} marker-end="url(#a)"/>')
+    out.append(f'<path d="M660,68 V106" {line} stroke-dasharray="5 4" marker-end="url(#a)"/>')
+    out += _box(40, 220, 340, 48, t["runner"], t["runner_sub"], fill="#fff3bf", stroke="#f08c00", mono=False)
+    out.append(f'<path d="M210,170 V216" {line} marker-end="url(#a)"/>')
+    out.append('<rect x="440" y="210" width="320" height="150" rx="8" fill="#fff9db" stroke="#f08c00" '
+               'stroke-width="1.5"/>')
+    out.append(f'<text x="600" y="232" text-anchor="middle" font-size="14" font-weight="600" '
+               f'font-family="Consolas, monospace" fill="#212529">{escape(t["state"])}</text>')
+    for i, f in enumerate(t["files"]):
+        out.append(f'<text x="458" y="{258 + i * 22}" font-size="12" fill="#495057">{escape(f)}</text>')
+    out.append(f'<path d="M380,244 H436" {line} marker-end="url(#a)"/>')
+    out.append(f'<path d="M600,170 V206" {line} stroke-dasharray="2 3" marker-end="url(#a)"/>')
+    out += _box(40, 312, 340, 48, t["lms"], fill="#e9ecef", stroke="#868e96", mono=False)
+    out.append(f'<path d="M210,268 V308" {line} marker-end="url(#a)"/>')
+    out += [
+        '<rect x="40" y="392" width="30" height="16" rx="4" fill="#ffffff" stroke="#868e96" stroke-width="1.5" '
+        'stroke-dasharray="5 4"/>',
+        f'<text x="78" y="404" font-size="12" fill="#495057">{escape(t["legend"])}</text>',
+        "</svg>",
+    ]
+    return "\n".join(out) + "\n"
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for lang, suffix in (("en", ""), ("hu", ".hu")):
-        for name, build in (("run_states", run_states), ("structure", structure)):
+        for name, build in (("run_states", run_states), ("structure", structure), ("control", control)):
             p = OUT / f"{name}{suffix}.svg"
             p.write_text(build(lang), encoding="utf-8")
             print("written", p)

@@ -512,3 +512,38 @@ C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl 
 Ellenőrzés: minden rész után az offline Python- és TypeScript-tesztek átmennek; a C1 után a dry run, egy scriptelt
 agent-futás és a meglévő eredményfájlok riportjai ugyanazt a kimenetet adják, mint előtte. Rövid élő ellenőrzés (egy
 sweep-job és egy kis agent-futás az új formátummal) csak jóváhagyás után fut.
+
+## 8. Vezérlő interfész (D lépés, tervezett)
+
+Elfogadva 2026-11-27-én ([architektúra](architecture.hu.md), 10. pont). Amire a webes felületnek (E és F lépés) szüksége
+van a core-tól és a parancssortól. A CLI az első: minden pont előbb a core-ban és a CLI-ben készül el, és csak utána
+használja a web (a roadmap D2 lépése).
+
+**Kimenetek és API**
+
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| IF-01 | Minden eredményt adó `bench` parancsnak el kell fogadnia a `--json` kapcsolót, és ekkor a core függvénye adatát egyetlen JSON-dokumentumként kell kiírnia | Egy adatforrás a CLI-nek, az API-nak és a felületnek (webes koncepció C6, C12) | teszt | ⚪ |
+| IF-02 | Minden API-útvonalnak a CLI-parancsa core függvényét kell hívnia, és ugyanazt a JSON-t kell visszaadnia | CLI-paritás: a felület nem tud többet a CLI-nél | teszt | ⚪ |
+| IF-03 | Az API-nak csak a `127.0.0.1` címen szabad figyelnie, és az útvonalait a `/api/v1` alatt kell kiszolgálnia | Csak helyi használat (döntés); a verzió-előtag későbbi változtatást enged | teszt | ⚪ |
+| IF-04 | Az API-nak a sweep- és agent-futásokat a parancssor külön folyamataként kell indítania, a saját folyamatában nem mérhet | A futás túléli a böngésző vagy az API újraindítását; a vezérlés a mai módon, fájlokon át működik | átnézés | ⚪ |
+
+**Futások és állapot**
+
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| IF-10 | Sweep- vagy agent-futás indulásakor a core-nak létre kell hoznia a `state/runs/<id>/` mappát a `status.json`, `control.json` és `progress.log` fájlokkal | Ma egy új futás felülírja az előző állapotát, és az agent-futásnak nincs állapotfájlja (webes koncepció C8) | teszt | ⚪ |
+| IF-11 | Egy futás állapotfájljainak a futás vége után is meg kell maradniuk; egy új futás nem változtathat rajtuk | Egy befejezetlen futásról később is látszódjon, hogy leállították, hibával ért véget vagy megszakadt | teszt | ⚪ |
+| IF-12 | Egy futás minden előrehaladás-sorát hozzá kell fűzni a `progress.log` fájljához | A felület konzol nélkül mutatja a naplót (C7) | teszt | ⚪ |
+| IF-13 | Ha egy futás aktív, a core-nak el kell utasítania egy másik sweep- vagy agent-futás indítását, és meg kell neveznie az aktív futást | A párhuzamos terhelés elrontaná a mérést; ma a sweep- és az agent-futás nem tud egymásról | teszt | ⚪ |
+| IF-14 | Minden vezérlő kérésnek rögzítenie kell a forrását (`cli` vagy `web`) és idejét; a futás állapotának a forrásával együtt kell mutatnia az utolsó kérést | A CLI és a web is küldhet kérést; az utolsó nyer, és látszik, ki küldte (webes koncepció K8) | teszt | ⚪ |
+| IF-15 | Ha egy agent-futás leállítását a vezérlőfájlján át kérik, a core-nak 2 s-on belül tovább kell adnia a harnessnek | A webes felület az agent-futást is le tudja állítani | élő | ⚪ |
+
+**Parancsok a felülethez**
+
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| IF-20 | A `bench check` parancsnak mérés nélkül le kell futtatnia egy futás gépellenőrzését (nincs idegen betöltött modell, szabad VRAM, GPU-terhelés), és minden megállapítását ki kell írnia | A felület indítás előtt mutatja, hogy kész-e a gép (C1) | teszt | ⚪ |
+| IF-21 | A `bench runs` parancsnak minden sweep- és agent-futást ki kell listáznia azonosítóval, fajtával, állapottal, kezdési idővel és a kész jobok vagy próbálkozások számával | Áttekintés a futásokról (C10) | teszt | ⚪ |
+| IF-22 | A `bench close <run>` parancsnak lezártként kell megjelölnie egy befejezetlen futást; a lezárt futásnak olvashatónak és kiértékelhetőnek kell maradnia, és a fájljai nem törölhetők | A befejezetlen futás adatvesztés nélkül félretehető (C9); ez az állapotgép változása, az elfogadott állapotgép-változtatási folyamattal | teszt | ⚪ |
+| IF-23 | Minden adatfájlnak, amelyet a felület olvas (terv, futásállapot, futáslista, regiszter-pillanatkép), tartalmaznia kell a `schema_version` mezőt | A felület ismerje fel, ha egy fájlt nem tud olvasni (tervezett formátumváltozás) | teszt | ⚪ |

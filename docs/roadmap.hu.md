@@ -6,7 +6,7 @@ Utolsó frissítés: 2026-11-27. Cél: a letöltött helyi modellek optimalizál
 a saját felhasználási esetekre, LM Studióval.
 
 Kapcsolódó dokumentumok: [követelmények](requirements.hu.md) (felület, tesztelés, agent harness, speculative decoding,
-bias-vizsgálat, feladatkészletek, core és eredményformátum) és [mérési megállapítások](findings.hu.md).
+bias-vizsgálat, feladatkészletek, core és eredményformátum, vezérlő interfész) és [mérési megállapítások](findings.hu.md).
 
 ## 1. Feladatok
 
@@ -76,7 +76,8 @@ M1 után: webes dashboard, minőségcsomagok, kontextuskezelés mérése, NiceGU
 | A | Próbasweep kiértékelése, döntő kör | ✅ kész (a próbasweep és a tiszta sweepek kiértékelve) |
 | B | Repó előkészítése, dokumentumok angol és magyar változata | ✅ kész (kétnyelvű dokumentumok; 2026-11-27 óta publikus) |
 | C | Core és CLI szétválasztása, eredményformátum verzióval, modellregiszter | ✅ kész (2026-11-27: [követelmények](requirements.hu.md), 7. pont: C1 csomagszerkezet, C2 core függvények, C3 eredményformátum és gépfüggő beállítások, C4 modellregiszter) |
-| D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | 🟡 részben (vázlat kész) |
+| D | `docs/architecture.md` véglegesítése: adatformátumok, vezérlési interfész | ✅ kész (2026-11-27: [architektúra](architecture.hu.md), 10. pont, vezérlő interfész és adatformátumok; [követelmények](requirements.hu.md), 8. pont) |
+| D2 | A vezérlő interfész a core-ban és a CLI-ben ([követelmények](requirements.hu.md), 8. pont, IF-01–IF-23), az E előtt | ⚪ nyitott |
 | E | HTML dashboard és Excel-export (D után) | ⚪ nyitott |
 | F | Webes vezérlőfelület | ⚪ nyitott |
 | G | Agent harness: tool loop, sandbox, trace log, CLI | 🟡 részben (M1 harness: tool loop, sandbox, trace, `bench agent`; a keresés, git és shell toolok nyitottak) |
@@ -147,6 +148,8 @@ lépéssel együtt.
 | Speculative decoding | A 0. fázis próbája 2026-11-26-án kész ([követelmények](requirements.hu.md), 5. pont): csak a loadnál kapcsolható, számlálók az SDK-ban és a REST-ben. Nyitott az 1. fázisra: a draft párok kompatibilitás-ellenőrzése, a maximális draft token, miért tér el a greedy kimenet a baseline-tól | ⚪ nyitott |
 | Értékek eredete az agent-trace-ekben | Egy gráf arról, honnan származik egy argumentum- vagy válaszérték (prompt, korábbi tool-eredmények), kiválthatná a `wrong_arguments/invented_value` mögötti szövegkeresést, és megmutatná, hogyan jut el egy tool-hiba a válaszig. Az élek meghatározása bizonytalan, mert a modellek átfogalmazzák az értékeket; M1 után kipróbálandó | ⚪ nyitott |
 | LLM-bíró a heurisztikus szabályokhoz | A kulcsszólisták soha nem teljesek: az első élő M1 futás négy rést mutatott (2026-11-27). Javaslat M1 utánra, a 10. feladat mellé: második vélemény csak a heurisztikus döntésekhez (jelezte-e a válasz a hibát vagy a korlátot, kitalált-e értéket), írott pontozási szempontrendszerrel és a mért modelltől eltérő bíró modellel, a futás után offline. A szabály marad az elsődleges döntés; a riport megmutatja, hol tér el a bíró és a szabály, és csak ezek az esetek mennek kézi átnézésre. Használat előtt a bírót kézi címkéken kalibráljuk (egyezési mutató, pl. Cohen-féle kappa); a saját bias-a ismert kockázat | ⚪ nyitott |
+| Mintavételi profil mintái | A `configs/sampling.json` Qwen3-mintája nem ismeri a tizedes méretet (a `qwen3-1.7b` egy élő futásban a tartalék profilt kapta, 2026-11-27), a nem gondolkodó `Qwen3-4B-Instruct-2507` pedig a gondolkodó profilt kapná. Javítás a letöltések után: profilok a modellkártyák szerint, és teszt a modellkulcs → profil megfeleltetésre | ⚪ nyitott |
+| Modellregiszter: új modellek dátum szerint | Két pillanatképpel az „új” jelzés a következő frissítéskor eltűnik. Javaslat (2026-11-27): modellenként `first_seen` dátum az előző pillanatkép helyett, `bench models list --new` és `--refresh` a `bench models new` helyett, frissítés a `--where` futások előtt, ha a LM Studio elérhető (különben a tárolt pillanatkép és figyelmeztetés); a `refresh` külön író művelet marad az API-hoz | ⚪ nyitott |
 
 ### Stabilitás és tesztelés
 

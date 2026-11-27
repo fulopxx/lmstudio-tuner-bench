@@ -493,3 +493,38 @@ the agent rows that carry the task file version as their `schema_version`.
 Checks: after every part the offline Python and TypeScript tests pass; after C1 the dry run, a scripted agent run and
 the reports of existing result files give the same output as before. A short live check (one sweep job and a small
 agent run in the new format) runs only after approval.
+
+## 8. Control interface (step D, planned)
+
+Agreed on 2026-11-27 ([architecture](architecture.md), section 10). What the web interface (steps E and F) needs from the
+core and the command line. The CLI comes first: every item is implemented in the core and the CLI before the web uses
+it (roadmap step D2).
+
+**Outputs and API**
+
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| IF-01 | Every `bench` command that returns a result must accept `--json` and then print the data of its core function as one JSON document | One data source for the CLI, the API and the interface (web concept C6, C12) | test | ⚪ |
+| IF-02 | Every API route must call the core function of its CLI command and return the same JSON | CLI parity: the interface cannot do more than the CLI | test | ⚪ |
+| IF-03 | The API must listen on `127.0.0.1` only and serve its routes under `/api/v1` | Local use only (decision); a version prefix allows later changes | test | ⚪ |
+| IF-04 | The API must start sweep and agent runs as separate processes of the command line and must not measure in its own process | A run survives a restart of the browser or the API; control works through files as today | review | ⚪ |
+
+**Runs and state**
+
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| IF-10 | When a sweep or agent run starts, the core must create `state/runs/<id>/` with `status.json`, `control.json` and `progress.log` | Today a new run overwrites the state of the previous one, and agent runs have no state file (web concept C8) | test | ⚪ |
+| IF-11 | The state files of a run must be kept after the run ends; a new run must not change them | An unfinished run must stay recognizable as stopped, failed or interrupted | test | ⚪ |
+| IF-12 | Every progress line of a run must be appended to its `progress.log` | The interface shows the log without a console (C7) | test | ⚪ |
+| IF-13 | When a run is active, the core must refuse to start another sweep or agent run and name the active run | Parallel load would spoil the measurement; today sweep and agent runs do not know about each other | test | ⚪ |
+| IF-14 | Every control request must record its source (`cli` or `web`) and time; the run state must show the last request with its source | CLI and web may both send requests; the last one wins and it is visible who sent it (web concept K8) | test | ⚪ |
+| IF-15 | When stop is requested for an agent run through its control file, the core must pass it to the harness within 2 s | The web interface can stop agent runs too | live | ⚪ |
+
+**Commands for the interface**
+
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| IF-20 | `bench check` must run the machine check of a run (no foreign model loaded, free VRAM, GPU load) without measuring and report every finding | The interface shows whether the machine is ready before a start (C1) | test | ⚪ |
+| IF-21 | `bench runs` must list every sweep and agent run with id, kind, state, start time and the number of finished jobs or attempts | Overview of runs (C10) | test | ⚪ |
+| IF-22 | `bench close <run>` must mark an unfinished run as closed; a closed run must stay readable and evaluable, and its files must not be deleted | Unfinished runs can be put aside without losing data (C9); a change of the state machine, made by the agreed state machine change process | test | ⚪ |
+| IF-23 | Every data file the interface reads (plan, run state, run list, registry snapshot) must carry a `schema_version` | The interface must detect files it cannot read (planned format change) | test | ⚪ |

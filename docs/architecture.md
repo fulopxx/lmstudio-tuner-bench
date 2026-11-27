@@ -2,7 +2,8 @@
 
 [Magyar](architecture.hu.md)
 
-Last updated: 2026-11-27. **Status: draft** (to be finalized in roadmap step D). The "current" parts describe the
+Last updated: 2026-11-27. **Status:** the control interface and the data formats were agreed in roadmap step D
+(section 10); the other "current" parts describe the
 existing code; the "target" and "planned" parts are not implemented yet. Task list: `docs/roadmap.md`.
 
 ## 1. Principles
@@ -293,3 +294,36 @@ The first two items were planned in step C ([requirements](requirements.md), sec
 - Whether a second inference backend (`llama-server`) is needed for further speculative decoding methods.
 - Machine-specific settings: done in step C3 for the Python code (`configs/machine.local.json`, CR-15); the probes in
   `harness/` still build the LM Studio paths themselves.
+
+## 10. Control interface (agreed 2026-11-27, step D)
+
+![Control interface](img/control.svg)
+
+The command line and the API call the same core functions; one core function is one CLI command and one API route, and
+`--json` prints exactly what the API returns. Requirements: [requirements](requirements.md), section 8 (IF-01 to IF-23).
+Implemented in roadmap step D2, before the web work.
+
+| # | Topic | Decision | Reason |
+|---|---|---|---|
+| 1 | Starting long runs from the API | A separate process of the command line (`python -m bench.cli run …`, `… agent run …`) | A run survives a restart of the browser or the API; pause, stop and resume already work through files |
+| 2 | Output for interfaces | `--json` on every command that returns a result; the API returns the same data | One source of data; CLI parity can be tested |
+| 3 | State of a run | `state/runs/<id>/` per run with `status.json`, `control.json`, `progress.log`, for sweep and agent runs; `state/status.json` only points to the active run | A new run no longer overwrites the state of an older one; agent runs get a state |
+| 4 | Several runs at once | One GPU run at a time, through `state/active.json`, across sweep and agent runs | Parallel load spoils the measurement |
+| 5 | Live log | `progress.log` per run; the API reads it, a stream can follow later | The progress sink of the core only needs a file |
+| 6 | CLI and web control at the same time | The last request wins; `control.json` records its source (`cli`, `web`) and time, and the state shows it | Simple, and it is visible who asked |
+| 7 | Stopping an agent run | Also through its control file, next to the stdin stop; no pause, an attempt cannot be split | The interface can stop agent runs |
+| 8 | API style | REST and JSON under `/api/v1`, on `127.0.0.1` only | Earlier decisions: FastAPI, local use |
+
+**Data formats and their versions** (state on 2026-11-27):
+
+| Format | Where | Version | Note |
+|---|---|---|---|
+| Result row | `results/*.jsonl` | `schema_version` 1 | Envelope with `kind` and `env`; older rows converted when read (section 4.3) |
+| Agent trace | `results/agent/<run>/…/traces/*.jsonl` | 2 (harness) | One event per line |
+| Task file | `tasks/*.json` | 2 | Format of section 3 of the requirements |
+| Harness run spec | stdin of `run-tasks.ts` | 2 | Core to harness |
+| Sampling profiles | `configs/sampling.json` | 1 | |
+| Model registry snapshot | `state/models.json` | 1 | |
+| Agent report | `report/agent_<run>.json` | none, `taxonomy_version` 2 | Gets a version with IF-23 if the interface reads it |
+| Grid file | `configs/*.json` | none | User input; the format is section 4.1 |
+| Run plan, run state, control | `state/` | none | Get a version in step D2 (IF-23) |
