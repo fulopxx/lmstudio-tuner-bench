@@ -27,7 +27,13 @@ a dropped requirement keeps its ID with the note "withdrawn"), bilingual with th
 traceable to tests (task 25).
 
 **Form.** A table per area with the columns ID, requirement, reason and, from task 26 on, verification (`test`,
-`live`, `review` or `measurement`). "Must" marks an obligation; "should" is not used. Statuses stay in the roadmap.
+`live`, `review` or `measurement`). "Must" marks an obligation; "should" is not used.
+
+**State column.** The roadmap holds the status of tasks; the State column in this document shows how far each
+requirement itself is implemented and verified, which is a different thing: ✅ implemented and verified (live
+where a model is involved), 🧪 implemented, but a part is verified by offline tests only (the note says which),
+🟡 partly implemented, ⚪ not implemented, — not applicable (a design decision). A verification column (`test`,
+`live`, `review`, `measurement`) is added in task 26.
 
 ## 1. Interface
 
@@ -55,32 +61,33 @@ traceable to tests (task 25).
 
 ## 3. Agent harness and failure analysis: initial requirements
 
-Draft, to be detailed before step G.
+The first requirements, written before the harness existed; FA-01 to FA-47 below detail them. ✅ done, 🟡 partly,
+⚪ open, as in the State column.
 
 ### Harness
 
-- Written in TypeScript, talking to LM Studio through the official SDK if the trial (task 18) succeeds.
-- Runs a model in a tool loop. The first version has file reading and mock tools only (mock tools give deterministic
+- ✅ Written in TypeScript, talking to LM Studio through the official SDK (trial of task 18 succeeded).
+- 🟡 Runs a model in a tool loop. The first version has file reading and mock tools only (mock tools give deterministic
   tests); search, git and shell follow after the sandbox decision.
-- Everything runs in a throwaway sandbox folder; no network by default.
-- Limits: timeout per tool call, maximum number of steps per task, no endless retries; the user is told when a limit is hit.
-- Interruption and resume; clean recovery from tool errors and invalid model output.
-- Context handling: conversation history, tool results, what happens when the context fills up.
-- Usable from the CLI first, like every other feature.
+- ✅ Everything runs in a throwaway sandbox folder; no network by default.
+- ✅ Limits: timeout per tool call, maximum number of steps per task, no endless retries; the user is told when a limit is hit.
+- 🟡 Interruption and resume (resume is open); clean recovery from tool errors and invalid model output.
+- 🟡 Context handling (stop at the limit and a tool result size limit only): conversation history, tool results, what happens when the context fills up.
+- ✅ Usable from the CLI first, like every other feature.
 
 ### Failure analysis
 
-- Every step is logged: prompt, model output, tool call, tool result, timing, tokens.
-- Failure categories (first set): invalid tool-call format, wrong tool, wrong arguments, ignored tool error, endless
+- ✅ Every step is logged: prompt, model output, tool call, tool result, timing, tokens.
+- ✅ Failure categories (first set, now the [failure taxonomy](failure_taxonomy.md)): invalid tool-call format, wrong tool, wrong arguments, ignored tool error, endless
   retrying or looping, limit hit without telling the user, context overflow, task result wrong despite correct steps.
-- Each category is described FMEA-style: failure mode, effect, how it is detected, mitigation. The report suggests
+- ✅ Each category is described FMEA-style: failure mode, effect, how it is detected, mitigation. The report suggests
   mitigations, it does not only count.
-- Report per model and per task: success rate, categories, longest reliable chain length.
-- Tasks are fixed and reproducible, with pass/fail checks; each runs several times to show the spread.
-- Compare model-specific tool-call formats, where the JSON breaks, and which repair helps (retry, schema constraint,
+- ✅ Report per model and per task: success rate, categories, longest reliable chain length.
+- ✅ Tasks are fixed and reproducible, with pass/fail checks; each runs several times to show the spread.
+- ⚪ Compare model-specific tool-call formats (task 19), where the JSON breaks, and which repair helps (retry, schema constraint,
   grammar).
-- Interrupt and recovery cases: stop during a tool call, truncated output, resume.
-- Second round (after M1): context truncation and summarization, tool result size limits, behaviour as context grows.
+- ⚪ Interrupt and recovery cases (task 21): stop during a tool call, truncated output, resume.
+- ⚪ Second round (after M1, task 22): context truncation and summarization, tool result size limits, behaviour as context grows.
 
 ### Interface to the core (decided and implemented 2026-11-26)
 
@@ -91,8 +98,8 @@ Draft, to be detailed before step G.
 | H3 | Stop arrives as a further stdin line (`{"cmd":"stop"}`) and triggers an `AbortSignal`; the trace records `aborted`. After a grace period the core kills the process | Windows has no reliable signal for a child process |
 | H4 | Trace: JSONL per task run with `schema_version`; events `task_start`, `prediction` (raw text, tokens, timing), `tool_call` (raw and parsed arguments, validation error), `tool_result` (size, error, duration), `limit_hit`, `error`, `task_end` | Appendable, readable even with a broken last line |
 | H5 | Pass/fail checks and failure categorization run in the Python core, from the trace and the kept final state of the sandbox; the harness only executes and logs | Logic lives in the core and is reachable from the CLI |
-| H6 | Own tool loop behind a `ModelBackend` interface: `LmsSdkBackend` (one prediction round with `respond()` and `rawTools`) and `ScriptedBackend` (deterministic offline tests without a GPU) | Invalid tool calls must be logged raw; `.act()` throws on an unparseable call. Single-round tool calls exist in the SDK 2.1.0 types; a short live check is still needed |
-| H7 | M1 scope: tools `read_file` (path resolved inside the sandbox, size limit) and `mock_lookup` (deterministic, configurable delay and error for timeout cases); limits per tool call, rounds and total time; a throwaway sandbox folder per task with a copy of the fixtures; no shell; CLI command `bench agent run` | Thin M1 slice; the sandbox decision for shell commands can wait |
+| H6 | Own tool loop behind a `ModelBackend` interface: `LmsSdkBackend` (one prediction round with `respond()` and `rawTools`) and `ScriptedBackend` (deterministic offline tests without a GPU) | Invalid tool calls must be logged raw; `.act()` throws on an unparseable call. Single-round tool calls exist in the SDK 2.1.0 types; checked live, see below |
+| H7 | M1 scope (the single `mock_lookup` tool was later replaced by declared mock tools, FA-01): tools `read_file` (path resolved inside the sandbox, size limit) and `mock_lookup` (deterministic, configurable delay and error for timeout cases); limits per tool call, rounds and total time; a throwaway sandbox folder per task with a copy of the fixtures; no shell; CLI command `bench agent run` | Thin M1 slice; the sandbox decision for shell commands can wait |
 
 **Live check of H6 (2026-11-26, `harness/tools-probe.ts`, three models at 4k context, temperature 0):**
 
@@ -110,10 +117,10 @@ Draft, to be detailed before step G.
 - No `onToolCallRequestFailure` callback was seen.
 
 **M1 implementation (2026-11-26):** `bench agent run` (`runner/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
-implements H1–H7. Further details fixed by the implementation:
+implements H1–H7. Further details fixed by the implementation (task format and pass rule as updated in step 5):
 
-- Task files (`tasks/*.json`, `schema_version` 1) hold per task: prompt, optional system prompt, fixture folder, tools,
-  mock table (result, error, delay per id), limit overrides and declarative checks: `answer_contains`,
+- Task files (`tasks/*.json`, `schema_version` 2) declare mock tools (FA-01, FA-02) and hold per task: prompt,
+  optional system prompt, fixture folder, offered tools, expected calls, limit overrides and declarative checks: `answer_contains`,
   `answer_contains_any` (one list of alternatives, or a list of such lists, each of which must match),
   `tool_called`, `tool_not_called` (`*` for any tool), `mentions_failure`. Checks compare the
   final answer case-insensitively; only tool calls the SDK parsed count as called.
@@ -122,7 +129,7 @@ implements H1–H7. Further details fixed by the implementation:
   the attempt ends with status `limit`.
 - An unknown tool or invalid arguments go back to the model as an error result; a tool call the SDK could not parse is
   logged raw and ends the attempt (no repair in M1).
-- An attempt is passed when it ended `done` or `limit` and all its checks hold.
+- An attempt is passed when it ended `done` (or `limit`, if the task accepts it, FA-07) and all its checks hold.
 - The scripted backend runs the whole path offline (`bench agent run --scripted <file>`), which the Python tests use.
 
 First live run with the four example tasks (file read, order lookup, tool error, tool timeout), temperature 0: an 8B
@@ -144,61 +151,61 @@ live traces before effort goes into the tasks.
 
 **Task format (v2, own schema version)**
 
-| ID | Requirement | Reason |
-|---|---|---|
-| FA-01 | Mock tools are declared in the task file (`toolsets`: name, description, parameter schema, response rules); tasks refer to them by name. `read_file` stays a built-in tool | New tools and tasks without code changes |
-| FA-02 | Response rules: the first matching rule wins (argument condition: `equals`, `one_of`, `any`); a rule can answer by call count (`sequence`, for "pending" and transient-error tasks); a default answer is required. No template language | Deterministic, reviewable tool behaviour |
-| FA-03 | Tool arguments are validated against a schema subset (`type`, `enum`, `required`) without a new dependency; a number sent as a string is `wrong_type`, not silently converted | Small models often get types wrong; that is data, not noise |
-| FA-04 | `expected_calls` is an ordered subsequence with argument matchers: the minimal call sequence must appear, extra calls are allowed and only flagged. `forbidden_tools` lists calls that fail the attempt | Exact matching would punish recovery from errors and harmless extra calls (the reason BFCL v3 moved to subsequence matching) |
-| FA-05 | Values a correct answer needs are unique, unguessable tokens; in chains the next argument comes from the previous result | A correct answer cannot appear without the tool calls; the order is forced by the data, not by the check |
-| FA-06 | `answer_not_contains` (deny list) next to the keyword checks | A keyword such as "error" can sit next to an invented result; a value the model cannot know is a sure sign of fabrication |
-| FA-07 | An attempt that ends with status `limit` fails unless the task accepts it | Otherwise a model that repeats until the round limit and answers after the harness note looks successful |
-| FA-08 | Every task has a scripted reference solution that passes and at least one scripted reply that fails with the expected category | Tests the task and the categorizer together |
+| ID | Requirement | Reason | State |
+|---|---|---|---|
+| FA-01 | Mock tools are declared in the task file (`toolsets`: name, description, parameter schema, response rules); tasks refer to them by name. `read_file` stays a built-in tool | New tools and tasks without code changes | ✅ |
+| FA-02 | Response rules: the first matching rule wins (argument condition: `equals`, `one_of`, `any`); a rule can answer by call count (`sequence`, for "pending" and transient-error tasks); a default answer is required. No template language | Deterministic, reviewable tool behaviour | ✅ |
+| FA-03 | Tool arguments are validated against a schema subset (`type`, `enum`, `required`) without a new dependency; a number sent as a string is `wrong_type`, not silently converted | Small models often get types wrong; that is data, not noise | ✅ |
+| FA-04 | `expected_calls` is an ordered subsequence with argument matchers: the minimal call sequence must appear, extra calls are allowed and only flagged. `forbidden_tools` lists calls that fail the attempt | Exact matching would punish recovery from errors and harmless extra calls (the reason BFCL v3 moved to subsequence matching) | ✅ |
+| FA-05 | Values a correct answer needs are unique, unguessable tokens; in chains the next argument comes from the previous result | A correct answer cannot appear without the tool calls; the order is forced by the data, not by the check | ✅ |
+| FA-06 | `answer_not_contains` (deny list) next to the keyword checks | A keyword such as "error" can sit next to an invented result; a value the model cannot know is a sure sign of fabrication | ✅ |
+| FA-07 | An attempt that ends with status `limit` fails unless the task accepts it | Otherwise a model that repeats until the round limit and answers after the harness note looks successful | ✅ |
+| FA-08 | Every task has a scripted reference solution that passes and at least one scripted reply that fails with the expected category | Tests the task and the categorizer together | ✅ |
 
 **Trace and run metadata**
 
-| ID | Requirement | Reason |
-|---|---|---|
-| FA-10 | `task_start` records run and attempt ids, model key, context length, the sampling settings actually sent, the system prompt, a hash of the offered tool schemas, a hash of the task file and the harness version | A trace must be re-evaluable on its own |
-| FA-11 | `prediction` records its start time and duration; `tool_call` and `tool_result` carry an own call sequence number next to the model's call id (which may be missing); `tool_result` carries an `errorKind` (`not_found`, `outside_sandbox`, `invalid_arguments`, `unknown_tool`, `timeout`, `mock_error`, `cancelled`) | The categorizer must not match error texts; round duration is not readable today |
-| FA-12 | Separate schema versions for the task file and the trace | They change at different times |
-| FA-13 | The harness asks LM Studio to stop at the context limit (`contextOverflowPolicy: stopAtLimit`) | The other policies truncate silently, which would hide context overflow |
-| FA-14 | A flat event trace stays; no span tree yet. The fields above keep a later export to OpenTelemetry GenAI spans lossless (attempt → `invoke_agent`, prediction → `chat`, tool call and result → `execute_tool`, `errorKind` → `error.type`) | One agent and three levels gain nothing from a span tree; a span is written when it closes, so an interrupted run would lose it; the convention is still in development |
+| ID | Requirement | Reason | State |
+|---|---|---|---|
+| FA-10 | `task_start` records run and attempt ids, model key, context length, the sampling settings actually sent, the system prompt, a hash of the offered tool schemas, a hash of the task file and the harness version | A trace must be re-evaluable on its own | ✅ |
+| FA-11 | `prediction` records its start time and duration; `tool_call` and `tool_result` carry an own call sequence number next to the model's call id (which may be missing); `tool_result` carries an `errorKind` (`not_found`, `outside_sandbox`, `invalid_arguments`, `unknown_tool`, `timeout`, `mock_error`, `cancelled`) | The categorizer must not match error texts; round duration was not readable before step 5a | ✅ |
+| FA-12 | Separate schema versions for the task file and the trace | They change at different times | ✅ |
+| FA-13 | The harness asks LM Studio to stop at the context limit (`contextOverflowPolicy: stopAtLimit`) | The other policies truncate silently, which would hide context overflow | 🧪 a real overflow not seen live |
+| FA-14 | A flat event trace stays; no span tree yet. The fields above keep a later export to OpenTelemetry GenAI spans lossless (attempt → `invoke_agent`, prediction → `chat`, tool call and result → `execute_tool`, `errorKind` → `error.type`) | One agent and three levels gain nothing from a span tree; a span is written when it closes, so an interrupted run would lose it; the convention is still in development | — design decision |
 
 **Sampling**
 
-| ID | Requirement | Reason |
-|---|---|---|
-| FA-20 | A sampling profile per model family (temperature, top_p, top_k, min_p, repeat penalty, source URL) in a config file, with 0.7 as the fallback temperature; `--temperature` overrides; the harness sends every value explicitly | Today only the temperature is sent; the rest comes from LM Studio defaults, so results are not reproducible. Model cards differ (Qwen3 discourages greedy decoding) |
-| FA-21 | Before the task set is written, a live check: one task, five attempts at a temperature above 0; do the outputs differ? | The seed is a load parameter; if repeats were identical, repeating would measure nothing |
+| ID | Requirement | Reason | State |
+|---|---|---|---|
+| FA-20 | A sampling profile per model family (temperature, top_p, top_k, min_p, repeat penalty, source URL) in a config file, with 0.7 as the fallback temperature; `--temperature` overrides; the harness sends every value explicitly | Before step 5a only the temperature was sent; the rest comes from LM Studio defaults, so results were not reproducible before step 5a. Model cards differ (Qwen3 discourages greedy decoding) | ✅ |
+| FA-21 | Before the task set is written, a live check: one task, five attempts at a temperature above 0; do the outputs differ? | The seed is a load parameter; if repeats were identical, repeating would measure nothing | ✅ |
 
 **Categories and priority**
 
-| ID | Requirement | Reason |
-|---|---|---|
-| FA-30 | Few top-level categories, details as subcodes (list in the [failure taxonomy](failure_taxonomy.md)); every failed attempt gets exactly one primary category, further findings are secondary | 100–200 attempts per model would be spread too thin over many categories |
-| FA-31 | Three levels: structural (fixed order), behavioural (the detector whose first evidence comes earliest in the trace wins), outcome (fixed order, only if no behavioural finding) | A fixed global order misjudges chains of consequences (wrong argument → tool error → repetition → round limit); the cause shows in the time order |
-| FA-32 | Every finding carries evidence: trace file, event sequence number, rule name | Turns the report into diagnosis |
-| FA-33 | A text tool call (a call written as text in the answer, naming an offered tool in call form) is `format_invalid/text_tool_call`, not "no tool called" | Observed live: such a reply has no tool-call event at all |
-| FA-34 | `unclassified` for failures no rule explains; its share measures the taxonomy's coverage | Without it the last category becomes a catch-all |
-| FA-35 | Failures are also classed as silent (the user cannot notice: wrong result, invented value, hidden limit) or loud | The headline number of the report; it corresponds to an undetected fault in functional safety |
-| FA-36 | Secondary flags also on successful attempts: `recovered_error`, `redundant_calls`, `parallel_calls`, `reasoning_leak`, `sandbox_escape_attempt` | Recovery is the baseline for task 19; a reasoning leak can make a check pass falsely |
-| FA-37 | Heuristic rules are marked as such; their agreement with a manual review of about 50 failed attempts is published | Keyword rules have false positives and negatives |
-| FA-38 | One machine-readable source of the categories (id, level, silent or loud, reliability); a test checks that each id appears in the English and Hungarian taxonomy document | Keeps code and documents in step |
-| FA-39 | If almost all failures of a model are `format_invalid`, the report says that its other abilities could not be measured | Zeros would be misleading |
+| ID | Requirement | Reason | State |
+|---|---|---|---|
+| FA-30 | Few top-level categories, details as subcodes (list in the [failure taxonomy](failure_taxonomy.md)); every failed attempt gets exactly one primary category, further findings are secondary | 100–200 attempts per model would be spread too thin over many categories | ✅ |
+| FA-31 | Three levels: structural (fixed order), behavioural (the detector whose first evidence comes earliest in the trace wins), outcome (fixed order, only if no behavioural finding) | A fixed global order misjudges chains of consequences (wrong argument → tool error → repetition → round limit); the cause shows in the time order | ✅ |
+| FA-32 | Every finding carries evidence: trace file, event sequence number, rule name | Turns the report into diagnosis | ✅ |
+| FA-33 | A text tool call (a call written as text in the answer, naming an offered tool in call form) is `format_invalid/text_tool_call`, not "no tool called" | Observed live: such a reply has no tool-call event at all | ✅ |
+| FA-34 | `unclassified` for failures no rule explains; its share measures the taxonomy's coverage | Without it the last category becomes a catch-all | ✅ |
+| FA-35 | Failures are also classed as silent (the user cannot notice: wrong result, invented value, hidden limit) or loud | The headline number of the report; it corresponds to an undetected fault in functional safety | ✅ |
+| FA-36 | Secondary flags also on successful attempts: `recovered_error`, `redundant_calls`, `parallel_calls`, `reasoning_leak`, `sandbox_escape_attempt` | Recovery is the baseline for task 19; a reasoning leak can make a check pass falsely | 🧪 `reasoning_leak` and `sandbox_escape_attempt` never raised live |
+| FA-37 | Heuristic rules are marked as such; their agreement with a manual review of about 50 failed attempts is published | Keyword rules have false positives and negatives | 🟡 review done; agreement rate not published |
+| FA-38 | One machine-readable source of the categories (id, level, silent or loud, reliability); a test checks that each id appears in the English and Hungarian taxonomy document | Keeps code and documents in step | ✅ |
+| FA-39 | If almost all failures of a model are `format_invalid`, the report says that its other abilities could not be measured | Zeros would be misleading | ✅ |
 
 **Runs and report (5b)**
 
-| ID | Requirement | Reason |
-|---|---|---|
-| FA-40 | `bench agent run --models a,b,c` runs the models one after another; an error of one model is recorded and the next one runs | One comparison table |
-| FA-41 | If the harness ends without a result line, the core rebuilds the attempts from the traces | Today a killed harness loses every result |
-| FA-42 | The run's time limit is computed from tasks, repeats and the attempt limit; the task file is copied into the run folder; result rows carry the taxonomy version | Slow models; later re-evaluation |
-| FA-43 | `bench agent report` recomputes categories from the traces and writes Markdown and JSON: per model and task the success rate with a Wilson interval, categories, median rounds and time, pass^k, the share of silent failures; also a model × category matrix and the counts of primary → secondary category pairs, as text | Small samples need intervals; pass^k shows reliability in one number |
-| FA-44 | Longest reliable chain: two tasks per chain length, ten attempts each; a length counts when at least 16 of 20 attempts pass and every shorter length counts too | One task × 5 is noisy and not monotonic (≥4/5 lets a 60 % model through in about one case in three) |
-| FA-45 | Five repeats by default, ten for published tables | 5/5 has a Wilson interval of 0.57–1.00 |
-| FA-46 | Mitigations are shown as "possible mitigation (not measured)" until task 19 measures them | No claim without measurement |
-| FA-47 | `bench agent show <run> <task-attempt>` prints an attempt's steps with their sequence numbers (predictions, tool calls with arguments, results with error kind, limits) and marks the evidence event of its category | The manual review of FA-37 needs a readable view of a trace; the same data feeds the graphical step view later |
+| ID | Requirement | Reason | State |
+|---|---|---|---|
+| FA-40 | `bench agent run --models a,b,c` runs the models one after another; an error of one model is recorded and the next one runs | One comparison table | 🧪 a failing model offline only |
+| FA-41 | If the harness ends without a result line, the core rebuilds the attempts from the traces | Before step 5a a killed harness lost every result | 🧪 rebuild after a killed harness offline only |
+| FA-42 | The run's time limit is computed from tasks, repeats and the attempt limit; the task file is copied into the run folder; result rows carry the taxonomy version | Slow models; later re-evaluation | ✅ |
+| FA-43 | `bench agent report` recomputes categories from the traces and writes Markdown and JSON: per model and task the success rate with a Wilson interval, categories, median rounds and time, pass^k, the share of silent failures; also a model × category matrix and the counts of primary → secondary category pairs, as text | Small samples need intervals; pass^k shows reliability in one number | ✅ |
+| FA-44 | Longest reliable chain: two tasks per chain length, ten attempts each; a length counts when at least 16 of 20 attempts pass and every shorter length counts too | One task × 5 is noisy and not monotonic (≥4/5 lets a 60 % model through in about one case in three) | ✅ |
+| FA-45 | Five repeats by default, ten for published tables | 5/5 has a Wilson interval of 0.57–1.00 | ✅ |
+| FA-46 | Mitigations are shown as "possible mitigation (not measured)" until task 19 measures them | No claim without measurement | ✅ |
+| FA-47 | `bench agent show <run> <task-attempt>` prints an attempt's steps with their sequence numbers (predictions, tool calls with arguments, results with error kind, limits) and marks the evidence event of its category | The manual review of FA-37 needs a readable view of a trace; the same data feeds the graphical step view later | ✅ |
 
 **Status of 5a (2026-11-26).** Implemented and covered by offline tests: FA-01 to FA-07, FA-10 to FA-14, FA-20,
 FA-30 to FA-36, FA-38, FA-41 (rebuild from traces) and the run folder copy of the task file from FA-42; default
@@ -212,9 +219,8 @@ the task set), FA-37, FA-39, FA-40, the computed time limit of FA-42, FA-43, FA-
 **Status of 5b (2026-11-27).** Implemented and covered by offline tests: the 20-task set `tasks/m1.json` with a
 reference solution per task that passes and a failing reply per task that gets its expected category (FA-08,
 `tests/m1_reference.json`, `tests/m1_failures.json`), FA-39, FA-40, the computed time limit of FA-42, FA-43,
-FA-44, FA-46 and FA-47 (`bench agent run --models`, `bench agent report`, `bench agent show`). Open: the live runs,
-the manual review of FA-37 on their failures, and the published table with ten repeats (FA-45). The owner reviews
-the task set before the first live run.
+FA-44, FA-46 and FA-47 (`bench agent run --models`, `bench agent report`, `bench agent show`). The live runs, the
+manual review and the published table followed on 2026-11-27 (below); the State column shows the result.
 
 **First live run of the M1 set (2026-11-27)**, four models, five repeats, 400 attempts, all completed. Manual review
 of about 40 failures (FA-37, partial: every failure of the three models that call tools, and a sample of the 83
@@ -316,25 +322,25 @@ effect is intentional.
 
 ## 5. Speculative decoding
 
-Task 24. Status: not tried; no measurement has been made.
+Task 24. Phase 0 (trial) done on 2026-11-26; phase 1 open (task status in the roadmap).
 
 **Goal.** Treat speculative decoding as its own optimization dimension: per model and task type, measure the speed gain
 and the resource cost against the same configuration with speculation off, then recommend a setting, which may be "off".
 
 ### Known about the installed version
 
-Read from the type definitions of `@lmstudio/sdk` 2.1.0 and from earlier observations; nothing was verified by running a
-speculative load.
+Read from the type definitions of `@lmstudio/sdk` 2.1.0 and from earlier observations, written before phase 0; the
+phase 0 results below verify or correct it.
 
 - Load config (marked experimental): `speculativeDraftMtp` (bundled multi-token prediction heads),
   `speculativeDraftSimple` with `speculativeDraftModel` (separate draft model), `speculativeDraftMaxTokens`,
   `speculativeDraftMinTokens`, `speculativeDraftMinContinueProbability`. The sweep runner sends the first two as `false`,
   and they appear in the applied configuration read back after the load.
-- Predictions through the SDK accept `draftModel` and report `usedDraftModelKey`, `totalDraftTokensCount`,
+- Predictions through the SDK accept `draftModel` (refused by the engine in phase 0) and report `usedDraftModelKey`, `totalDraftTokensCount`,
   `acceptedDraftTokensCount`, `rejectedDraftTokensCount` and `ignoredDraftTokensCount`.
 - `lms load` lists `--speculative-draft-*` options and the REST load call accepts speculative fields
   ([load parameters](lmstudio_load_parameters.md)).
-- Whether the REST chat endpoint used for measurement returns draft counters is unknown.
+- The REST chat endpoint used for measurement returns draft counters (verified in phase 0).
 - Documentation: [LM Studio](https://lmstudio.ai/docs/app/advanced/speculative-decoding),
   [llama.cpp](https://github.com/ggml-org/llama.cpp/blob/master/docs/speculative.md). The upstream llama.cpp offers more
   methods than are known to be reachable through LM Studio.
@@ -358,7 +364,7 @@ notes.
 
 | Step | Content | GPU |
 |---|---|---|
-| P0 | Probe script, type check, hash of the LM Studio config folder. Done: `harness/spec-probe.ts` with offline tests and `--dry-run`; a real type check needs a TypeScript compiler, not installed | no |
+| P0 | Probe script, type check, hash of the LM Studio config folder. Done: `harness/spec-probe.ts` with offline tests and `--dry-run`; the TypeScript compiler was installed later and the type check passes | no |
 | P1 | Baseline with speculation off: VRAM, decode speed (warm-up and 3 runs), with a code-generation and the synthetic prompt | yes |
 | P2 | Draft model set at load: applied configuration read back, extra VRAM, whether the draft shows as a separately loaded model, draft counters, speed | yes |
 | P3 | Draft model set per prediction (`draftModel`) on a baseline load: statistics and speed | yes |
@@ -407,23 +413,23 @@ draft tokens (model cards suggest 2 to 6), a compatibility check for draft pairs
 
 ### Requirements
 
-"Today" describes the current sweep runner.
+The note describes the current sweep runner.
 
-| ID | Requirement | Today |
-|---|---|---|
-| SD-01 | Capability detection per model: MTP present, compatible draft models, runtime version. An unsupported combination is a reasoned "skipped" result, not a failure | missing |
-| SD-02 | Every speculative configuration is linked to an "off" measurement with the same model, quantization, context, offload and sampling; the order alternates | partly: baseline configurations exist, without a link; fixed order |
-| SD-03 | Configuration space from the grid: method, draft model and its quantization, maximum and minimum draft tokens, probability threshold, draft offload. Maximum draft tokens first coarse (1, 3, 6), then refined around the best | partly: the grid is extensible, the loader always switches speculation off |
-| SD-04 | Metrics: decode speed, time to first token, total time, peak VRAM and RAM, load time, draft counters, gain over the baseline. A missing value is "n/a", never an estimate | partly: no draft counters, total time per generation, RAM or gain |
-| SD-05 | Two separate fields: acceptance rate (accepted / generated draft tokens) and draft share (accepted draft tokens / output tokens) | missing |
-| SD-06 | Workload profiles with results per profile: code generation, editing existing text or code, math and reasoning, prose, agent and JSON output, long context. The current repetitive synthetic prompt is likely to overstate acceptance | missing |
-| SD-07 | Warm-up, at least 3 repeats, median and spread; temperature 0 and a fixed seed for speed, plus one run with production sampling; logged application and runtime versions, model file hash, load configuration | partly: no production sampling run or file hash; the application version is recorded |
-| SD-08 | The requested mode is verified to be active (draft counters, log) and verified to be inactive for the baseline; otherwise the measurement is invalid | partly: the applied load configuration is compared, activity is not |
-| SD-09 | Quality guard: with greedy sampling compare the output with the baseline and report the first difference (a difference alone is not an error) | missing: outputs are not stored |
-| SD-10 | Basic measurement with one parallel prediction; higher concurrency as a separate dimension; compatibility checked separately for vision models | partly: one parallel prediction only |
-| SD-11 | A load error, out of memory or timeout is recorded as a result and the sweep goes on | partly: it does, but two consecutive timeouts abort the run |
-| SD-12 | Recommendation per model and profile with gain and memory cost; "off" if the gain is below an adjustable threshold (start: 1.10x) | partly: the evaluation recommends, without a threshold |
-| SD-13 | Result format independent of the backend (backend and runtime fields) | missing |
+| ID | Requirement | State | Note (sweep runner) |
+|---|---|---|---|
+| SD-01 | Capability detection per model: MTP present, compatible draft models, runtime version. An unsupported combination is a reasoned "skipped" result, not a failure | ⚪ | missing |
+| SD-02 | Every speculative configuration is linked to an "off" measurement with the same model, quantization, context, offload and sampling; the order alternates | 🟡 | partly: baseline configurations exist, without a link; fixed order |
+| SD-03 | Configuration space from the grid: method, draft model and its quantization, maximum and minimum draft tokens, probability threshold, draft offload. Maximum draft tokens first coarse (1, 3, 6), then refined around the best | 🟡 | partly: the grid is extensible, the loader always switches speculation off |
+| SD-04 | Metrics: decode speed, time to first token, total time, peak VRAM and RAM, load time, draft counters, gain over the baseline. A missing value is "n/a", never an estimate | 🟡 | partly: no draft counters, total time per generation, RAM or gain |
+| SD-05 | Two separate fields: acceptance rate (accepted / generated draft tokens) and draft share (accepted draft tokens / output tokens) | ⚪ | missing |
+| SD-06 | Workload profiles with results per profile: code generation, editing existing text or code, math and reasoning, prose, agent and JSON output, long context. The current repetitive synthetic prompt is likely to overstate acceptance | ⚪ | missing |
+| SD-07 | Warm-up, at least 3 repeats, median and spread; temperature 0 and a fixed seed for speed, plus one run with production sampling; logged application and runtime versions, model file hash, load configuration | 🟡 | partly: no production sampling run or file hash; the application version is recorded |
+| SD-08 | The requested mode is verified to be active (draft counters, log) and verified to be inactive for the baseline; otherwise the measurement is invalid | 🟡 | partly: the applied load configuration is compared, activity is not |
+| SD-09 | Quality guard: with greedy sampling compare the output with the baseline and report the first difference (a difference alone is not an error) | ⚪ | missing: outputs are not stored |
+| SD-10 | Basic measurement with one parallel prediction; higher concurrency as a separate dimension; compatibility checked separately for vision models | 🟡 | partly: one parallel prediction only |
+| SD-11 | A load error, out of memory or timeout is recorded as a result and the sweep goes on | 🟡 | partly: it does, but two consecutive timeouts abort the run |
+| SD-12 | Recommendation per model and profile with gain and memory cost; "off" if the gain is below an adjustable threshold (start: 1.10x) | 🟡 | partly: the evaluation recommends, without a threshold |
+| SD-13 | Result format independent of the backend (backend and runtime fields) | ⚪ | missing |
 
 Depends on the fixed task set (task 20) for the workload profiles. The 8 GB development GPU leaves little room for a
 draft model; models that fit with headroom come first.
@@ -433,14 +439,14 @@ draft model; models that fit with headroom come first.
 Recorded on 2026-11-27 before the quality suites are designed. A report may only make claims about the task set it ran
 ("on this set A passed more"), not about a whole domain.
 
-| ID | Requirement | Reason | Verification |
-|---|---|---|---|
-| TS-01 | Every task file must carry a descriptor with these fields: identifier, version, purpose, what the set does not measure, required tools, required model capabilities, check method (deterministic or judge), number of tasks, estimated time per attempt | Claims and run time must be known before a run; capability filtering (task 5) needs the capabilities | test |
-| TS-02 | When a task file has no complete descriptor, the core must reject it with the names of the missing fields | A set without a stated scope invites claims it cannot support | test |
-| TS-03 | Every pass rate in a report must be shown with the identifier and version of its task set | Results of different sets or versions are not comparable | test |
-| TS-04 | When the results of several task sets are combined into one score, the core must use weights read from a file; without such weights the report must not show a combined score | An implicit equal weighting hides a choice | test |
-| TS-05 | The report must list the tasks that every measured model passed in every attempt | Such tasks do not separate models and are candidates for replacement | test |
-| TS-06 | When the user names one or more use cases, the CLI must select the task sets whose descriptor lists one of them | Users choose by purpose, not by file name | test |
+| ID | Requirement | Reason | Verification | State |
+|---|---|---|---|---|
+| TS-01 | Every task file must carry a descriptor with these fields: identifier, version, purpose, what the set does not measure, required tools, required model capabilities, check method (deterministic or judge), number of tasks, estimated time per attempt | Claims and run time must be known before a run; capability filtering (task 5) needs the capabilities | test | ⚪ |
+| TS-02 | When a task file has no complete descriptor, the core must reject it with the names of the missing fields | A set without a stated scope invites claims it cannot support | test | ⚪ |
+| TS-03 | Every pass rate in a report must be shown with the identifier and version of its task set | Results of different sets or versions are not comparable | test | ⚪ |
+| TS-04 | When the results of several task sets are combined into one score, the core must use weights read from a file; without such weights the report must not show a combined score | An implicit equal weighting hides a choice | test | ⚪ |
+| TS-05 | The report must list the tasks that every measured model passed in every attempt | Such tasks do not separate models and are candidates for replacement | test | ⚪ |
+| TS-06 | When the user names one or more use cases, the CLI must select the task sets whose descriptor lists one of them | Users choose by purpose, not by file name | test | ⚪ |
 
 Open: sets for 3D design and cybersecurity need their own tools, sandbox and checks (for example mesh validity, an
 isolated target environment); the shell sandbox decision is still open (section 3).

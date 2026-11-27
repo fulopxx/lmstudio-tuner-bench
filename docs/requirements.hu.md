@@ -29,7 +29,13 @@ nyelven azonos azonosítókkal, és tesztekre visszakövethető (25. feladat).
 
 **Forma.** Területenként egy táblázat az azonosító, követelmény, indok, és a 26. feladattól kezdve az ellenőrzés
 (`teszt`, `élő`, `átnézés` vagy `mérés`) oszloppal. A kötelezettséget a „kell” / „must” jelöli; a „should” nem
-használatos. Az állapotok a roadmapben maradnak.
+használatos.
+
+**Állapot oszlop.** A roadmap a feladatok státuszát tartja; ebben a dokumentumban az Állapot oszlop azt mutatja,
+mennyire van megvalósítva és igazolva maga a követelmény, ami más dolog: ✅ megvalósítva és igazolva (élőben, ahol
+modell is részt vesz), 🧪 megvalósítva, de egy része csak offline teszttel igazolt (a megjegyzés megmondja, melyik),
+🟡 részben megvalósítva, ⚪ nincs megvalósítva, — nem értelmezhető (tervezési döntés). Az ellenőrzés oszlop
+(`teszt`, `élő`, `átnézés`, `mérés`) a 26. feladatban kerül be.
 
 ## 1. Felület
 
@@ -57,34 +63,35 @@ használatos. Az állapotok a roadmapben maradnak.
 
 ## 3. Agent harness és hibaelemzés: kezdeti követelmények
 
-Vázlat, a G lépés előtt részletezendő.
+Az első követelmények, a harness elkészülte előtt írva; az alábbi FA-01–FA-47 részletezi őket. ✅ kész, 🟡 részben,
+⚪ nyitott, mint az Állapot oszlopban.
 
 ### Harness
 
-- TypeScriptben készül; a LM Studióval a hivatalos SDK-n át beszél, ha a próba (18. feladat) sikeres.
-- A modellt tool loopban futtatja. Az első változatban csak fájlolvasás és mock toolok vannak (a mock toolok
+- ✅ TypeScriptben készül; a LM Studióval a hivatalos SDK-n át beszél (a 18. feladat próbája sikerült).
+- 🟡 A modellt tool loopban futtatja. Az első változatban csak fájlolvasás és mock toolok vannak (a mock toolok
   determinisztikus teszteket adnak); a keresés, git és shell a sandbox-döntés után jön.
-- Minden eldobható sandbox mappában fut; alapértelmezetten hálózat nélkül.
-- Korlátok: timeout tool-hívásonként, maximális lépésszám feladatonként, nincs végtelen újrapróbálás; korlát elérésekor
+- ✅ Minden eldobható sandbox mappában fut; alapértelmezetten hálózat nélkül.
+- ✅ Korlátok: timeout tool-hívásonként, maximális lépésszám feladatonként, nincs végtelen újrapróbálás; korlát elérésekor
   a felhasználó jelzést kap.
-- Megszakítás és folytatás; tiszta helyreállítás tool-hibából és érvénytelen modellkimenetből.
-- Kontextuskezelés: beszélgetési előzmény, tool-eredmények, mi történik a kontextus betelésekor.
-- Mint minden funkció, először CLI-ből használható.
+- 🟡 Megszakítás és folytatás (a folytatás nyitott); tiszta helyreállítás tool-hibából és érvénytelen modellkimenetből.
+- 🟡 Kontextuskezelés (csak megállás a korlátnál és tool-eredmény méretkorlát): beszélgetési előzmény, tool-eredmények, mi történik a kontextus betelésekor.
+- ✅ Mint minden funkció, először CLI-ből használható.
 
 ### Hibaelemzés
 
-- Minden lépés naplózva: prompt, modellkimenet, tool-hívás, tool-eredmény, idő, tokenek.
-- Hibakategóriák (első készlet): érvénytelen tool-hívás formátum, rossz tool, rossz paraméterek, figyelmen kívül
+- ✅ Minden lépés naplózva: prompt, modellkimenet, tool-hívás, tool-eredmény, idő, tokenek.
+- ✅ Hibakategóriák (első készlet, ma a [hibataxonómia](failure_taxonomy.hu.md)): érvénytelen tool-hívás formátum, rossz tool, rossz paraméterek, figyelmen kívül
   hagyott tool-hiba, végtelen újrapróbálás vagy ciklus, korlát elérése a felhasználó értesítése nélkül, kontextus
   túlcsordulás, hibás eredmény helyes lépések ellenére.
-- Minden kategória FMEA-jelleggel leírva: hibamód, hatás, detektálás, ellenintézkedés. A riport nem csak számol,
+- ✅ Minden kategória FMEA-jelleggel leírva: hibamód, hatás, detektálás, ellenintézkedés. A riport nem csak számol,
   hanem ellenintézkedést is javasol.
-- Riport modellenként és feladatonként: sikerarány, kategóriák, a leghosszabb még megbízható lánc.
-- A feladatok rögzítettek és reprodukálhatók, pass/fail ellenőrzéssel; a szórás miatt mindegyik többször fut.
-- Modellenkénti tool-call formátumok összevetése: hol romlik el a JSON, és melyik javítás segít (retry,
+- ✅ Riport modellenként és feladatonként: sikerarány, kategóriák, a leghosszabb még megbízható lánc.
+- ✅ A feladatok rögzítettek és reprodukálhatók, pass/fail ellenőrzéssel; a szórás miatt mindegyik többször fut.
+- ⚪ Modellenkénti tool-call formátumok összevetése (19. feladat): hol romlik el a JSON, és melyik javítás segít (retry,
   séma-kényszerítés, grammar).
-- Megszakítás és helyreállítás esetei: leállítás tool-hívás közben, félbehagyott kimenet, folytatás.
-- Második kör (M1 után): kontextus vágása és összegzése, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál.
+- ⚪ Megszakítás és helyreállítás esetei (21. feladat): leállítás tool-hívás közben, félbehagyott kimenet, folytatás.
+- ⚪ Második kör (M1 után, 22. feladat): kontextus vágása és összegzése, tool-eredmény méretkorlát, viselkedés növekvő kontextusnál.
 
 ### Interfész a core felé (döntve és megvalósítva 2026-11-26)
 
@@ -95,8 +102,8 @@ Vázlat, a G lépés előtt részletezendő.
 | H3 | A leállítás további stdin-sorként érkezik (`{"cmd":"stop"}`), és `AbortSignal`-t vált ki; a trace `aborted` eseményt kap. Türelmi idő után a core leállítja a processt | Windowson nincs megbízható jelzés gyermekprocessnek |
 | H4 | Trace: feladat-futásonként JSONL, `schema_version` mezővel; események: `task_start`, `prediction` (nyers szöveg, tokenek, idők), `tool_call` (nyers és értelmezett argumentumok, validálási hiba), `tool_result` (méret, hiba, időtartam), `limit_hit`, `error`, `task_end` | Hozzáfűzhető, sérült utolsó sor mellett is olvasható |
 | H5 | A pass/fail ellenőrzés és a hibák kategorizálása a Python core-ban fut, a trace és a sandbox megtartott végállapota alapján; a harness csak végrehajt és naplóz | A logika a core-ban van, és a CLI-ből elérhető |
-| H6 | Saját tool loop egy `ModelBackend` interfész mögött: `LmsSdkBackend` (egy predikciós kör `respond()` és `rawTools` használatával) és `ScriptedBackend` (determinisztikus offline tesztek GPU nélkül) | Az érvénytelen tool-hívást nyersen kell naplózni; a `.act()` értelmezhetetlen hívásnál kivételt dob. Az egykörös tool-hívás az SDK 2.1.0 típusaiban megvan; rövid élő ellenőrzés még kell |
-| H7 | M1 hatókör: `read_file` (útvonal a sandboxon belül feloldva, méretkorlát) és `mock_lookup` (determinisztikus, beállítható késleltetéssel és hibával a timeout-esetekhez); korlát tool-hívásra, körszámra és teljes időre; feladatonként eldobható sandbox mappa a fixture-ök másolatával; nincs shell; CLI parancs: `bench agent run` | Vékony M1 szelet; a shell-parancsok sandbox-döntése várhat |
+| H6 | Saját tool loop egy `ModelBackend` interfész mögött: `LmsSdkBackend` (egy predikciós kör `respond()` és `rawTools` használatával) és `ScriptedBackend` (determinisztikus offline tesztek GPU nélkül) | Az érvénytelen tool-hívást nyersen kell naplózni; a `.act()` értelmezhetetlen hívásnál kivételt dob. Az egykörös tool-hívás az SDK 2.1.0 típusaiban megvan; élőben ellenőrizve, lásd lent |
+| H7 | M1 hatókör (az egyetlen `mock_lookup` toolt később a deklarált mock toolok váltották, FA-01): `read_file` (útvonal a sandboxon belül feloldva, méretkorlát) és `mock_lookup` (determinisztikus, beállítható késleltetéssel és hibával a timeout-esetekhez); korlát tool-hívásra, körszámra és teljes időre; feladatonként eldobható sandbox mappa a fixture-ök másolatával; nincs shell; CLI parancs: `bench agent run` | Vékony M1 szelet; a shell-parancsok sandbox-döntése várhat |
 
 **A H6 élő ellenőrzése (2026-11-26, `harness/tools-probe.ts`, három modell, 4k context, temperature 0):**
 
@@ -115,11 +122,12 @@ Vázlat, a G lépés előtt részletezendő.
 - `onToolCallRequestFailure` callbacket nem láttunk.
 
 **M1 megvalósítás (2026-11-26):** a `bench agent run` (`runner/agent.py`, `harness/run-tasks.ts`, `harness/agent/`)
-megvalósítja a H1–H7 döntéseket. A megvalósítás által rögzített további részletek:
+megvalósítja a H1–H7 döntéseket. A megvalósítás által rögzített további részletek (a feladatformátum és a sikerszabály
+az 5. lépés szerinti frissítéssel):
 
-- A feladatfájlok (`tasks/*.json`, `schema_version` 1) feladatonként tartalmazzák: prompt, opcionális system prompt,
-  fixture mappa, toolok, mock táblázat (azonosítónként eredmény, hiba, késleltetés), korlát-felülírások és deklaratív
-  ellenőrzések: `answer_contains`, `answer_contains_any` (alternatívák egy listája, vagy ilyen listák listája, amelyek mindegyikének teljesülnie
+- A feladatfájlok (`tasks/*.json`, `schema_version` 2) deklarálják a mock toolokat (FA-01, FA-02), és feladatonként
+  tartalmazzák: prompt, opcionális system prompt, fixture mappa, felkínált toolok, várt hívások, korlát-felülírások és
+  deklaratív ellenőrzések: `answer_contains`, `answer_contains_any` (alternatívák egy listája, vagy ilyen listák listája, amelyek mindegyikének teljesülnie
   kell), `tool_called`, `tool_not_called` (`*` bármely toolra),
   `mentions_failure`. Az ellenőrzések a végső választ kis- és nagybetűtől függetlenül vizsgálják; hívottnak csak az SDK
   által értelmezett tool-hívás számít.
@@ -128,7 +136,8 @@ megvalósítja a H1–H7 döntéseket. A megvalósítás által rögzített tov�
   hogy válaszoljon a felhasználónak; a próbálkozás `limit` állapottal zárul.
 - Az ismeretlen tool vagy az érvénytelen argumentum hibaeredményként megy vissza a modellnek; az SDK által nem
   értelmezett tool-hívás nyersen naplózódik, és lezárja a próbálkozást (M1-ben nincs javítás).
-- Egy próbálkozás sikeres, ha `done` vagy `limit` állapottal ért véget, és minden ellenőrzése teljesül.
+- Egy próbálkozás sikeres, ha `done` (vagy, ha a feladat elfogadja, `limit`, FA-07) állapottal ért véget, és minden
+  ellenőrzése teljesül.
 - A scriptelt backend offline futtatja a teljes utat (`bench agent run --scripted <fájl>`); ezt használják a Python
   tesztek.
 
@@ -152,61 +161,61 @@ trace-eken ellenőrizhető, mielőtt a feladatokba munka kerül.
 
 **Feladatformátum (v2, saját sémaverzióval)**
 
-| ID | Követelmény | Indok |
-|---|---|---|
-| FA-01 | A mock toolok a feladatfájlban vannak megadva (`toolsets`: név, leírás, paraméterséma, válaszszabályok); a feladatok névvel hivatkoznak rájuk. A `read_file` beépített tool marad | Új toolok és feladatok kódváltozás nélkül |
-| FA-02 | Válaszszabályok: az első illeszkedő nyer (argumentumfeltétel: `equals`, `one_of`, `any`); egy szabály hívásszám szerint is válaszolhat (`sequence`, a „pending” és az átmeneti hiba feladathoz); alapértelmezett válasz kötelező. Sablonnyelv nincs | Determinisztikus, átnézhető tool-viselkedés |
-| FA-03 | A tool-argumentumok egy sémarészhalmaz (`type`, `enum`, `required`) szerint ellenőrződnek, új függőség nélkül; a stringként küldött szám `wrong_type`, nem csendes átalakítás | A kis modellek gyakran tévesztik a típust; ez adat, nem zaj |
-| FA-04 | Az `expected_calls` rendezett részsorozat argumentumillesztőkkel: a minimális hívássornak szerepelnie kell, a többlethívás megengedett, csak jelölődik. A `forbidden_tools` a próbálkozást elbuktató hívásokat sorolja fel | A pontos egyezés büntetné a hibából való visszatérést és az ártalmatlan többlethívást (a BFCL v3 ezért tért át a részsorozat-illesztésre) |
-| FA-05 | A helyes válaszhoz szükséges értékek egyedi, kitalálhatatlan tokenek; láncoknál a következő argumentum az előző eredményből jön | Helyes válasz nem jöhet létre a tool-hívások nélkül; a sorrendet az adat kényszeríti ki, nem az ellenőrzés |
-| FA-06 | `answer_not_contains` (tiltólista) a kulcsszavas ellenőrzések mellett | Egy „error” szó állhat kitalált eredmény mellett; a modell számára ismeretlen érték biztos jele a kitalálásnak |
-| FA-07 | A `limit` állapottal záruló próbálkozás bukás, kivéve ha a feladat elfogadja | Különben a körkorlátig ismétlő, majd a harness megjegyzése után válaszoló modell sikeresnek látszik |
-| FA-08 | Minden feladathoz van scriptelt referenciamegoldás, amely átmegy, és legalább egy scriptelt válasz, amely a várt kategóriával bukik | A feladatot és a kategorizálót együtt teszteli |
+| ID | Követelmény | Indok | Állapot |
+|---|---|---|---|
+| FA-01 | A mock toolok a feladatfájlban vannak megadva (`toolsets`: név, leírás, paraméterséma, válaszszabályok); a feladatok névvel hivatkoznak rájuk. A `read_file` beépített tool marad | Új toolok és feladatok kódváltozás nélkül | ✅ |
+| FA-02 | Válaszszabályok: az első illeszkedő nyer (argumentumfeltétel: `equals`, `one_of`, `any`); egy szabály hívásszám szerint is válaszolhat (`sequence`, a „pending” és az átmeneti hiba feladathoz); alapértelmezett válasz kötelező. Sablonnyelv nincs | Determinisztikus, átnézhető tool-viselkedés | ✅ |
+| FA-03 | A tool-argumentumok egy sémarészhalmaz (`type`, `enum`, `required`) szerint ellenőrződnek, új függőség nélkül; a stringként küldött szám `wrong_type`, nem csendes átalakítás | A kis modellek gyakran tévesztik a típust; ez adat, nem zaj | ✅ |
+| FA-04 | Az `expected_calls` rendezett részsorozat argumentumillesztőkkel: a minimális hívássornak szerepelnie kell, a többlethívás megengedett, csak jelölődik. A `forbidden_tools` a próbálkozást elbuktató hívásokat sorolja fel | A pontos egyezés büntetné a hibából való visszatérést és az ártalmatlan többlethívást (a BFCL v3 ezért tért át a részsorozat-illesztésre) | ✅ |
+| FA-05 | A helyes válaszhoz szükséges értékek egyedi, kitalálhatatlan tokenek; láncoknál a következő argumentum az előző eredményből jön | Helyes válasz nem jöhet létre a tool-hívások nélkül; a sorrendet az adat kényszeríti ki, nem az ellenőrzés | ✅ |
+| FA-06 | `answer_not_contains` (tiltólista) a kulcsszavas ellenőrzések mellett | Egy „error” szó állhat kitalált eredmény mellett; a modell számára ismeretlen érték biztos jele a kitalálásnak | ✅ |
+| FA-07 | A `limit` állapottal záruló próbálkozás bukás, kivéve ha a feladat elfogadja | Különben a körkorlátig ismétlő, majd a harness megjegyzése után válaszoló modell sikeresnek látszik | ✅ |
+| FA-08 | Minden feladathoz van scriptelt referenciamegoldás, amely átmegy, és legalább egy scriptelt válasz, amely a várt kategóriával bukik | A feladatot és a kategorizálót együtt teszteli | ✅ |
 
 **Trace és futási metaadatok**
 
-| ID | Követelmény | Indok |
-|---|---|---|
-| FA-10 | A `task_start` rögzíti a futás- és próbálkozásazonosítót, a modellkulcsot, a contexthosszt, a ténylegesen elküldött mintavételi beállításokat, a system promptot, a felkínált tool-sémák hash-ét, a feladatfájl hash-ét és a harness verzióját | Egy trace önmagában is újraértékelhető legyen |
-| FA-11 | A `prediction` rögzíti a kezdetét és a hosszát; a `tool_call` és a `tool_result` saját hívás-sorszámot kap a modell (esetleg hiányzó) hívásazonosítója mellett; a `tool_result` `errorKind` mezőt kap (`not_found`, `outside_sandbox`, `invalid_arguments`, `unknown_tool`, `timeout`, `mock_error`, `cancelled`) | A kategorizáló ne hibaszöveget illesszen; a kör hossza ma nem olvasható ki |
-| FA-12 | Külön sémaverzió a feladatfájlnak és a trace-nek | Más-más időpontban változnak |
-| FA-13 | A harness a context határán megállást kér a LM Studiótól (`contextOverflowPolicy: stopAtLimit`) | A többi beállítás csendben csonkol, ami elrejtené a kontextus-túlcsordulást |
-| FA-14 | Marad a lapos eseménysor, span-fa egyelőre nincs. A fenti mezők miatt a későbbi export OpenTelemetry GenAI spanekbe veszteségmentes (próbálkozás → `invoke_agent`, predikció → `chat`, tool-hívás és eredmény → `execute_tool`, `errorKind` → `error.type`) | Egy ügynök és három szint mellett a span-fa nem ad semmit; a span lezáráskor íródik, így megszakított futásnál elveszne; a konvenció még fejlesztés alatt áll |
+| ID | Követelmény | Indok | Állapot |
+|---|---|---|---|
+| FA-10 | A `task_start` rögzíti a futás- és próbálkozásazonosítót, a modellkulcsot, a contexthosszt, a ténylegesen elküldött mintavételi beállításokat, a system promptot, a felkínált tool-sémák hash-ét, a feladatfájl hash-ét és a harness verzióját | Egy trace önmagában is újraértékelhető legyen | ✅ |
+| FA-11 | A `prediction` rögzíti a kezdetét és a hosszát; a `tool_call` és a `tool_result` saját hívás-sorszámot kap a modell (esetleg hiányzó) hívásazonosítója mellett; a `tool_result` `errorKind` mezőt kap (`not_found`, `outside_sandbox`, `invalid_arguments`, `unknown_tool`, `timeout`, `mock_error`, `cancelled`) | A kategorizáló ne hibaszöveget illesszen; a kör hossza az 5a lépés előtt nem volt kiolvasható | ✅ |
+| FA-12 | Külön sémaverzió a feladatfájlnak és a trace-nek | Más-más időpontban változnak | ✅ |
+| FA-13 | A harness a context határán megállást kér a LM Studiótól (`contextOverflowPolicy: stopAtLimit`) | A többi beállítás csendben csonkol, ami elrejtené a kontextus-túlcsordulást | 🧪 valódi túlcsordulás élőben nem fordult elő |
+| FA-14 | Marad a lapos eseménysor, span-fa egyelőre nincs. A fenti mezők miatt a későbbi export OpenTelemetry GenAI spanekbe veszteségmentes (próbálkozás → `invoke_agent`, predikció → `chat`, tool-hívás és eredmény → `execute_tool`, `errorKind` → `error.type`) | Egy ügynök és három szint mellett a span-fa nem ad semmit; a span lezáráskor íródik, így megszakított futásnál elveszne; a konvenció még fejlesztés alatt áll | — tervezési döntés |
 
 **Mintavétel**
 
-| ID | Követelmény | Indok |
-|---|---|---|
-| FA-20 | Modellcsaládonként mintavételi profil (temperature, top_p, top_k, min_p, repeat penalty, forrás-URL) egy konfigurációs fájlban, tartalék temperature 0,7; a `--temperature` felülírja; a harness minden értéket explicit küld | Ma csak a temperature megy át, a többi a LM Studio alapértéke, így az eredmény nem reprodukálható. A modellkártyák eltérnek (a Qwen3 ellenzi a greedy dekódolást) |
-| FA-21 | A feladatkészlet megírása előtt élő próba: egy feladat, öt próbálkozás 0-nál nagyobb temperature-rel; eltérnek-e a kimenetek? | A seed load-paraméter; ha az ismétlések azonosak lennének, az ismétlés semmit nem mérne |
+| ID | Követelmény | Indok | Állapot |
+|---|---|---|---|
+| FA-20 | Modellcsaládonként mintavételi profil (temperature, top_p, top_k, min_p, repeat penalty, forrás-URL) egy konfigurációs fájlban, tartalék temperature 0,7; a `--temperature` felülírja; a harness minden értéket explicit küld | Az 5a lépés előtt csak a temperature ment át, a többi a LM Studio alapértéke volt, így az eredmény nem volt reprodukálható. A modellkártyák eltérnek (a Qwen3 ellenzi a greedy dekódolást) | ✅ |
+| FA-21 | A feladatkészlet megírása előtt élő próba: egy feladat, öt próbálkozás 0-nál nagyobb temperature-rel; eltérnek-e a kimenetek? | A seed load-paraméter; ha az ismétlések azonosak lennének, az ismétlés semmit nem mérne | ✅ |
 
 **Kategóriák és prioritás**
 
-| ID | Követelmény | Indok |
-|---|---|---|
-| FA-30 | Kevés felső szintű kategória, a részletek alkódként (lista a [hibataxonómiában](failure_taxonomy.hu.md)); minden sikertelen próbálkozás pontosan egy elsődleges kategóriát kap, a további találatok mellékesek | Modellenként 100–200 próbálkozás túl vékonyan oszlana el sok kategória között |
-| FA-31 | Három szint: szerkezeti (rögzített sorrend), viselkedési (az a detektor nyer, amelynek első bizonyítéka a legkorábban van a trace-ben), kimeneti (rögzített sorrend, csak ha nincs viselkedési találat) | A rögzített globális sorrend téved a következmény-láncoknál (rossz argumentum → tool-hiba → ismétlés → körkorlát); az ok az időrendből látszik |
-| FA-32 | Minden találathoz bizonyíték tartozik: trace-fájl, esemény-sorszám, szabálynév | Ettől lesz a riport diagnosztika |
-| FA-33 | A szöveges tool-hívás (a válaszban szövegként leírt hívás, amely egy felkínált tool nevét hívásformában tartalmazza) `format_invalid/text_tool_call`, nem „nem hívott toolt” | Élőben megfigyelve: egy ilyen válaszhoz egyáltalán nincs tool-hívás esemény |
-| FA-34 | `unclassified` azokra a bukásokra, amelyeket egy szabály sem magyaráz; az aránya a taxonómia lefedettségét méri | Nélküle az utolsó kategória gyűjtővé válik |
-| FA-35 | A bukások csendes (a felhasználó nem veheti észre: rossz eredmény, kitalált érték, elhallgatott korlát) és hangos osztályba is sorolódnak | A riport vezető száma; a funkcionális biztonság nem detektált hibájának felel meg |
-| FA-36 | Mellékjelzők a sikeres próbálkozásokon is: `recovered_error`, `redundant_calls`, `parallel_calls`, `reasoning_leak`, `sandbox_escape_attempt` | A helyreállás a 19. feladat kiindulási adata; a gondolatmenet-szivárgás hamis sikert okozhat |
-| FA-37 | A heurisztikus szabályok jelölve vannak; egy kb. 50 sikertelen próbálkozásos kézi átnézéssel mért egyezésük publikus | A kulcsszavas szabályoknak vannak hamis pozitív és negatív találatai |
-| FA-38 | A kategóriák egy gépileg olvasható forrásban vannak (azonosító, szint, csendes vagy hangos, megbízhatóság); teszt ellenőrzi, hogy minden azonosító szerepel az angol és a magyar taxonómia-dokumentumban | A kód és a dokumentumok összhangban maradnak |
-| FA-39 | Ha egy modell szinte minden bukása `format_invalid`, a riport kimondja, hogy a többi képessége nem volt mérhető | A nullák félrevezetők lennének |
+| ID | Követelmény | Indok | Állapot |
+|---|---|---|---|
+| FA-30 | Kevés felső szintű kategória, a részletek alkódként (lista a [hibataxonómiában](failure_taxonomy.hu.md)); minden sikertelen próbálkozás pontosan egy elsődleges kategóriát kap, a további találatok mellékesek | Modellenként 100–200 próbálkozás túl vékonyan oszlana el sok kategória között | ✅ |
+| FA-31 | Három szint: szerkezeti (rögzített sorrend), viselkedési (az a detektor nyer, amelynek első bizonyítéka a legkorábban van a trace-ben), kimeneti (rögzített sorrend, csak ha nincs viselkedési találat) | A rögzített globális sorrend téved a következmény-láncoknál (rossz argumentum → tool-hiba → ismétlés → körkorlát); az ok az időrendből látszik | ✅ |
+| FA-32 | Minden találathoz bizonyíték tartozik: trace-fájl, esemény-sorszám, szabálynév | Ettől lesz a riport diagnosztika | ✅ |
+| FA-33 | A szöveges tool-hívás (a válaszban szövegként leírt hívás, amely egy felkínált tool nevét hívásformában tartalmazza) `format_invalid/text_tool_call`, nem „nem hívott toolt” | Élőben megfigyelve: egy ilyen válaszhoz egyáltalán nincs tool-hívás esemény | ✅ |
+| FA-34 | `unclassified` azokra a bukásokra, amelyeket egy szabály sem magyaráz; az aránya a taxonómia lefedettségét méri | Nélküle az utolsó kategória gyűjtővé válik | ✅ |
+| FA-35 | A bukások csendes (a felhasználó nem veheti észre: rossz eredmény, kitalált érték, elhallgatott korlát) és hangos osztályba is sorolódnak | A riport vezető száma; a funkcionális biztonság nem detektált hibájának felel meg | ✅ |
+| FA-36 | Mellékjelzők a sikeres próbálkozásokon is: `recovered_error`, `redundant_calls`, `parallel_calls`, `reasoning_leak`, `sandbox_escape_attempt` | A helyreállás a 19. feladat kiindulási adata; a gondolatmenet-szivárgás hamis sikert okozhat | 🧪 a `reasoning_leak` és a `sandbox_escape_attempt` élőben nem jelzett |
+| FA-37 | A heurisztikus szabályok jelölve vannak; egy kb. 50 sikertelen próbálkozásos kézi átnézéssel mért egyezésük publikus | A kulcsszavas szabályoknak vannak hamis pozitív és negatív találatai | 🟡 az átnézés kész; egyezési arány nincs publikálva |
+| FA-38 | A kategóriák egy gépileg olvasható forrásban vannak (azonosító, szint, csendes vagy hangos, megbízhatóság); teszt ellenőrzi, hogy minden azonosító szerepel az angol és a magyar taxonómia-dokumentumban | A kód és a dokumentumok összhangban maradnak | ✅ |
+| FA-39 | Ha egy modell szinte minden bukása `format_invalid`, a riport kimondja, hogy a többi képessége nem volt mérhető | A nullák félrevezetők lennének | ✅ |
 
 **Futások és riport (5b)**
 
-| ID | Követelmény | Indok |
-|---|---|---|
-| FA-40 | A `bench agent run --models a,b,c` egymás után futtatja a modelleket; egy modell hibája rögzül, és a következő fut | Egy összehasonlító tábla |
-| FA-41 | Ha a harness eredménysor nélkül ér véget, a core a trace-ekből építi fel a próbálkozásokat | Ma egy leállított harness minden eredményt elveszít |
-| FA-42 | A futás időkorlátja a feladatokból, az ismétlésekből és a próbálkozási korlátból számolódik; a feladatfájl a futás mappájába másolódik; az eredménysorok a taxonómia verzióját is tartalmazzák | Lassú modellek; későbbi újraértékelés |
-| FA-43 | A `bench agent report` a trace-ekből újraszámolja a kategóriákat, és Markdownt és JSON-t ír: modellenként és feladatonként sikerarány Wilson-intervallummal, kategóriák, medián kör és idő, pass^k, a csendes bukások aránya; emellett modell × kategória mátrix és az elsődleges → másodlagos kategóriapárok darabszáma, szövegesen | Kis mintához intervallum kell; a pass^k egy számban mutatja a megbízhatóságot |
-| FA-44 | Leghosszabb megbízható lánc: lánchosszonként két feladat, mindegyik tíz próbálkozással; egy hossz akkor számít, ha a 20 próbálkozásból legalább 16 sikeres, és minden rövidebb hossz is számít | Egy feladat × 5 zajos és nem monoton (a ≥4/5 egy 60%-os modellt kb. minden harmadik esetben átenged) |
-| FA-45 | Alapból öt ismétlés, publikált táblázathoz tíz | Az 5/5 Wilson-intervalluma 0,57–1,00 |
-| FA-46 | Az ellenintézkedések „lehetséges ellenintézkedés (nem mért)” jelöléssel jelennek meg, amíg a 19. feladat nem méri őket | Mérés nélkül nincs állítás |
-| FA-47 | A `bench agent show <run> <feladat-próbálkozás>` sorszámmal kiírja egy próbálkozás lépéseit (predikciók, tool-hívások argumentumokkal, eredmények hibafajtával, korlátok), és megjelöli a kategóriája bizonyíték-eseményét | A FA-37 kézi átnézéséhez olvasható trace-nézet kell; ugyanez az adat táplálja később a grafikus lépésnézetet |
+| ID | Követelmény | Indok | Állapot |
+|---|---|---|---|
+| FA-40 | A `bench agent run --models a,b,c` egymás után futtatja a modelleket; egy modell hibája rögzül, és a következő fut | Egy összehasonlító tábla | 🧪 egy hibázó modell csak offline |
+| FA-41 | Ha a harness eredménysor nélkül ér véget, a core a trace-ekből építi fel a próbálkozásokat | Az 5a lépés előtt egy leállított harness minden eredményt elveszített | 🧪 felépítés leállított harness után csak offline |
+| FA-42 | A futás időkorlátja a feladatokból, az ismétlésekből és a próbálkozási korlátból számolódik; a feladatfájl a futás mappájába másolódik; az eredménysorok a taxonómia verzióját is tartalmazzák | Lassú modellek; későbbi újraértékelés | ✅ |
+| FA-43 | A `bench agent report` a trace-ekből újraszámolja a kategóriákat, és Markdownt és JSON-t ír: modellenként és feladatonként sikerarány Wilson-intervallummal, kategóriák, medián kör és idő, pass^k, a csendes bukások aránya; emellett modell × kategória mátrix és az elsődleges → másodlagos kategóriapárok darabszáma, szövegesen | Kis mintához intervallum kell; a pass^k egy számban mutatja a megbízhatóságot | ✅ |
+| FA-44 | Leghosszabb megbízható lánc: lánchosszonként két feladat, mindegyik tíz próbálkozással; egy hossz akkor számít, ha a 20 próbálkozásból legalább 16 sikeres, és minden rövidebb hossz is számít | Egy feladat × 5 zajos és nem monoton (a ≥4/5 egy 60%-os modellt kb. minden harmadik esetben átenged) | ✅ |
+| FA-45 | Alapból öt ismétlés, publikált táblázathoz tíz | Az 5/5 Wilson-intervalluma 0,57–1,00 | ✅ |
+| FA-46 | Az ellenintézkedések „lehetséges ellenintézkedés (nem mért)” jelöléssel jelennek meg, amíg a 19. feladat nem méri őket | Mérés nélkül nincs állítás | ✅ |
+| FA-47 | A `bench agent show <run> <feladat-próbálkozás>` sorszámmal kiírja egy próbálkozás lépéseit (predikciók, tool-hívások argumentumokkal, eredmények hibafajtával, korlátok), és megjelöli a kategóriája bizonyíték-eseményét | A FA-37 kézi átnézéséhez olvasható trace-nézet kell; ugyanez az adat táplálja később a grafikus lépésnézetet | ✅ |
 
 **Az 5a állapota (2026-11-26).** Megvalósítva, offline tesztekkel lefedve: FA-01–FA-07, FA-10–FA-14, FA-20,
 FA-30–FA-36, FA-38, FA-41 (felépítés a trace-ekből) és a FA-42-ből a feladatfájl másolata a futás mappájába; az
@@ -221,9 +230,8 @@ Az 5b-re nyitott: FA-08 (a feladatkészlettel), FA-37, FA-39, FA-40, a FA-42 sz�
 **Az 5b állapota (2026-11-27).** Megvalósítva, offline tesztekkel lefedve: a 20 feladatos `tasks/m1.json` készlet,
 feladatonként egy átmenő referenciamegoldással és egy hibás válasszal, amely a várt kategóriát kapja (FA-08,
 `tests/m1_reference.json`, `tests/m1_failures.json`), FA-39, FA-40, a FA-42 számolt időkorlátja, FA-43, FA-44,
-FA-46 és FA-47 (`bench agent run --models`, `bench agent report`, `bench agent show`). Nyitott: az élő futások, a
-FA-37 szerinti kézi átnézés a bukásaikon, és a tíz ismétléses publikált tábla (FA-45). A tulajdonos az első élő
-futás előtt átnézi a feladatkészletet.
+FA-46 és FA-47 (`bench agent run --models`, `bench agent report`, `bench agent show`). Az élő futások, a kézi
+átnézés és a publikált tábla 2026-11-27-én következett (lent); az eredményt az Állapot oszlop mutatja.
 
 **Az M1 készlet első élő futása (2026-11-27)**, négy modell, öt ismétlés, 400 próbálkozás, mind lefutott. A kb. 40
 bukás kézi átnézése (FA-37, részleges: a toolt hívó három modell minden bukása, és a hívásokat szövegként író
@@ -329,7 +337,7 @@ tesztelés korrekcióját. A blogbejegyzés nem linkeli a vizsgálat promptjait,
 
 ## 5. Speculative decoding
 
-24. feladat. Állapot: nem próbált; mérés még nem történt.
+24. feladat. A 0. fázis (próba) 2026-11-26-án kész; az 1. fázis nyitott (a feladat státusza a roadmapben).
 
 **Cél.** A speculative decoding önálló optimalizálási dimenzió: modellenként és feladattípusonként mérjük a gyorsulást
 és az erőforrásárat ugyanazon konfiguráció kikapcsolt spekulációs változatához képest, majd beállítást ajánlunk, amely
@@ -337,18 +345,18 @@ lehet a "kikapcsolva" is.
 
 ### Mit tudunk a telepített verzióról
 
-A `@lmstudio/sdk` 2.1.0 típusdefinícióiból és korábbi megfigyelésekből; spekulatív load futtatásával semmit nem
-igazoltunk.
+A `@lmstudio/sdk` 2.1.0 típusdefinícióiból és korábbi megfigyelésekből, a 0. fázis előtt írva; az alábbi 0. fázisú
+eredmények igazolják vagy helyesbítik.
 
 - Load config (experimental jelöléssel): `speculativeDraftMtp` (beépített multi-token prediction fejek),
   `speculativeDraftSimple` a `speculativeDraftModel` mezővel (külön draft modell), `speculativeDraftMaxTokens`,
   `speculativeDraftMinTokens`, `speculativeDraftMinContinueProbability`. A sweep futtató az első kettőt `false`
   értékkel küldi, és ezek megjelennek a load után visszaolvasott konfigurációban.
-- Az SDK-n át kért predikció elfogadja a `draftModel` mezőt, és közli a `usedDraftModelKey`, `totalDraftTokensCount`,
+- Az SDK-n át kért predikció elfogadja a `draftModel` mezőt (a 0. fázisban az engine elutasította), és közli a `usedDraftModelKey`, `totalDraftTokensCount`,
   `acceptedDraftTokensCount`, `rejectedDraftTokensCount` és `ignoredDraftTokensCount` értékeket.
 - Az `lms load` listáz `--speculative-draft-*` kapcsolókat, és a REST load hívás elfogad speculative mezőket
   ([load paraméterek](lmstudio_load_parameters.hu.md)).
-- Nem ismert, hogy a méréshez használt REST chat végpont visszaad-e draft számlálókat.
+- A méréshez használt REST chat végpont visszaadja a draft számlálókat (a 0. fázisban igazolva).
 - Dokumentáció: [LM Studio](https://lmstudio.ai/docs/app/advanced/speculative-decoding),
   [llama.cpp](https://github.com/ggml-org/llama.cpp/blob/master/docs/speculative.md). Az upstream llama.cpp több
   módszert kínál, mint amennyiről tudjuk, hogy LM Studión át elérhető.
@@ -373,7 +381,7 @@ modellkártyáját előbb elolvassuk a használati megjegyzések miatt.
 
 | Lépés | Tartalom | GPU |
 |---|---|---|
-| P0 | Próbascript, típusellenőrzés, a LM Studio config mappájának hash-e. Kész: `harness/spec-probe.ts` offline tesztekkel és `--dry-run` móddal; valódi típusellenőrzéshez TypeScript fordító kell, nincs telepítve | nem |
+| P0 | Próbascript, típusellenőrzés, a LM Studio config mappájának hash-e. Kész: `harness/spec-probe.ts` offline tesztekkel és `--dry-run` móddal; a TypeScript fordító később települt, a típusellenőrzés átmegy | nem |
 | P1 | Baseline kikapcsolt spekulációval: VRAM, decode-sebesség (bemelegítő és 3 futás), kódgeneráló és szintetikus prompttal | igen |
 | P2 | Draft modell a loadnál: az alkalmazott konfiguráció visszaolvasása, VRAM-többlet, külön betöltött modellként látszik-e a draft, draft számlálók, sebesség | igen |
 | P3 | Draft modell predikciónként (`draftModel`) baseline loadon: statisztika és sebesség | igen |
@@ -424,23 +432,23 @@ maximális draft token végigmérése (a modellkártyák 2–6-ot javasolnak), k
 
 ### Követelmények
 
-A "Ma" oszlop a jelenlegi sweep futtatót írja le.
+A megjegyzés a jelenlegi sweep futtatót írja le.
 
-| ID | Követelmény | Ma |
-|---|---|---|
-| SD-01 | Képességfelderítés modellenként: van-e MTP, mely draft modellek kompatibilisek, runtime verzió. A nem támogatott kombináció indokolt "skipped" eredmény, nem hiba | hiányzik |
-| SD-02 | Minden spekulatív konfiguráció egy "kikapcsolt" méréshez kapcsolódik azonos modellel, kvantálással, contexttel, offloaddal és mintavétellel; a sorrend váltakozik | részben: van baseline konfiguráció, kapcsolat nélkül; rögzített sorrend |
-| SD-03 | Konfigurációs tér a rácsból: módszer, draft modell és kvantálása, maximális és minimális draft token, valószínűségi küszöb, draft offload. A maximális draft token előbb durván (1, 3, 6), majd a legjobb körül finomítva | részben: a rács bővíthető, a loader mindig kikapcsolja a spekulációt |
-| SD-04 | Metrikák: decode-sebesség, első token ideje, teljes idő, VRAM- és RAM-csúcs, betöltési idő, draft számlálók, gyorsulás a baseline-hoz. A hiányzó érték "n/a", soha nem becslés | részben: nincs draft számláló, generálásonkénti teljes idő, RAM és gyorsulás |
-| SD-05 | Két külön mező: elfogadási arány (elfogadott / generált draft token) és draft-hányad (elfogadott draft token / kimeneti token) | hiányzik |
-| SD-06 | Terhelésprofilok, profilonkénti eredménnyel: kódgenerálás, meglévő szöveg vagy kód szerkesztése, matek és reasoning, folyószöveg, agent- és JSON-kimenet, hosszú context. A mostani ismétlődő szintetikus prompt valószínűleg túlbecsülné az elfogadást | hiányzik |
-| SD-07 | Warm-up, legalább 3 ismétlés, medián és szórás; sebességhez temperature 0 és rögzített seed, plusz egy futás éles mintavétellel; naplózva az alkalmazás és a runtime verziója, a modellfájl hashe, a load konfiguráció | részben: nincs éles mintavételű futás és fájlhash; az alkalmazás verziója rögzül |
-| SD-08 | Igazolt, hogy a kért mód aktív (draft számlálók, log), a baseline-nál pedig hogy inaktív; különben a mérés érvénytelen | részben: az alkalmazott load konfigurációt összevetjük, az aktivitást nem |
-| SD-09 | Minőségőr: greedy mintavétellel a kimenet összevetése a baseline-nal, az első eltérés riportálva (az eltérés önmagában nem hiba) | hiányzik: a kimeneteket nem tároljuk |
-| SD-10 | Alapmérés egy párhuzamos predikcióval; magasabb concurrency külön dimenzió; vision modelleknél a kompatibilitás külön ellenőrizve | részben: csak egy párhuzamos predikció |
-| SD-11 | Betöltési hiba, memóriahiány vagy timeout eredményként rögzül, és a sweep megy tovább | részben: így van, de két egymást követő timeout megszakítja a futást |
-| SD-12 | Ajánlás modellenként és profilonként gyorsulással és memóriaárral; "kikapcsolva", ha a nyereség az állítható küszöb alatt van (induló érték: 1,10x) | részben: a kiértékelés ajánl, küszöb nélkül |
-| SD-13 | A backendtől független eredményformátum (backend és runtime mező) | hiányzik |
+| ID | Követelmény | Állapot | Megjegyzés (sweep futtató) |
+|---|---|---|---|
+| SD-01 | Képességfelderítés modellenként: van-e MTP, mely draft modellek kompatibilisek, runtime verzió. A nem támogatott kombináció indokolt "skipped" eredmény, nem hiba | ⚪ | hiányzik |
+| SD-02 | Minden spekulatív konfiguráció egy "kikapcsolt" méréshez kapcsolódik azonos modellel, kvantálással, contexttel, offloaddal és mintavétellel; a sorrend váltakozik | 🟡 | részben: van baseline konfiguráció, kapcsolat nélkül; rögzített sorrend |
+| SD-03 | Konfigurációs tér a rácsból: módszer, draft modell és kvantálása, maximális és minimális draft token, valószínűségi küszöb, draft offload. A maximális draft token előbb durván (1, 3, 6), majd a legjobb körül finomítva | 🟡 | részben: a rács bővíthető, a loader mindig kikapcsolja a spekulációt |
+| SD-04 | Metrikák: decode-sebesség, első token ideje, teljes idő, VRAM- és RAM-csúcs, betöltési idő, draft számlálók, gyorsulás a baseline-hoz. A hiányzó érték "n/a", soha nem becslés | 🟡 | részben: nincs draft számláló, generálásonkénti teljes idő, RAM és gyorsulás |
+| SD-05 | Két külön mező: elfogadási arány (elfogadott / generált draft token) és draft-hányad (elfogadott draft token / kimeneti token) | ⚪ | hiányzik |
+| SD-06 | Terhelésprofilok, profilonkénti eredménnyel: kódgenerálás, meglévő szöveg vagy kód szerkesztése, matek és reasoning, folyószöveg, agent- és JSON-kimenet, hosszú context. A mostani ismétlődő szintetikus prompt valószínűleg túlbecsülné az elfogadást | ⚪ | hiányzik |
+| SD-07 | Warm-up, legalább 3 ismétlés, medián és szórás; sebességhez temperature 0 és rögzített seed, plusz egy futás éles mintavétellel; naplózva az alkalmazás és a runtime verziója, a modellfájl hashe, a load konfiguráció | 🟡 | részben: nincs éles mintavételű futás és fájlhash; az alkalmazás verziója rögzül |
+| SD-08 | Igazolt, hogy a kért mód aktív (draft számlálók, log), a baseline-nál pedig hogy inaktív; különben a mérés érvénytelen | 🟡 | részben: az alkalmazott load konfigurációt összevetjük, az aktivitást nem |
+| SD-09 | Minőségőr: greedy mintavétellel a kimenet összevetése a baseline-nal, az első eltérés riportálva (az eltérés önmagában nem hiba) | ⚪ | hiányzik: a kimeneteket nem tároljuk |
+| SD-10 | Alapmérés egy párhuzamos predikcióval; magasabb concurrency külön dimenzió; vision modelleknél a kompatibilitás külön ellenőrizve | 🟡 | részben: csak egy párhuzamos predikció |
+| SD-11 | Betöltési hiba, memóriahiány vagy timeout eredményként rögzül, és a sweep megy tovább | 🟡 | részben: így van, de két egymást követő timeout megszakítja a futást |
+| SD-12 | Ajánlás modellenként és profilonként gyorsulással és memóriaárral; "kikapcsolva", ha a nyereség az állítható küszöb alatt van (induló érték: 1,10x) | 🟡 | részben: a kiértékelés ajánl, küszöb nélkül |
+| SD-13 | A backendtől független eredményformátum (backend és runtime mező) | ⚪ | hiányzik |
 
 A terhelésprofilok a rögzített feladatkészlettől (20. feladat) függnek. A fejlesztői gép 8 GB-os GPU-ja kevés helyet
 hagy egy draft modellnek; először a tartalékkal beférő modellek jönnek.
@@ -450,14 +458,14 @@ hagy egy draft modellnek; először a tartalékkal beférő modellek jönnek.
 Rögzítve 2026-11-27-én, a minőségcsomagok tervezése előtt. Egy riport csak a lefuttatott feladatkészletre tehet
 állítást („ezen a készleten A többet teljesített”), egy egész területre nem.
 
-| Azonosító | Követelmény | Indok | Ellenőrzés |
-|---|---|---|---|
-| TS-01 | Minden feladatfájlnak leírót kell tartalmaznia a következő mezőkkel: azonosító, verzió, cél, amit a készlet nem mér, szükséges toolok, szükséges modellképességek, ellenőrzés módja (determinisztikus vagy bíró), feladatok száma, becsült idő próbálkozásonként | Az állítások köre és a futásidő futás előtt ismert kell legyen; a képesség szerinti szűréshez (5. feladat) kellenek a képességek | teszt |
-| TS-02 | Ha egy feladatfájl leírója hiányos, a core-nak el kell utasítania, a hiányzó mezők nevével | A kimondott hatókör nélküli készlet olyan állításokra csábít, amelyeket nem támaszt alá | teszt |
-| TS-03 | A riportban minden sikerarány mellett szerepelnie kell a feladatkészlet azonosítójának és verziójának | Különböző készletek vagy verziók eredményei nem összehasonlíthatók | teszt |
-| TS-04 | Ha több feladatkészlet eredményét egy pontszámmá vonjuk össze, a core-nak fájlból olvasott súlyokat kell használnia; ilyen súlyok nélkül a riport nem mutathat összevont pontszámot | A kimondatlan egyenlő súlyozás elrejt egy döntést | teszt |
-| TS-05 | A riportnak fel kell sorolnia azokat a feladatokat, amelyeket minden mért modell minden próbálkozásban teljesített | Az ilyen feladatok nem választják szét a modelleket, cserére jelöltek | teszt |
-| TS-06 | Ha a felhasználó egy vagy több felhasználási célt megad, a CLI-nek azokat a feladatkészleteket kell kiválasztania, amelyek leírója ezek közül legalább egyet felsorol | A felhasználó cél szerint választ, nem fájlnév szerint | teszt |
+| Azonosító | Követelmény | Indok | Ellenőrzés | Állapot |
+|---|---|---|---|---|
+| TS-01 | Minden feladatfájlnak leírót kell tartalmaznia a következő mezőkkel: azonosító, verzió, cél, amit a készlet nem mér, szükséges toolok, szükséges modellképességek, ellenőrzés módja (determinisztikus vagy bíró), feladatok száma, becsült idő próbálkozásonként | Az állítások köre és a futásidő futás előtt ismert kell legyen; a képesség szerinti szűréshez (5. feladat) kellenek a képességek | teszt | ⚪ |
+| TS-02 | Ha egy feladatfájl leírója hiányos, a core-nak el kell utasítania, a hiányzó mezők nevével | A kimondott hatókör nélküli készlet olyan állításokra csábít, amelyeket nem támaszt alá | teszt | ⚪ |
+| TS-03 | A riportban minden sikerarány mellett szerepelnie kell a feladatkészlet azonosítójának és verziójának | Különböző készletek vagy verziók eredményei nem összehasonlíthatók | teszt | ⚪ |
+| TS-04 | Ha több feladatkészlet eredményét egy pontszámmá vonjuk össze, a core-nak fájlból olvasott súlyokat kell használnia; ilyen súlyok nélkül a riport nem mutathat összevont pontszámot | A kimondatlan egyenlő súlyozás elrejt egy döntést | teszt | ⚪ |
+| TS-05 | A riportnak fel kell sorolnia azokat a feladatokat, amelyeket minden mért modell minden próbálkozásban teljesített | Az ilyen feladatok nem választják szét a modelleket, cserére jelöltek | teszt | ⚪ |
+| TS-06 | Ha a felhasználó egy vagy több felhasználási célt megad, a CLI-nek azokat a feladatkészleteket kell kiválasztania, amelyek leírója ezek közül legalább egyet felsorol | A felhasználó cél szerint választ, nem fájlnév szerint | teszt | ⚪ |
 
 Nyitott: a 3D-tervezési és a kiberbiztonsági készletekhez saját toolok, sandbox és ellenőrzők kellenek (pl.
 mesh-érvényesség, izolált célkörnyezet); a shell sandbox döntése még nyitott (3. pont).
