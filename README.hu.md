@@ -29,15 +29,17 @@ Már elérhető:
   automatikus várakozás, amíg a GPU foglalt.
 - **Kiértékelés.** A lefutott sweep konfigurációit becsült válaszidő szerint rangsorolja, modellenként és
   contexthosszanként beállítást ajánl, és figyelmeztet az instabil vagy memóriahiányos eredményekre.
-- **Agent-feladatok futtatása.** Egy feladatkészletet futtat egy modellen a harnessen át: toolok eldobható sandboxban,
-  kör- és időkorlátok, minden lépésről trace. Minden próbálkozást a feladat pass/fail szabályai szerint ellenőriz,
-  például hogy a megfelelő toolt hívta-e, és hogy a válasz tartalmazza-e a várt adatokat.
+- **Agent-feladatok futtatása.** Egy feladatkészletet futtat egy vagy több modellen a harnessen át: mock toolok
+  eldobható sandboxban, kör- és időkorlátok, minden lépésről trace. Minden próbálkozást a feladat pass/fail szabályai
+  szerint ellenőriz, például hogy a megfelelő toolokat hívta-e a helyes sorrendben, és hogy a válasz tartalmazza-e a
+  várt adatokat. A sikertelen próbálkozás hibakategóriát kap a trace-ből vett bizonyítékkal; a riport modellenként
+  intervallummal mutatja a sikerarányt.
 - **Próbák (haladó).** Kis scriptek, amelyek kiderítik, mit tud valójában a telepített LM Studio, például a
   speculative decodingot (draft modellek, MTP) vagy a tool-hívásokat az SDK-n át.
 
-Tervben ([roadmap](docs/roadmap.hu.md)): minőségi
-tesztcsomagok (kódolás, magyar nyelv, képfelismerés, tool-használat), speculative decoding mint sweep-dimenzió és
-webes dashboard.
+Tervben ([roadmap](docs/roadmap.hu.md)): minőségi tesztcsomagok (kódolás, magyar nyelv, képfelismerés), további
+agent-toolok (keresés, git, shell), a modellek statisztikai összehasonlítása, speculative decoding mint
+sweep-dimenzió és webes dashboard.
 
 ## Követelmények
 
@@ -125,13 +127,17 @@ Viselkedés:
 | `.\bench agent report` | A legutóbbi futás riportja: sikerarány intervallummal, hibakategóriák, leghosszabb megbízható lánc (offline) |
 | `.\bench agent show <run> chain-3a-2` | Egy próbálkozás lépései, kijelölve a kategóriáról döntő trace-eseményt (offline) |
 
-A feladatfájl feladatonként megadja a promptot, a modell által használható toolokat (`read_file`, `mock_lookup`), egy
-opcionális mappát, amelynek fájljai a feladat sandboxába másolódnak, a mock tool válaszait (azonosítónként eredmény,
-hiba vagy késleltetés) és az ellenőrzéseket, például:
+A feladatfájl deklarálja a mock toolokat (`toolsets`: leírás, paraméterek, és szabályok, amelyek az argumentumoktól
+függően eredményt, hibát vagy késleltetést adnak), és feladatonként megadja a promptot, a felkínált toolokat (a
+`read_file` beépített), egy opcionális mappát, amelynek fájljai a feladat sandboxába másolódnak, a várt hívásokat
+és a válasz ellenőrzéseit, például (`tasks\examples.json`; a formátum leírása a
+[követelményekben](docs/requirements.hu.md), 3. pont):
 
 ```json
 { "id": "file-marker", "prompt": "What is the marker written in the file notes.txt?", "fixtures": "notes",
-  "tools": ["read_file", "mock_lookup"], "checks": { "tool_called": "read_file", "answer_contains": ["BLUE-HERON-17"] } }
+  "tools": ["read_file", "mock_lookup"],
+  "expected_calls": [{ "name": "read_file", "arguments": { "path": { "equals": "notes.txt" } } }],
+  "checks": { "answer_contains": ["BLUE-HERON-17"] } }
 ```
 
 Viselkedés:
@@ -157,7 +163,8 @@ Viselkedés:
 mindegyik tíz próbálkozással, 2026-11-27-én, LM Studio 1.2.0-val, egy RTX 2070-en (8 GB), 8192-es contexttel,
 mintavétel a modellkártyák szerint. Sikerarány 95%-os Wilson-intervallummal; a pass^10 annak becsült esélye, hogy egy
 feladat mind a tíz próbálkozásban sikerül, a feladatokra átlagolva; egy lánchossz 80%-tól számít megbízhatónak. A
-teljes riport: `bench agent report`.
+futás megismétlése: `.\bench agent run --models <kulcsok> --tasks tasks\m1.json --repeats 10`, utána
+`.\bench agent report --k 10`.
 
 | Modell | Sikeres | Arány (95% CI) | pass^10 | Csendes bukás | Leghosszabb megbízható lánc |
 |---|---|---|---|---|---|

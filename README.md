@@ -28,14 +28,16 @@ Available now:
   VRAM, and survives interruptions: pause, stop, resume (also after a reboot), automatic waiting while the GPU is busy.
 - **Evaluation.** Ranks the configurations of a finished sweep by estimated response time and recommends a setting per
   model and context length, with warnings for unstable or memory-starved results.
-- **Agent task runs.** Runs a set of tasks on one model through the harness, with tools in a throwaway sandbox,
-  limits for rounds and time, and a trace of every step. Each attempt is checked against the task's pass/fail rules,
-  for example whether the right tool was called and whether the answer contains the expected facts.
+- **Agent task runs.** Runs a set of tasks on one or more models through the harness, with mock tools in a throwaway
+  sandbox, limits for rounds and time, and a trace of every step. Each attempt is checked against the task's
+  pass/fail rules, for example whether the right tools were called in order and whether the answer contains the
+  expected facts. A failed attempt gets a failure category with evidence from the trace; the report shows pass rates
+  with intervals per model.
 - **Probes (advanced).** Small scripts that check what the installed LM Studio really supports, for example
   speculative decoding (draft models, MTP) or tool calls through the SDK.
 
-Planned ([roadmap](docs/roadmap.md)): quality test suites
-(coding, Hungarian, vision, tool use), speculative decoding as a sweep dimension and a web dashboard.
+Planned ([roadmap](docs/roadmap.md)): quality test suites (coding, Hungarian, vision), more agent tools (search,
+git, shell), statistical comparison of models, speculative decoding as a sweep dimension and a web dashboard.
 
 ## Requirements
 
@@ -120,13 +122,16 @@ Behaviour:
 | `.\bench agent report` | Report of the latest run: pass rates with intervals, failure categories, longest reliable chain (offline) |
 | `.\bench agent show <run> chain-3a-2` | The steps of one attempt, with the trace event that decided its category marked (offline) |
 
-A task file lists tasks with a prompt, the tools the model may use (`read_file`, `mock_lookup`), an optional folder of
-files copied into the task's sandbox, the answers of the mock tool (result, error or delay per id) and the checks, for
-example:
+A task file declares mock tools (`toolsets`: description, parameters, and rules that give a result, an error or a
+delay depending on the arguments) and lists tasks with a prompt, the offered tools (`read_file` is built in), an
+optional folder of files copied into the task's sandbox, the expected calls and the checks of the answer, for
+example (`tasks\examples.json`; the format is described in the [requirements](docs/requirements.md), section 3):
 
 ```json
 { "id": "file-marker", "prompt": "What is the marker written in the file notes.txt?", "fixtures": "notes",
-  "tools": ["read_file", "mock_lookup"], "checks": { "tool_called": "read_file", "answer_contains": ["BLUE-HERON-17"] } }
+  "tools": ["read_file", "mock_lookup"],
+  "expected_calls": [{ "name": "read_file", "arguments": { "path": { "equals": "notes.txt" } } }],
+  "checks": { "answer_contains": ["BLUE-HERON-17"] } }
 ```
 
 Behaviour:
@@ -151,7 +156,8 @@ Behaviour:
 20 tasks (direct and chained tool calls, argument handling, tool errors, limits, tasks that need no tool), ten
 attempts each, run on 2026-11-27 with LM Studio 1.2.0 on one RTX 2070 (8 GB), context 8192, sampling per model card.
 Rate with 95 % Wilson interval; pass^10 is the estimated chance that a task passes in all ten attempts, averaged over
-the tasks; a chain length counts as reliable at 80 % or more. Full report: `bench agent report`.
+the tasks; a chain length counts as reliable at 80 % or more. To repeat the run:
+`.\bench agent run --models <keys> --tasks tasks\m1.json --repeats 10`, then `.\bench agent report --k 10`.
 
 | Model | Passed | Rate (95 % CI) | pass^10 | Silent failures | Longest reliable chain |
 |---|---|---|---|---|---|
