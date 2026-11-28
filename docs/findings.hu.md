@@ -9,8 +9,8 @@ Nyitott pontok: [roadmap](roadmap.hu.md), 4. pont.
 
 Felülírják az ugyanaznapi, 56 jobos próbafutást, amely terhelt gépen futott.
 
-Egy gép (RTX 2070, 8 GB), 132 job 7B–14B modelleken, mind sikeres, jobonként 3 ismétlés, kb. 1800 és 6000 tokenes
-promptok. Egyik prompt sem töltötte ki a 16k contextet, és a kimenet minőségét nem mértük.
+Egy gép (RTX 2070 8 GB, Core i9-9900K, 128 GB DDR4-2400 dual channel), 132 job 7B–14B modelleken, mind sikeres,
+jobonként 3 ismétlés, kb. 1800 és 6000 tokenes promptok. Egyik prompt sem töltötte ki a 16k contextet, és a kimenet minőségét nem mértük.
 
 - Ahol a teljes GPU-offload a megosztott memóriába csordulás nélkül befért, minden részleges offload lassabb volt (csak
   12–14B modelleken mértük). Ahol a VRAM túlcsordult, a részleges offload gyakran gyorsabb volt.

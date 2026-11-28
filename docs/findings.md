@@ -9,8 +9,8 @@ Open points: [roadmap](roadmap.md), section 4.
 
 These supersede the 56-job trial run of the same day, which ran on a busy machine.
 
-One machine (RTX 2070, 8 GB), 132 jobs on 7B to 14B models, all successful, 3 repeats each, prompts of about 1800 and
-6000 tokens. Neither prompt filled a 16k context, and output quality was not measured.
+One machine (RTX 2070 8 GB, Core i9-9900K, 128 GB DDR4-2400 dual channel), 132 jobs on 7B to 14B models, all
+successful, 3 repeats each, prompts of about 1800 and 6000 tokens. Neither prompt filled a 16k context, and output quality was not measured.
 
 - Where full GPU offload fitted without spilling into shared memory, every partial offload was slower (tested on 12–14B
   models only). Where VRAM overflowed, a partial offload was often faster.
