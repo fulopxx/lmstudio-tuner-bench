@@ -280,7 +280,7 @@ Az API-útvonalak javaslatok, még nincsenek megvalósítva.
 | `bench close <run> [--reason]` | `POST /runs/{id}/close` |
 
 A `run` és a `resume` kilépési kódja: 0, ha a futás lefutott vagy a felhasználó állította le, 3, ha megszakadt, 2
-használhatatlan argumentumoknál. Az alapértékeket a `bench <parancs> --help` listázza.
+használhatatlan argumentumoknál. A `bench <parancs> --help` listázza a kapcsolókat; az alapértékek többségét még nem mutatja (a roadmap 30. feladata).
 
 **`--json` (IF-01, D2c lépés).** Minden fenti parancs elfogadja a `--json` kapcsolót, és ekkor pontosan egy
 JSON-dokumentumot ír a standard outputra: a core függvénye adatát, a legfelső szinten `schema_version` mezővel (most

@@ -277,7 +277,7 @@ The API routes are proposals and not implemented.
 | `bench close <run> [--reason]` | `POST /runs/{id}/close` |
 
 Exit codes of `run` and `resume`: 0 when the run is done or was stopped by the user, 3 when it was aborted, 2 for
-unusable arguments. `bench <command> --help` lists the defaults.
+unusable arguments. `bench <command> --help` lists the options; it does not show most default values yet (roadmap task 30).
 
 **`--json` (IF-01, step D2c).** Every command above accepts `--json` and then prints exactly one JSON document on
 standard output: the data of its core function with `schema_version` (now 1) at the top level, e.g.
