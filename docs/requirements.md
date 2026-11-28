@@ -451,14 +451,15 @@ Recorded on 2026-11-27 before the quality suites are designed. A report may only
 Open: sets for 3D design and cybersecurity need their own tools, sandbox and checks (for example mesh validity, an
 isolated target environment); the shell sandbox decision is still open (section 3).
 
-## 7. Core, result format and model registry (step C, planned)
+## 7. Core, result format and model registry (step C, done 2026-11-27)
 
 Agreed on 2026-11-27. Goal: measurement and evaluation logic reachable as importable core functions that return data,
 self-describing versioned results, and a model registry with capability tags. Out of scope: API and web interface
 (steps D to F), new external dependencies, changes to how measurements are made, speculative decoding in the grid
 (task 24, phase 1, right after C). Four parts, each its own commit: C1 package layout, C2 core functions, C3 result
 format and machine settings, C4 model registry. C1 and C2 are refactoring without a change in behaviour; C3 also fixes
-the agent rows that carry the task file version as their `schema_version`.
+the agent rows that carry the task file version as their `schema_version`. All four parts are done; CR-15 is
+verified for the Python code only (the State column).
 
 **Package and core functions (C1, C2)**
 
@@ -494,11 +495,12 @@ Checks: after every part the offline Python and TypeScript tests pass; after C1 
 the reports of existing result files give the same output as before. A short live check (one sweep job and a small
 agent run in the new format) runs only after approval.
 
-## 8. Control interface (step D, planned)
+## 8. Control interface (step D, done 2026-11-27)
 
 Agreed on 2026-11-27 ([architecture](architecture.md), section 10). What the web interface (steps E and F) needs from the
 core and the command line. The CLI comes first: every item is implemented in the core and the CLI before the web uses
-it (roadmap step D2).
+it (roadmap step D2). Step D2 is done; IF-02 to IF-04 come with the API (steps E and F), and one case of IF-13 is
+tested offline only (the State column).
 
 **Outputs and API**
 

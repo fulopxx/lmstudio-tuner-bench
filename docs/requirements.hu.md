@@ -470,14 +470,15 @@ Rögzítve 2026-11-27-én, a minőségcsomagok tervezése előtt. Egy riport csa
 Nyitott: a 3D-tervezési és a kiberbiztonsági készletekhez saját toolok, sandbox és ellenőrzők kellenek (pl.
 mesh-érvényesség, izolált célkörnyezet); a shell sandbox döntése még nyitott (3. pont).
 
-## 7. Core, eredményformátum és modellregiszter (C lépés, tervezett)
+## 7. Core, eredményformátum és modellregiszter (C lépés, kész 2026-11-27)
 
 Elfogadva 2026-11-27-én. Cél: a mérési és kiértékelő logika importálható, adatot visszaadó core függvényekként legyen
 elérhető, az eredmények önleírók és verziózottak legyenek, és legyen modellregiszter képesség-címkékkel. Nem része: API
 és webes felület (D–F lépés), új külső függőség, a mérés módjának változása, a speculative decoding a gridben (a 24.
 feladat 1. fázisa, közvetlenül a C után). Négy rész, mindegyik saját commit: C1 csomagszerkezet, C2 core függvények, C3
 eredményformátum és gépfüggő beállítások, C4 modellregiszter. A C1 és a C2 viselkedésváltozás nélküli refaktorálás; a
-C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl verzióját hordozza.
+C3 egyben javítja, hogy az agent-sorok `schema_version` mezője a feladatfájl verzióját hordozza. Mind a négy rész kész; a CR-15 csak a Python-kódra igazolt (Állapot
+oszlop).
 
 **Csomag és core függvények (C1, C2)**
 
@@ -513,11 +514,12 @@ Ellenőrzés: minden rész után az offline Python- és TypeScript-tesztek átme
 agent-futás és a meglévő eredményfájlok riportjai ugyanazt a kimenetet adják, mint előtte. Rövid élő ellenőrzés (egy
 sweep-job és egy kis agent-futás az új formátummal) csak jóváhagyás után fut.
 
-## 8. Vezérlő interfész (D lépés, tervezett)
+## 8. Vezérlő interfész (D lépés, kész 2026-11-27)
 
 Elfogadva 2026-11-27-én ([architektúra](architecture.hu.md), 10. pont). Amire a webes felületnek (E és F lépés) szüksége
 van a core-tól és a parancssortól. A CLI az első: minden pont előbb a core-ban és a CLI-ben készül el, és csak utána
-használja a web (a roadmap D2 lépése).
+használja a web (a roadmap D2 lépése). A D2 lépés kész; az IF-02–IF-04 az API-val jön (E és F lépés), az IF-13 egy
+esete csak offline tesztelt (Állapot oszlop).
 
 **Kimenetek és API**
 
